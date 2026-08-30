@@ -123,7 +123,7 @@ export default async function OverviewPage() {
   const months = lastSixMonths();
   const since = months[0].key + "-01";
 
-  const [heldPosts, crisisPosts, visiblePosts, bookingsRes, shopRes, countRes] =
+  const [heldPosts, crisisPosts, heldListRes, bookingsRes, shopRes, countRes] =
     await Promise.all([
       supabase.from("posts").select("*", { count: "exact", head: true }).eq("status", "held"),
       supabase
@@ -131,8 +131,17 @@ export default async function OverviewPage() {
         .select("*", { count: "exact", head: true })
         .eq("status", "held")
         .eq("crisis_flag", true),
-      supabase.from("posts").select("*", { count: "exact", head: true }).eq("status", "visible"),
-      supabase.from("cremation_bookings").select("status, service_date").limit(1000),
+      supabase
+        .from("posts")
+        .select("name, body, crisis_flag, context, created_at")
+        .eq("status", "held")
+        .order("created_at", { ascending: false })
+        .limit(4),
+      supabase
+        .from("cremation_bookings")
+        .select("owner_name, pet_name, plan, status, service_date, created_at")
+        .order("created_at", { ascending: false })
+        .limit(1000),
       shopifyGraphQL<OrdersResp>(
         `{ orders(first: 250, query: "created_at:>=${since}") {
            edges { node { createdAt totalPriceSet { shopMoney { amount currencyCode } } } }
@@ -161,8 +170,12 @@ export default async function OverviewPage() {
   const maxRev = Math.max(1, ...months.map((m) => revByMonth[m.key] || 0));
 
   const bookings = (bookingsRes.data ?? []) as {
+    owner_name: string | null;
+    pet_name: string | null;
+    plan: string | null;
     status: string;
     service_date: string | null;
+    created_at: string;
   }[];
   const today = todayStr();
   const todayCount = bookings.filter((b) => b.service_date === today).length;
@@ -173,6 +186,17 @@ export default async function OverviewPage() {
     ...s,
     value: bookings.filter((b) => b.status === s.key).length,
   }));
+  const recentBookings = bookings.slice(0, 6);
+  const statusLabel = (k: string) =>
+    BOOKING_STATUS.find((s) => s.key === k)?.label || k;
+
+  const heldList = (heldListRes.data ?? []) as {
+    name: string | null;
+    body: string;
+    crisis_flag: boolean;
+    context: string;
+    created_at: string;
+  }[];
 
   const kpis = [
     { icon: "💰", label: `本月營業額（${currency}）`, value: "$" + Math.round(thisMonthRevenue).toLocaleString() },
@@ -181,13 +205,6 @@ export default async function OverviewPage() {
     { icon: "📅", label: "今日預約", value: todayCount },
     { icon: "✎", label: "待審留言", value: heldPosts.count ?? 0, alert: (heldPosts.count ?? 0) > 0 },
     { icon: "▦", label: "產品數", value: countRes.productsCount.count },
-  ];
-
-  const pending = [
-    { label: "危機留言（優先跟進）", value: crisisPosts.count ?? 0, href: "/board?filter=held", alert: (crisisPosts.count ?? 0) > 0 },
-    { label: "待審留言", value: heldPosts.count ?? 0, href: "/board" },
-    { label: "今日預約服務", value: todayCount, href: "/bookings" },
-    { label: "進行中預約", value: activeCount, href: "/bookings" },
   ];
 
   return (
@@ -292,63 +309,78 @@ export default async function OverviewPage() {
         </div>
       </div>
 
-      {/* 待處理 + 留言板概況 */}
+      {/* 近期預約 + 待審留言（實質內容，不與上方數字重複） */}
       <div className="grid lg:grid-cols-3 gap-4">
+        {/* 近期預約 */}
         <div className="lg:col-span-2 rounded-2xl border border-[var(--line)] bg-[var(--card)] p-5">
-          <h2 className="text-base mb-4">待處理事項</h2>
-          <div className="grid grid-cols-2 gap-3">
-            {pending.map((p) => (
-              <Link
-                key={p.label}
-                href={p.href}
-                className={
-                  "flex items-center justify-between rounded-xl border px-4 py-3 hover:bg-[var(--cream)] transition " +
-                  (p.alert ? "border-red-300" : "border-[var(--line)]")
-                }
-              >
-                <span className="text-sm text-[var(--soft)]">{p.label}</span>
-                <span
-                  className={
-                    "text-2xl font-semibold tabular-nums " +
-                    (p.alert ? "text-red-600" : "text-[var(--ink)]")
-                  }
-                >
-                  {p.value}
-                </span>
-              </Link>
-            ))}
-          </div>
-        </div>
-
-        <div className="rounded-2xl border border-[var(--line)] bg-[var(--card)] p-5">
-          <h2 className="text-base mb-4">留言板概況</h2>
-          <div className="space-y-3 text-sm">
-            <div className="flex items-center justify-between">
-              <span className="text-[var(--soft)]">待審</span>
-              <span className="tabular-nums font-medium">{heldPosts.count ?? 0}</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-[var(--soft)]">顯示中</span>
-              <span className="tabular-nums font-medium">{visiblePosts.count ?? 0}</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-[var(--soft)]">危機留言</span>
-              <span
-                className={
-                  "tabular-nums font-medium " +
-                  ((crisisPosts.count ?? 0) > 0 ? "text-red-600" : "")
-                }
-              >
-                {crisisPosts.count ?? 0}
-              </span>
-            </div>
-            <Link
-              href="/board"
-              className="block text-center mt-2 text-sm text-[var(--gold)] hover:underline"
-            >
-              前往審核 →
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-base">近期預約</h2>
+            <Link href="/bookings" className="text-xs text-[var(--gold)] hover:underline">
+              全部 →
             </Link>
           </div>
+          {recentBookings.length === 0 ? (
+            <p className="text-sm text-[var(--soft)] py-6 text-center">暫無預約記錄。</p>
+          ) : (
+            <div className="divide-y divide-[var(--line)]">
+              {recentBookings.map((b, i) => (
+                <div key={i} className="flex items-center gap-3 py-2.5 text-sm">
+                  <span className="min-w-0">
+                    <span className="text-[var(--ink)]">{b.owner_name || "—"}</span>
+                    {b.pet_name && (
+                      <span className="text-[var(--soft)]">　·　{b.pet_name}</span>
+                    )}
+                  </span>
+                  {b.plan && (
+                    <span className="text-xs text-[var(--soft)] hidden sm:inline">
+                      {b.plan}
+                    </span>
+                  )}
+                  <span className="ml-auto text-xs px-2 py-0.5 rounded-full bg-[var(--cream)] text-[var(--soft)] whitespace-nowrap">
+                    {statusLabel(b.status)}
+                  </span>
+                  <span className="text-xs text-[var(--soft)] whitespace-nowrap w-16 text-right">
+                    {(b.service_date || b.created_at)?.slice(5, 10)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* 待審留言（顯示真實留言） */}
+        <div className="rounded-2xl border border-[var(--line)] bg-[var(--card)] p-5">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-base">待審留言</h2>
+            <Link href="/board" className="text-xs text-[var(--gold)] hover:underline">
+              審核 →
+            </Link>
+          </div>
+          {heldList.length === 0 ? (
+            <p className="text-sm text-[var(--soft)] py-6 text-center">目前沒有待審留言。</p>
+          ) : (
+            <div className="space-y-2.5">
+              {heldList.map((p, i) => (
+                <div
+                  key={i}
+                  className={
+                    "rounded-xl border px-3 py-2 text-sm " +
+                    (p.crisis_flag ? "border-red-300 bg-red-50/40" : "border-[var(--line)]")
+                  }
+                >
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <span className="text-xs text-[var(--soft)]">{p.name || "匿名"}</span>
+                    {p.crisis_flag && (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-red-100 text-red-700">
+                        ⚠ 危機
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[var(--ink)] line-clamp-2">{p.body}</p>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>
