@@ -65,10 +65,7 @@ export default async function BookingsPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-semibold mb-1">預約火化記錄</h1>
-      <p className="text-sm text-[var(--soft)] mb-6">
-        共 {bookings.length} 筆　·　更新狀態會即時儲存
-      </p>
+      <h1 className="text-2xl font-semibold mb-6">預約火化記錄</h1>
 
       {error && (
         <div className="mb-4 text-sm text-red-600">

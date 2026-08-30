@@ -57,10 +57,7 @@ export default async function OrdersPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-semibold mb-1">客戶訂單</h1>
-      <p className="text-sm text-[var(--soft)] mb-6">
-        來自 Shopify，即時讀取（共 {orders.length} 筆）
-      </p>
+      <h1 className="text-2xl font-semibold mb-6">客戶訂單</h1>
 
       {err && (
         <div className="rounded-2xl border border-red-300 bg-[var(--card)] p-6 text-sm text-red-600">

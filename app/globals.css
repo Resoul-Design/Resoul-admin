@@ -46,6 +46,36 @@ h3 {
   font-style: italic;
 }
 
+/* 文章內容 */
+.article-body {
+  color: var(--ink);
+  line-height: 1.85;
+  font-size: 0.95rem;
+}
+.article-body p {
+  margin: 0.6em 0;
+}
+.article-body h2,
+.article-body h3 {
+  margin: 1em 0 0.4em;
+  font-family: var(--serif);
+}
+.article-body img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 8px;
+  margin: 0.6em 0;
+}
+.article-body a {
+  color: var(--gold);
+  text-decoration: underline;
+}
+.article-body ul,
+.article-body ol {
+  padding-left: 1.4em;
+  margin: 0.6em 0;
+}
+
 /* 幼細捲軸（手機橫向 nav 用） */
 .no-scrollbar::-webkit-scrollbar {
   display: none;
