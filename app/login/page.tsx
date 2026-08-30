@@ -32,11 +32,13 @@ export default function LoginPage() {
         onSubmit={onSubmit}
         className="w-full max-w-sm bg-[var(--card)] border border-[var(--line)] rounded-2xl p-8 shadow-sm"
       >
-        <div className="text-center mb-6">
-          <div className="text-2xl font-semibold tracking-wide text-[var(--gold)]">
-            Resoul
+        <div className="flex flex-col items-center mb-7">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/resoul-wordmark.png" alt="Resoul" className="h-12 w-auto" />
+          <div className="brand-slogan text-sm text-[var(--soft)] mt-2">
+            Your last greatest love to show
           </div>
-          <div className="text-sm text-[var(--soft)] mt-1">後台管理系統</div>
+          <div className="text-sm text-[var(--ink)] mt-3">後台管理系統</div>
         </div>
 
         <label className="block text-sm text-[var(--soft)] mb-1">電郵</label>

@@ -1,24 +1,56 @@
 @import "tailwindcss";
 
 :root {
-  --cream: #f7f3ec;
-  --card: #ffffff;
+  /* 與 resoul-landing 一致的品牌色盤 */
+  --bg: #faf6ef;
+  --cream: #f2e9dc;
+  --card: #fdfaf4;
   --ink: #3b2f27;
-  --soft: #6b5d4f;
+  --soft: #6f6156;
+  --faint: #9a8d80;
   --gold: #9c7f52;
+  --gold-soft: #b89a6e;
   --line: #e6dccb;
-  --head: #efe7d9;
-}
+  --head: #f2e9dc;
+  --shadow: 0 14px 40px -22px rgba(70, 52, 34, 0.35);
 
-html,
-body {
-  background: var(--cream);
-  color: var(--ink);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft JhengHei",
-    "微軟正黑體", Roboto, Helvetica, Arial, sans-serif;
-  -webkit-font-smoothing: antialiased;
+  --serif: "Noto Serif TC", "Songti TC", "Source Han Serif TC", serif;
+  --sans: "Noto Sans TC", -apple-system, BlinkMacSystemFont, "PingFang TC",
+    "Microsoft JhengHei", sans-serif;
+  --slogan: "Cormorant Garamond", "Noto Serif TC", serif;
 }
 
 * {
   box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html,
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--serif);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.brand-slogan {
+  font-family: var(--slogan);
+  font-style: italic;
+}
+
+/* 幼細捲軸（手機橫向 nav 用） */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }

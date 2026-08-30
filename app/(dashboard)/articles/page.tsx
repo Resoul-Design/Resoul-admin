@@ -28,7 +28,7 @@ const QUERY = `{
   blogs(first: 5) {
     edges { node {
       id title handle
-      articles(first: 30, sortKey: PUBLISHED_AT, reverse: true) {
+      articles(first: 30) {
         edges { node { id title publishedAt author { name } } }
       }
     } }
@@ -82,7 +82,13 @@ export default async function ArticlesPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {b.articles.edges.map((a) => (
+                  {[...b.articles.edges]
+                    .sort((x, y) =>
+                      (y.node.publishedAt || "").localeCompare(
+                        x.node.publishedAt || ""
+                      )
+                    )
+                    .map((a) => (
                     <tr
                       key={a.node.id}
                       className="border-t border-[var(--line)]"
