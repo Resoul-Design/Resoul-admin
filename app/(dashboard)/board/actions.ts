@@ -5,6 +5,12 @@ import { createClient } from "@/lib/supabase/server";
 
 const VALID = ["held", "visible", "hidden"];
 
+function revalidateBoards() {
+  revalidatePath("/board/blog");
+  revalidatePath("/board/community");
+  revalidatePath("/");
+}
+
 export async function setPostStatus(formData: FormData) {
   const id = String(formData.get("id") || "");
   const status = String(formData.get("status") || "");
@@ -12,8 +18,7 @@ export async function setPostStatus(formData: FormData) {
 
   const supabase = await createClient();
   await supabase.from("posts").update({ status }).eq("id", id);
-  revalidatePath("/board");
-  revalidatePath("/");
+  revalidateBoards();
 }
 
 export async function deletePost(formData: FormData) {
@@ -22,6 +27,5 @@ export async function deletePost(formData: FormData) {
 
   const supabase = await createClient();
   await supabase.from("posts").delete().eq("id", id);
-  revalidatePath("/board");
-  revalidatePath("/");
+  revalidateBoards();
 }

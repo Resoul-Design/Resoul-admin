@@ -95,7 +95,7 @@ export default async function ArticlesPage() {
                     </summary>
                     <div className="px-4 pb-4 border-t border-[var(--line)] pt-3">
                       <div
-                        className="article-body max-h-[420px] overflow-y-auto pr-1"
+                        className="article-body max-h-[420px] overflow-y-auto pr-1 [scrollbar-gutter:stable]"
                         dangerouslySetInnerHTML={{
                           __html: a.node.body || "（沒有內容）",
                         }}

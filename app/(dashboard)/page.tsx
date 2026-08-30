@@ -123,14 +123,9 @@ export default async function OverviewPage() {
   const months = lastSixMonths();
   const since = months[0].key + "-01";
 
-  const [heldPosts, crisisPosts, heldListRes, bookingsRes, shopRes, countRes] =
+  const [heldPosts, heldListRes, bookingsRes, shopRes, countRes] =
     await Promise.all([
       supabase.from("posts").select("*", { count: "exact", head: true }).eq("status", "held"),
-      supabase
-        .from("posts")
-        .select("*", { count: "exact", head: true })
-        .eq("status", "held")
-        .eq("crisis_flag", true),
       supabase
         .from("posts")
         .select("name, body, crisis_flag, context, created_at")

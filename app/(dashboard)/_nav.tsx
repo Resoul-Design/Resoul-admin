@@ -2,29 +2,77 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useState } from "react";
 
-export const NAV = [
-  { href: "/", label: "總覽", icon: "◆" },
-  { href: "/bookings", label: "預約火化", icon: "✦" },
-  { href: "/board", label: "留言板審核", icon: "✎" },
-  { href: "/orders", label: "客戶訂單", icon: "▣" },
-  { href: "/inventory", label: "倉存 · 出貨", icon: "▦" },
-  { href: "/articles", label: "文章記錄", icon: "❋" },
-  { href: "/staff", label: "員工排更", icon: "☷", soon: true },
+type Item = { label: string; href: string; soon?: boolean };
+type Group = {
+  label: string;
+  icon: string;
+  href?: string;
+  soon?: boolean;
+  children?: Item[];
+};
+
+export const GROUPS: Group[] = [
+  { label: "總覽", icon: "◆", href: "/" },
+  {
+    label: "火化服務",
+    icon: "✦",
+    children: [
+      { label: "客戶預約火化記錄", href: "/bookings" },
+      { label: "安排火化服務", href: "/schedule" },
+    ],
+  },
+  {
+    label: "留言審核",
+    icon: "✎",
+    children: [
+      { label: "照顧誌留言", href: "/board/blog" },
+      { label: "同路人留言板", href: "/board/community" },
+    ],
+  },
+  {
+    label: "紀念產品管理",
+    icon: "▣",
+    children: [
+      { label: "客戶訂單", href: "/orders" },
+      { label: "倉存 · 出貨", href: "/inventory" },
+    ],
+  },
+  {
+    label: "宣傳管理",
+    icon: "❋",
+    children: [{ label: "文章記錄", href: "/articles" }],
+  },
+  { label: "員工排更", icon: "☷", href: "/staff", soon: true },
 ];
 
 function isActive(path: string, href: string) {
   if (href === "/") return path === "/";
   return path === href || path.startsWith(href + "/");
 }
+function groupActive(path: string, g: Group) {
+  if (g.href) return isActive(path, g.href);
+  return (g.children || []).some((c) => isActive(path, c.href));
+}
+
+// 手機：攤平所有葉節點
+const LEAVES: Item[] = GROUPS.flatMap((g) =>
+  g.children ? g.children : g.href ? [{ label: g.label, href: g.href, soon: g.soon }] : []
+);
 
 export function NavLinks({ variant }: { variant: "side" | "top" }) {
   const path = usePathname();
+  const [open, setOpen] = useState<Record<string, boolean>>(() => {
+    const init: Record<string, boolean> = {};
+    for (const g of GROUPS) if (g.children && groupActive(path, g)) init[g.label] = true;
+    return init;
+  });
 
   if (variant === "top") {
     return (
       <nav className="flex gap-1.5 overflow-x-auto no-scrollbar px-4 pb-2.5">
-        {NAV.map((item) => {
+        {LEAVES.map((item) => {
           const active = isActive(path, item.href);
           return (
             <Link
@@ -50,35 +98,81 @@ export function NavLinks({ variant }: { variant: "side" | "top" }) {
   }
 
   return (
-    <nav className="flex-1 px-3 py-3 space-y-0.5">
-      {NAV.map((item) => {
-        const active = isActive(path, item.href);
-        return (
-          <Link
-            key={item.href}
-            href={item.soon ? "#" : item.href}
-            aria-disabled={item.soon}
-            className={
-              "flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition " +
-              (item.soon
-                ? "text-[var(--faint)] pointer-events-none"
-                : active
-                ? "bg-[var(--gold)] text-white"
-                : "text-[var(--ink)] hover:bg-[var(--cream)]")
-            }
-          >
-            <span
+    <nav className="flex-1 px-3 py-3 space-y-0.5 overflow-y-auto">
+      {GROUPS.map((g) => {
+        // 單一項目（總覽、員工排更）
+        if (!g.children) {
+          const active = isActive(path, g.href!);
+          return (
+            <Link
+              key={g.label}
+              href={g.soon ? "#" : g.href!}
+              aria-disabled={g.soon}
               className={
-                "w-4 text-center " + (active ? "text-white" : "text-[var(--gold)]")
+                "flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition " +
+                (g.soon
+                  ? "text-[var(--faint)] pointer-events-none"
+                  : active
+                  ? "bg-[var(--gold)] text-white"
+                  : "text-[var(--ink)] hover:bg-[var(--cream)]")
               }
             >
-              {item.icon}
-            </span>
-            <span>{item.label}</span>
-            {item.soon && (
-              <span className="ml-auto text-[10px] text-[var(--faint)]">即將</span>
+              <span className={"w-4 text-center " + (active ? "text-white" : "text-[var(--gold)]")}>
+                {g.icon}
+              </span>
+              <span>{g.label}</span>
+              {g.soon && <span className="ml-auto text-[10px] text-[var(--faint)]">即將</span>}
+            </Link>
+          );
+        }
+
+        // 有子項的分類（手風琴）
+        const gActive = groupActive(path, g);
+        const isOpen = open[g.label] ?? gActive;
+        return (
+          <div key={g.label}>
+            <button
+              onClick={() => setOpen((o) => ({ ...o, [g.label]: !isOpen }))}
+              className={
+                "w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition " +
+                (gActive
+                  ? "text-[var(--ink)] font-medium"
+                  : "text-[var(--ink)] hover:bg-[var(--cream)]")
+              }
+            >
+              <span className="w-4 text-center text-[var(--gold)]">{g.icon}</span>
+              <span>{g.label}</span>
+              <span
+                className={
+                  "ml-auto text-[10px] text-[var(--soft)] transition-transform " +
+                  (isOpen ? "rotate-90" : "")
+                }
+              >
+                ▸
+              </span>
+            </button>
+            {isOpen && (
+              <div className="ml-[22px] pl-3 border-l border-[var(--line)] space-y-0.5 py-1">
+                {g.children.map((c) => {
+                  const active = isActive(path, c.href);
+                  return (
+                    <Link
+                      key={c.href}
+                      href={c.href}
+                      className={
+                        "block px-3 py-1.5 rounded-lg text-sm transition " +
+                        (active
+                          ? "bg-[var(--gold)] text-white"
+                          : "text-[var(--soft)] hover:bg-[var(--cream)] hover:text-[var(--ink)]")
+                      }
+                    >
+                      {c.label}
+                    </Link>
+                  );
+                })}
+              </div>
             )}
-          </Link>
+          </div>
         );
       })}
     </nav>

@@ -54,6 +54,7 @@ create table if not exists public.cremation_bookings (
   pet_type       text,                              -- 種類（貓/狗…）
   plan           text,                              -- 風之旅 / 雲之旅 / 星之旅
   service_date   date,                              -- 預約服務日期
+  service_time   time,                              -- 預約服務時間
   pickup_address text,                              -- 接送地址
   status         text        not null default 'new'
                  check (status in ('new','scheduled','pickup','cremating','completed','cancelled')),

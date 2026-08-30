@@ -25,6 +25,11 @@
   -webkit-tap-highlight-color: transparent;
 }
 
+html {
+  /* 永遠保留捲軸位，避免內容變高時版面左右跳動 */
+  scrollbar-gutter: stable;
+}
+
 html,
 body {
   background: var(--bg);
@@ -51,6 +56,12 @@ h3 {
   color: var(--ink);
   line-height: 1.85;
   font-size: 0.95rem;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+.article-body :where(img, video, iframe, table, pre) {
+  max-width: 100%;
+  height: auto;
 }
 .article-body p {
   margin: 0.6em 0;
