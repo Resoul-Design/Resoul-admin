@@ -6,9 +6,9 @@ const NAV = [
   { href: "/", label: "總覽", icon: "◆" },
   { href: "/bookings", label: "預約火化", icon: "✦" },
   { href: "/board", label: "留言板審核", icon: "✎" },
-  { href: "/orders", label: "客戶訂單", icon: "▣", soon: true },
-  { href: "/inventory", label: "倉存 · 出貨", icon: "▦", soon: true },
-  { href: "/articles", label: "文章記錄", icon: "❋", soon: true },
+  { href: "/orders", label: "客戶訂單", icon: "▣" },
+  { href: "/inventory", label: "倉存 · 出貨", icon: "▦" },
+  { href: "/articles", label: "文章記錄", icon: "❋" },
   { href: "/staff", label: "員工排更", icon: "☷", soon: true },
 ];
 
