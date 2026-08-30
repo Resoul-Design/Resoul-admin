@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { scheduleBooking } from "./actions";
+import { scheduleBooking, createBooking } from "./actions";
+
+const PLANS = ["風之旅", "雲之旅", "星之旅"];
 
 export const dynamic = "force-dynamic";
 
@@ -77,7 +79,90 @@ export default async function SchedulePage({
 
   return (
     <div>
-      <h1 className="text-2xl font-semibold mb-6">安排火化服務</h1>
+      <h1 className="text-2xl font-semibold mb-4">安排火化服務</h1>
+
+      {/* 新增預約 */}
+      <details className="mb-5 rounded-2xl border border-[var(--line)] bg-[var(--card)]">
+        <summary className="cursor-pointer list-none px-5 py-3.5 flex items-center gap-2 font-medium">
+          <span className="text-[var(--gold)]">＋</span> 新增預約
+        </summary>
+        <form
+          action={createBooking}
+          className="px-5 pb-5 pt-1 border-t border-[var(--line)] grid sm:grid-cols-2 gap-3"
+        >
+          {[
+            { name: "owner_name", label: "主人姓名" },
+            { name: "contact", label: "聯絡（電話 / WhatsApp）" },
+            { name: "pet_name", label: "毛孩名" },
+            { name: "pet_type", label: "種類（貓 / 狗…）" },
+          ].map((f) => (
+            <label key={f.name} className="text-sm">
+              <span className="block text-[var(--soft)] mb-1">{f.label}</span>
+              <input
+                name={f.name}
+                className="w-full px-3 py-2 rounded-lg border border-[var(--line)] bg-white outline-none focus:border-[var(--gold)]"
+              />
+            </label>
+          ))}
+
+          <label className="text-sm">
+            <span className="block text-[var(--soft)] mb-1">方案</span>
+            <select
+              name="plan"
+              defaultValue=""
+              className="w-full px-3 py-2 rounded-lg border border-[var(--line)] bg-white outline-none focus:border-[var(--gold)]"
+            >
+              <option value="">未定</option>
+              {PLANS.map((p) => (
+                <option key={p} value={p}>
+                  {p}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="text-sm">
+            <span className="block text-[var(--soft)] mb-1">接送地址</span>
+            <input
+              name="pickup_address"
+              className="w-full px-3 py-2 rounded-lg border border-[var(--line)] bg-white outline-none focus:border-[var(--gold)]"
+            />
+          </label>
+
+          <label className="text-sm">
+            <span className="block text-[var(--soft)] mb-1">服務日期</span>
+            <input
+              type="date"
+              name="service_date"
+              className="w-full px-3 py-2 rounded-lg border border-[var(--line)] bg-white outline-none focus:border-[var(--gold)]"
+            />
+          </label>
+
+          <label className="text-sm">
+            <span className="block text-[var(--soft)] mb-1">服務時間</span>
+            <input
+              type="time"
+              name="service_time"
+              className="w-full px-3 py-2 rounded-lg border border-[var(--line)] bg-white outline-none focus:border-[var(--gold)]"
+            />
+          </label>
+
+          <label className="text-sm sm:col-span-2">
+            <span className="block text-[var(--soft)] mb-1">預約要求 / 備註</span>
+            <textarea
+              name="notes"
+              rows={2}
+              className="w-full px-3 py-2 rounded-lg border border-[var(--line)] bg-white outline-none focus:border-[var(--gold)] resize-y"
+            />
+          </label>
+
+          <div className="sm:col-span-2 flex justify-end">
+            <button className="px-4 py-2 rounded-lg text-sm bg-[var(--gold)] text-white hover:opacity-90">
+              新增預約
+            </button>
+          </div>
+        </form>
+      </details>
 
       {error && (
         <div className="mb-4 rounded-xl border border-red-300 bg-[var(--card)] p-4 text-sm text-red-600">

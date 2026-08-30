@@ -56,46 +56,13 @@ function groupActive(path: string, g: Group) {
   return (g.children || []).some((c) => isActive(path, c.href));
 }
 
-// 手機：攤平所有葉節點
-const LEAVES: Item[] = GROUPS.flatMap((g) =>
-  g.children ? g.children : g.href ? [{ label: g.label, href: g.href, soon: g.soon }] : []
-);
-
-export function NavLinks({ variant }: { variant: "side" | "top" }) {
+export function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
   const path = usePathname();
   const [open, setOpen] = useState<Record<string, boolean>>(() => {
     const init: Record<string, boolean> = {};
     for (const g of GROUPS) if (g.children && groupActive(path, g)) init[g.label] = true;
     return init;
   });
-
-  if (variant === "top") {
-    return (
-      <nav className="flex gap-1.5 overflow-x-auto no-scrollbar px-4 pb-2.5">
-        {LEAVES.map((item) => {
-          const active = isActive(path, item.href);
-          return (
-            <Link
-              key={item.href}
-              href={item.soon ? "#" : item.href}
-              aria-disabled={item.soon}
-              className={
-                "shrink-0 px-3 py-1.5 rounded-full text-sm whitespace-nowrap transition " +
-                (item.soon
-                  ? "text-[var(--faint)] pointer-events-none border border-[var(--line)]"
-                  : active
-                  ? "bg-[var(--gold)] text-white"
-                  : "text-[var(--soft)] border border-[var(--line)] bg-[var(--card)]")
-              }
-            >
-              {item.label}
-              {item.soon && " ·即將"}
-            </Link>
-          );
-        })}
-      </nav>
-    );
-  }
 
   return (
     <nav className="flex-1 px-3 py-3 space-y-0.5 overflow-y-auto">
@@ -108,6 +75,7 @@ export function NavLinks({ variant }: { variant: "side" | "top" }) {
               key={g.label}
               href={g.soon ? "#" : g.href!}
               aria-disabled={g.soon}
+              onClick={onNavigate}
               className={
                 "flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition " +
                 (g.soon
@@ -159,6 +127,7 @@ export function NavLinks({ variant }: { variant: "side" | "top" }) {
                     <Link
                       key={c.href}
                       href={c.href}
+                      onClick={onNavigate}
                       className={
                         "block px-3 py-1.5 rounded-lg text-sm transition " +
                         (active
