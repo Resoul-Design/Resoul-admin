@@ -1,9 +1,10 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { scheduleBooking, createBooking } from "./actions";
+import { createBooking } from "./actions";
+
+export const dynamic = "force-dynamic";
 
 const PLANS = ["風之旅", "雲之旅", "星之旅"];
-
 const STATUS_LABEL: Record<string, string> = {
   new: "新收到",
   scheduled: "已排期",
@@ -13,8 +14,6 @@ const STATUS_LABEL: Record<string, string> = {
   cancelled: "已取消",
 };
 const statusLabel = (k: string) => STATUS_LABEL[k] || k;
-
-export const dynamic = "force-dynamic";
 
 type Booking = {
   id: string;
@@ -38,6 +37,8 @@ function shiftYm(ym: string, delta: number) {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}`;
 }
 const WEEKDAYS = ["日", "一", "二", "三", "四", "五", "六"];
+const inputCls =
+  "px-3 py-2 rounded-lg border border-[var(--line)] bg-white outline-none focus:border-[var(--gold)] text-sm";
 
 export default async function SchedulePage({
   searchParams,
@@ -59,12 +60,6 @@ export default async function SchedulePage({
 
   const bookings = (data ?? []) as Booking[];
 
-  // 待安排：狀態為 new 或 未有日期
-  const needScheduling = bookings.filter(
-    (b) => b.status === "new" || !b.service_date
-  );
-
-  // 已排期：有日期且未完成/取消（不論月份，方便一覽）
   const scheduled = bookings
     .filter(
       (b) =>
@@ -79,7 +74,6 @@ export default async function SchedulePage({
       )
     );
 
-  // 當月已排期
   const monthPrefix = `${y}-${pad(m)}`;
   const byDay: Record<number, Booking[]> = {};
   for (const b of bookings) {
@@ -113,75 +107,45 @@ export default async function SchedulePage({
         </summary>
         <form
           action={createBooking}
-          className="px-5 pb-5 pt-1 border-t border-[var(--line)] grid sm:grid-cols-2 gap-3"
+          className="px-5 pb-5 pt-1 border-t border-[var(--line)] grid sm:grid-cols-2 lg:grid-cols-3 gap-3"
         >
           {[
             { name: "owner_name", label: "主人姓名" },
-            { name: "contact", label: "聯絡（電話 / WhatsApp）" },
+            { name: "contact", label: "電話 / 聯絡" },
             { name: "pet_name", label: "毛孩名" },
             { name: "pet_type", label: "種類（貓 / 狗…）" },
           ].map((f) => (
             <label key={f.name} className="text-sm">
               <span className="block text-[var(--soft)] mb-1">{f.label}</span>
-              <input
-                name={f.name}
-                className="w-full px-3 py-2 rounded-lg border border-[var(--line)] bg-white outline-none focus:border-[var(--gold)]"
-              />
+              <input name={f.name} className={inputCls + " w-full"} />
             </label>
           ))}
-
           <label className="text-sm">
             <span className="block text-[var(--soft)] mb-1">方案</span>
-            <select
-              name="plan"
-              defaultValue=""
-              className="w-full px-3 py-2 rounded-lg border border-[var(--line)] bg-white outline-none focus:border-[var(--gold)]"
-            >
+            <select name="plan" defaultValue="" className={inputCls + " w-full"}>
               <option value="">未定</option>
               {PLANS.map((p) => (
-                <option key={p} value={p}>
-                  {p}
-                </option>
+                <option key={p} value={p}>{p}</option>
               ))}
             </select>
           </label>
-
           <label className="text-sm">
             <span className="block text-[var(--soft)] mb-1">接送地址</span>
-            <input
-              name="pickup_address"
-              className="w-full px-3 py-2 rounded-lg border border-[var(--line)] bg-white outline-none focus:border-[var(--gold)]"
-            />
+            <input name="pickup_address" className={inputCls + " w-full"} />
           </label>
-
           <label className="text-sm">
             <span className="block text-[var(--soft)] mb-1">服務日期</span>
-            <input
-              type="date"
-              name="service_date"
-              className="w-full px-3 py-2 rounded-lg border border-[var(--line)] bg-white outline-none focus:border-[var(--gold)]"
-            />
+            <input type="date" name="service_date" className={inputCls + " w-full"} />
           </label>
-
           <label className="text-sm">
             <span className="block text-[var(--soft)] mb-1">服務時間</span>
-            <input
-              type="time"
-              name="service_time"
-              className="w-full px-3 py-2 rounded-lg border border-[var(--line)] bg-white outline-none focus:border-[var(--gold)]"
-            />
+            <input type="time" name="service_time" className={inputCls + " w-full"} />
           </label>
-
-          <label className="text-sm sm:col-span-2">
+          <label className="text-sm lg:col-span-3 sm:col-span-2">
             <span className="block text-[var(--soft)] mb-1">預約要求 / 備註</span>
-            <textarea
-              name="notes"
-              rows={2}
-              className="w-full px-3 py-2 rounded-lg border border-[var(--line)] bg-white outline-none focus:border-[var(--gold)] resize-y"
-            />
+            <textarea name="notes" rows={2} className={inputCls + " w-full resize-y"} />
           </label>
-
-          <div className="sm:col-span-2 flex justify-end">
+          <div className="sm:col-span-2 lg:col-span-3 flex justify-end">
             <button className="px-4 py-2 rounded-lg text-sm bg-[var(--gold)] text-white hover:opacity-90">
               新增預約
             </button>
@@ -198,141 +162,64 @@ export default async function SchedulePage({
         </div>
       )}
 
-      <div className="grid lg:grid-cols-3 gap-5">
-        {/* 月曆 */}
-        <div className="lg:col-span-2 rounded-2xl border border-[var(--line)] bg-[var(--card)] p-5">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-base">
-              {y} 年 {m} 月
-            </h2>
-            <div className="flex gap-2 text-sm">
-              <Link
-                href={`/schedule?ym=${shiftYm(ym, -1)}`}
-                className="px-2.5 py-1 rounded-md border border-[var(--line)] hover:bg-[var(--cream)]"
-              >
-                ← 上月
-              </Link>
-              <Link
-                href="/schedule"
-                className="px-2.5 py-1 rounded-md border border-[var(--line)] hover:bg-[var(--cream)]"
-              >
-                本月
-              </Link>
-              <Link
-                href={`/schedule?ym=${shiftYm(ym, 1)}`}
-                className="px-2.5 py-1 rounded-md border border-[var(--line)] hover:bg-[var(--cream)]"
-              >
-                下月 →
-              </Link>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-7 gap-1 text-center text-xs text-[var(--soft)] mb-1">
-            {WEEKDAYS.map((w) => (
-              <div key={w} className="py-1">
-                {w}
-              </div>
-            ))}
-          </div>
-          <div className="grid grid-cols-7 gap-1">
-            {cells.map((d, i) => (
-              <div
-                key={i}
-                className={
-                  "min-h-[76px] rounded-lg border p-1.5 text-left " +
-                  (d === null
-                    ? "border-transparent"
-                    : isToday(d)
-                    ? "border-[var(--gold)] bg-[var(--cream)]/40"
-                    : "border-[var(--line)]")
-                }
-              >
-                {d !== null && (
-                  <>
-                    <div className="text-xs text-[var(--soft)] mb-1">{d}</div>
-                    <div className="space-y-1">
-                      {(byDay[d] || []).map((b) => (
-                        <div
-                          key={b.id}
-                          className="text-[11px] leading-tight px-1.5 py-1 rounded bg-[var(--gold)] text-white truncate"
-                          title={`${b.service_time?.slice(0, 5) || ""} ${b.pet_name || ""} ${b.owner_name || ""}（${b.plan || ""}）`}
-                        >
-                          {b.service_time ? b.service_time.slice(0, 5) + " " : ""}
-                          {b.pet_name || b.owner_name || "預約"}
-                        </div>
-                      ))}
-                    </div>
-                  </>
-                )}
-              </div>
-            ))}
+      {/* 月曆（全闊） */}
+      <div className="rounded-2xl border border-[var(--line)] bg-[var(--card)] p-5 mb-4">
+        <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+          <h2 className="text-lg font-semibold">
+            {y} 年 {m} 月
+          </h2>
+          <div className="flex gap-2 text-sm">
+            <Link href={`/schedule?ym=${shiftYm(ym, -1)}`} className="px-3 py-1.5 rounded-md border border-[var(--line)] hover:bg-[var(--cream)]">← 上月</Link>
+            <Link href="/schedule" className="px-3 py-1.5 rounded-md border border-[var(--line)] hover:bg-[var(--cream)]">本月</Link>
+            <Link href={`/schedule?ym=${shiftYm(ym, 1)}`} className="px-3 py-1.5 rounded-md border border-[var(--line)] hover:bg-[var(--cream)]">下月 →</Link>
           </div>
         </div>
 
-        {/* 待安排 */}
-        <div className="rounded-2xl border border-[var(--line)] bg-[var(--card)] p-5">
-          <h2 className="text-base mb-1">待安排</h2>
-          <p className="text-xs text-[var(--soft)] mb-4">
-            未排期或新收到的預約，設定日子與時間後即排入月曆。
-          </p>
-
-          {needScheduling.length === 0 ? (
-            <p className="text-sm text-[var(--soft)] py-6 text-center">目前沒有待安排的預約。</p>
-          ) : (
-            <div className="space-y-3">
-              {needScheduling.map((b) => (
-                <div
-                  key={b.id}
-                  className="rounded-xl border border-[var(--line)] p-3 text-sm"
-                >
-                  <div className="font-medium">
-                    {b.pet_name || "—"}
-                    <span className="text-[var(--soft)] font-normal">
-                      {b.pet_type ? `　${b.pet_type}` : ""}
-                    </span>
+        <div className="grid grid-cols-7 gap-1.5 text-center text-sm text-[var(--soft)] mb-1.5">
+          {WEEKDAYS.map((w) => (
+            <div key={w} className="py-1">{w}</div>
+          ))}
+        </div>
+        <div className="grid grid-cols-7 gap-1.5">
+          {cells.map((d, i) => (
+            <div
+              key={i}
+              className={
+                "min-h-[132px] rounded-lg border p-2 text-left " +
+                (d === null
+                  ? "border-transparent"
+                  : isToday(d)
+                  ? "border-[var(--gold)] bg-[var(--cream)]/40"
+                  : "border-[var(--line)]")
+              }
+            >
+              {d !== null && (
+                <>
+                  <div className="text-sm text-[var(--soft)] mb-1.5">{d}</div>
+                  <div className="space-y-1">
+                    {(byDay[d] || []).map((b) => (
+                      <div
+                        key={b.id}
+                        className="text-xs leading-snug px-2 py-1.5 rounded-md bg-[var(--gold)] text-white"
+                        title={`${b.service_time?.slice(0, 5) || ""} ${b.pet_name || ""} ${b.owner_name || ""}（${b.plan || ""}）${b.contact || ""}`}
+                      >
+                        {b.service_time && (
+                          <div className="font-medium tabular-nums">{b.service_time.slice(0, 5)}</div>
+                        )}
+                        <div className="truncate">{b.pet_name || "預約"}</div>
+                        <div className="truncate opacity-90">{b.owner_name || ""}{b.plan ? " · " + b.plan : ""}</div>
+                      </div>
+                    ))}
                   </div>
-                  <div className="text-[var(--soft)] text-xs mt-0.5">
-                    {b.owner_name || "—"}
-                    {b.contact ? `　·　${b.contact}` : ""}
-                  </div>
-                  {b.plan && (
-                    <div className="text-[var(--soft)] text-xs">方案：{b.plan}</div>
-                  )}
-                  {b.pickup_address && (
-                    <div className="text-[var(--soft)] text-xs">📍 {b.pickup_address}</div>
-                  )}
-                  {b.notes && (
-                    <div className="text-[var(--soft)] text-xs mt-1">備註：{b.notes}</div>
-                  )}
-
-                  <form action={scheduleBooking} className="mt-2.5 flex flex-wrap items-center gap-1.5">
-                    <input type="hidden" name="id" value={b.id} />
-                    <input
-                      type="date"
-                      name="service_date"
-                      defaultValue={b.service_date || todayStr}
-                      required
-                      className="text-xs border border-[var(--line)] rounded-md px-2 py-1 bg-white"
-                    />
-                    <input
-                      type="time"
-                      name="service_time"
-                      defaultValue={b.service_time || ""}
-                      className="text-xs border border-[var(--line)] rounded-md px-2 py-1 bg-white"
-                    />
-                    <button className="text-xs px-3 py-1 rounded-md bg-[var(--gold)] text-white hover:opacity-90">
-                      排期
-                    </button>
-                  </form>
-                </div>
-              ))}
+                </>
+              )}
             </div>
-          )}
+          ))}
         </div>
       </div>
 
-      {/* 已排期預約（不論月份，一覽即將到來） */}
-      <div className="mt-4 rounded-2xl border border-[var(--line)] bg-[var(--card)] p-5">
+      {/* 已排期預約 */}
+      <div className="rounded-2xl border border-[var(--line)] bg-[var(--card)] p-5">
         <h2 className="text-base mb-3">已排期預約</h2>
         {scheduled.length === 0 ? (
           <p className="text-sm text-[var(--soft)] py-4 text-center">尚未有已排期的預約。</p>

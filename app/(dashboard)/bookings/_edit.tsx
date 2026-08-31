@@ -88,7 +88,7 @@ export function EditBookingButton({ booking }: { booking: BookingData }) {
               <input type="hidden" name="id" value={b.id} />
 
               <Field label="專案編號">
-                <input name="case_no" defaultValue={b.case_no || ""} className={inputCls} placeholder="如 RS-2026-001" />
+                <input name="case_no" defaultValue={b.case_no || ""} className={inputCls} placeholder="留空自動產生" />
               </Field>
               <Field label="狀態">
                 <select name="status" defaultValue={b.status} className={inputCls}>

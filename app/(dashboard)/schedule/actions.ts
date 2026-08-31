@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { nextCaseNo } from "@/lib/caseno";
 
 export async function createBooking(formData: FormData) {
   const g = (k: string) => {
@@ -10,7 +11,9 @@ export async function createBooking(formData: FormData) {
   };
   const service_date = g("service_date");
   const supabase = await createClient();
+  const case_no = await nextCaseNo(supabase);
   await supabase.from("cremation_bookings").insert({
+    case_no,
     owner_name: g("owner_name"),
     contact: g("contact"),
     pet_name: g("pet_name"),

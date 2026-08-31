@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { nextCaseNo } from "@/lib/caseno";
 
 const VALID = [
   "new",
@@ -39,10 +40,11 @@ export async function updateBooking(formData: FormData) {
   const status = String(formData.get("status") || "new");
 
   const supabase = await createClient();
+  const case_no = g("case_no") || (await nextCaseNo(supabase));
   await supabase
     .from("cremation_bookings")
     .update({
-      case_no: g("case_no"),
+      case_no,
       owner_name: g("owner_name"),
       contact: g("contact"),
       pet_name: g("pet_name"),
