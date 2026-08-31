@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { shopifyGraphQL } from "@/lib/shopify";
-import { updateFinance } from "./actions";
+import { getStaff } from "@/lib/auth";
+import { updateFinance, updatePlanPrice } from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -40,7 +41,9 @@ export default async function FinancePage() {
   const since = months[0].key + "-01";
   const curKey = months[5].key;
 
-  const [bkRes, shopRes] = await Promise.all([
+  const me = await getStaff();
+  const isAdmin = me?.role === "admin";
+  const [bkRes, shopRes, ppRes] = await Promise.all([
     supabase
       .from("cremation_bookings")
       .select("id, case_no, pet_name, owner_name, plan, status, service_date, amount, cost")
@@ -49,7 +52,13 @@ export default async function FinancePage() {
     shopifyGraphQL<OrdersResp>(
       `{ orders(first: 250, query: "created_at:>=${since}") { edges { node { createdAt totalPriceSet { shopMoney { amount currencyCode } } } } } }`
     ).catch((e) => ({ __err: String(e) }) as unknown as OrdersResp),
+    supabase.from("plan_prices").select("plan, price, cost"),
   ]);
+  const planPrices = (ppRes.data ?? []) as { plan: string; price: number; cost: number }[];
+  const PLAN_ORDER = ["風之旅", "雲之旅", "星之旅"];
+  const priceRows = PLAN_ORDER.map(
+    (p) => planPrices.find((x) => x.plan === p) || { plan: p, price: 0, cost: 0 }
+  );
 
   const bookings = (bkRes.data ?? []) as Booking[];
   const shopErr = (shopRes as unknown as { __err?: string }).__err || "";
@@ -96,6 +105,53 @@ export default async function FinancePage() {
             <div className="text-2xl font-semibold tabular-nums">{c.value}</div>
           </div>
         ))}
+      </div>
+
+      {/* 方案定價（完成火化時自動填入收入/成本） */}
+      <div className="rounded-2xl border border-[var(--line)] bg-[var(--card)] p-5 mb-6">
+        <h2 className="text-base mb-1">方案定價</h2>
+        <p className="text-xs text-[var(--soft)] mb-3">
+          火化完成時，若該筆未手動填收入/成本，會自動套用此定價。
+        </p>
+        <div className="space-y-2">
+          {priceRows.map((r) => (
+            <form
+              key={r.plan}
+              action={updatePlanPrice}
+              className="flex items-center gap-2 text-sm flex-wrap"
+            >
+              <input type="hidden" name="plan" value={r.plan} />
+              <span className="w-20 font-medium">{r.plan}</span>
+              <label className="flex items-center gap-1 text-[var(--soft)]">
+                收入
+                <input
+                  type="number"
+                  step="0.01"
+                  name="price"
+                  defaultValue={r.price ?? 0}
+                  readOnly={!isAdmin}
+                  className="w-28 px-2 py-1 rounded-md border border-[var(--line)] bg-white text-right tabular-nums outline-none focus:border-[var(--gold)]"
+                />
+              </label>
+              <label className="flex items-center gap-1 text-[var(--soft)]">
+                成本
+                <input
+                  type="number"
+                  step="0.01"
+                  name="cost"
+                  defaultValue={r.cost ?? 0}
+                  readOnly={!isAdmin}
+                  className="w-28 px-2 py-1 rounded-md border border-[var(--line)] bg-white text-right tabular-nums outline-none focus:border-[var(--gold)]"
+                />
+              </label>
+              {isAdmin && (
+                <button className="text-xs px-3 py-1 rounded-md bg-[var(--gold)] text-white hover:opacity-90">
+                  存
+                </button>
+              )}
+            </form>
+          ))}
+        </div>
       </div>
 
       {/* 每月收支 */}

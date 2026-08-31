@@ -134,7 +134,7 @@ export default async function OverviewPage() {
         .limit(4),
       supabase
         .from("cremation_bookings")
-        .select("owner_name, pet_name, plan, status, service_date, created_at")
+        .select("owner_name, pet_name, plan, status, service_date, amount, created_at")
         .order("created_at", { ascending: false })
         .limit(1000),
       shopifyGraphQL<OrdersResp>(
@@ -170,8 +170,12 @@ export default async function OverviewPage() {
     plan: string | null;
     status: string;
     service_date: string | null;
+    amount: number | null;
     created_at: string;
   }[];
+  const cremThisMonth = bookings
+    .filter((b) => (b.service_date || "").startsWith(curKey))
+    .reduce((n, b) => n + (b.amount || 0), 0);
   const today = todayStr();
   const todayCount = bookings.filter((b) => b.service_date === today).length;
   const activeCount = bookings.filter(
@@ -194,7 +198,7 @@ export default async function OverviewPage() {
   }[];
 
   const kpis = [
-    { icon: "💰", label: `本月營業額（${currency}）`, value: "$" + Math.round(thisMonthRevenue).toLocaleString() },
+    { icon: "💰", label: "本月營業額", value: "$" + Math.round(thisMonthRevenue + cremThisMonth).toLocaleString() },
     { icon: "🧾", label: "本月訂單", value: thisMonthOrders },
     { icon: "✦", label: "進行中預約", value: activeCount },
     { icon: "📅", label: "今日預約", value: todayCount },
