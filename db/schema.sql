@@ -48,6 +48,9 @@ create table if not exists public.cremation_bookings (
   id             uuid        primary key default gen_random_uuid(),
   created_at     timestamptz not null default now(),
   updated_at     timestamptz not null default now(),
+  case_no        text,                              -- 專案編號
+  amount         numeric(12, 2),                    -- 收入
+  cost           numeric(12, 2),                    -- 成本
   owner_name     text,                              -- 主人姓名
   contact        text,                              -- 電話 / WhatsApp
   pet_name       text,                              -- 毛孩名

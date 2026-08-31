@@ -1,22 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
-import { updateBookingStatus } from "./actions";
+import { EditBookingButton, type BookingData } from "./_edit";
 
 export const dynamic = "force-dynamic";
-
-type Booking = {
-  id: string;
-  created_at: string;
-  owner_name: string | null;
-  contact: string | null;
-  pet_name: string | null;
-  pet_type: string | null;
-  plan: string | null;
-  service_date: string | null;
-  pickup_address: string | null;
-  status: string;
-  source: string | null;
-  notes: string | null;
-};
 
 const STATUS_LABEL: Record<string, string> = {
   new: "新收到",
@@ -26,15 +11,6 @@ const STATUS_LABEL: Record<string, string> = {
   completed: "已完成",
   cancelled: "已取消",
 };
-
-const STATUS_ORDER = [
-  "new",
-  "scheduled",
-  "pickup",
-  "cremating",
-  "completed",
-  "cancelled",
-];
 
 function badgeClass(status: string) {
   switch (status) {
@@ -58,10 +34,14 @@ export default async function BookingsPage() {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("cremation_bookings")
-    .select("*")
+    .select(
+      "id, case_no, owner_name, contact, pet_name, pet_type, plan, service_date, service_time, pickup_address, status, notes, created_at"
+    )
     .order("created_at", { ascending: false });
 
-  const bookings = (data ?? []) as Booking[];
+  const bookings = (data ?? []) as (BookingData & {
+    created_at: string;
+  })[];
 
   return (
     <div>
@@ -69,26 +49,30 @@ export default async function BookingsPage() {
 
       {error && (
         <div className="mb-4 text-sm text-red-600">
-          讀取失敗：{error.message}（請確認已執行 db/schema.sql）
+          讀取失敗：{error.message}
+          <div className="text-[var(--soft)] mt-1">
+            若提示欄位不存在，請先於 Supabase 執行 db/migration_booking_fields.sql。
+          </div>
         </div>
       )}
 
       {bookings.length === 0 ? (
         <div className="rounded-2xl border border-[var(--line)] bg-[var(--card)] p-10 text-center text-[var(--soft)]">
-          暫無預約記錄。由網站送出的預約，或由 Google Sheet 匯入的資料，會顯示於此。
+          暫無預約記錄。
         </div>
       ) : (
-        <div className="rounded-2xl border border-[var(--line)] bg-[var(--card)] overflow-hidden">
-          <table className="w-full text-sm">
+        <div className="rounded-2xl border border-[var(--line)] bg-[var(--card)] overflow-x-auto">
+          <table className="w-full text-sm min-w-[860px]">
             <thead>
               <tr className="bg-[var(--head)] text-left text-[var(--soft)]">
                 <th className="px-4 py-3 font-medium">收到</th>
-                <th className="px-4 py-3 font-medium">主人 / 聯絡</th>
+                <th className="px-4 py-3 font-medium">專案編號</th>
+                <th className="px-4 py-3 font-medium">主人 · 電話 · 地點</th>
                 <th className="px-4 py-3 font-medium">毛孩</th>
                 <th className="px-4 py-3 font-medium">方案</th>
                 <th className="px-4 py-3 font-medium">服務日期</th>
                 <th className="px-4 py-3 font-medium">狀態</th>
-                <th className="px-4 py-3 font-medium">更新</th>
+                <th className="px-4 py-3 font-medium text-right">操作</th>
               </tr>
             </thead>
             <tbody>
@@ -97,22 +81,33 @@ export default async function BookingsPage() {
                   <td className="px-4 py-3 text-[var(--soft)] whitespace-nowrap">
                     {b.created_at?.slice(0, 10)}
                   </td>
-                  <td className="px-4 py-3">
-                    <div>{b.owner_name || "—"}</div>
-                    <div className="text-[var(--soft)]">{b.contact || ""}</div>
-                    {b.pickup_address && (
-                      <div className="text-xs text-[var(--soft)] mt-1">
-                        📍 {b.pickup_address}
-                      </div>
+                  <td className="px-4 py-3 whitespace-nowrap">
+                    {b.case_no ? (
+                      <span className="font-medium text-[var(--gold)]">{b.case_no}</span>
+                    ) : (
+                      <span className="text-[var(--faint)]">—</span>
                     )}
                   </td>
                   <td className="px-4 py-3">
+                    <div>{b.owner_name || "—"}</div>
+                    <div className="text-[var(--soft)] text-xs flex flex-wrap gap-x-2 gap-y-0.5 mt-0.5">
+                      {b.contact && <span>📞 {b.contact}</span>}
+                      {b.pickup_address && <span>📍 {b.pickup_address}</span>}
+                    </div>
+                  </td>
+                  <td className="px-4 py-3">
                     <div>{b.pet_name || "—"}</div>
-                    <div className="text-[var(--soft)]">{b.pet_type || ""}</div>
+                    <div className="text-[var(--soft)] text-xs">{b.pet_type || ""}</div>
                   </td>
                   <td className="px-4 py-3 whitespace-nowrap">{b.plan || "—"}</td>
                   <td className="px-4 py-3 whitespace-nowrap">
                     {b.service_date || "—"}
+                    {b.service_time && (
+                      <span className="text-[var(--soft)]">
+                        {" "}
+                        {b.service_time.slice(0, 5)}
+                      </span>
+                    )}
                   </td>
                   <td className="px-4 py-3">
                     <span
@@ -124,24 +119,8 @@ export default async function BookingsPage() {
                       {STATUS_LABEL[b.status] || b.status}
                     </span>
                   </td>
-                  <td className="px-4 py-3">
-                    <form action={updateBookingStatus} className="flex gap-1.5">
-                      <input type="hidden" name="id" value={b.id} />
-                      <select
-                        name="status"
-                        defaultValue={b.status}
-                        className="text-xs border border-[var(--line)] rounded-md px-2 py-1 bg-white"
-                      >
-                        {STATUS_ORDER.map((s) => (
-                          <option key={s} value={s}>
-                            {STATUS_LABEL[s]}
-                          </option>
-                        ))}
-                      </select>
-                      <button className="text-xs px-2 py-1 rounded-md bg-[var(--gold)] text-white hover:opacity-90">
-                        存
-                      </button>
-                    </form>
+                  <td className="px-4 py-3 text-right">
+                    <EditBookingButton booking={b} />
                   </td>
                 </tr>
               ))}

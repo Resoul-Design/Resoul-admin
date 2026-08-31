@@ -12,6 +12,12 @@ const VALID = [
   "cancelled",
 ];
 
+function revalidate() {
+  revalidatePath("/bookings");
+  revalidatePath("/schedule");
+  revalidatePath("/");
+}
+
 export async function updateBookingStatus(formData: FormData) {
   const id = String(formData.get("id") || "");
   const status = String(formData.get("status") || "");
@@ -19,16 +25,35 @@ export async function updateBookingStatus(formData: FormData) {
 
   const supabase = await createClient();
   await supabase.from("cremation_bookings").update({ status }).eq("id", id);
-  revalidatePath("/bookings");
-  revalidatePath("/");
+  revalidate();
 }
 
-export async function updateBookingNotes(formData: FormData) {
+export async function updateBooking(formData: FormData) {
   const id = String(formData.get("id") || "");
-  const notes = String(formData.get("notes") || "");
   if (!id) return;
 
+  const g = (k: string) => {
+    const v = String(formData.get(k) || "").trim();
+    return v || null;
+  };
+  const status = String(formData.get("status") || "new");
+
   const supabase = await createClient();
-  await supabase.from("cremation_bookings").update({ notes }).eq("id", id);
-  revalidatePath("/bookings");
+  await supabase
+    .from("cremation_bookings")
+    .update({
+      case_no: g("case_no"),
+      owner_name: g("owner_name"),
+      contact: g("contact"),
+      pet_name: g("pet_name"),
+      pet_type: g("pet_type"),
+      plan: g("plan"),
+      service_date: g("service_date"),
+      service_time: g("service_time"),
+      pickup_address: g("pickup_address"),
+      status: VALID.includes(status) ? status : "new",
+      notes: g("notes"),
+    })
+    .eq("id", id);
+  revalidate();
 }
