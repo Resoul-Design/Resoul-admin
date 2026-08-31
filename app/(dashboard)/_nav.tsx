@@ -53,12 +53,14 @@ export const GROUPS: Group[] = [
       { label: "任務指派", href: "/staff/tasks" },
     ],
   },
+  { label: "客戶檔案", icon: "☺", href: "/crm" },
   { label: "財務管理", icon: "＄", href: "/finance" },
+  { label: "報表與匯出", icon: "▤", href: "/reports" },
 ];
 
 function isActive(path: string, href: string) {
   if (href === "/") return path === "/";
-  return path === href || path.startsWith(href + "/");
+  return path === href;
 }
 function groupActive(path: string, g: Group) {
   if (g.href) return isActive(path, g.href);

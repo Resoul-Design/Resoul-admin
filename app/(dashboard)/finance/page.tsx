@@ -55,12 +55,10 @@ export default async function FinancePage() {
   const shopErr = (shopRes as unknown as { __err?: string }).__err || "";
   const orders = shopErr ? [] : shopRes.orders.edges.map((e) => e.node);
 
-  let currency = "HKD";
   const productByMonth: Record<string, number> = {};
   for (const o of orders) {
     const mk = o.createdAt.slice(0, 7);
     productByMonth[mk] = (productByMonth[mk] || 0) + Number(o.totalPriceSet.shopMoney.amount);
-    currency = o.totalPriceSet.shopMoney.currencyCode || currency;
   }
 
   // 火化收支（按 service_date 月份）
@@ -88,10 +86,7 @@ export default async function FinancePage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-semibold mb-1">財務管理</h1>
-      <p className="text-sm text-[var(--soft)] mb-6">
-        火化服務收入/成本按專案編號記錄；產品銷售取自 Shopify（{currency}）。
-      </p>
+      <h1 className="text-2xl font-semibold mb-6">財務管理</h1>
 
       {/* 概況卡 */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
