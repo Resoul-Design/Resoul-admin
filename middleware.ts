@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { moduleForPath } from "@/lib/modules";
 
 // 每個請求刷新 session，並攔截未登入者到 /login。
 export async function middleware(request: NextRequest) {
@@ -46,6 +47,31 @@ export async function middleware(request: NextRequest) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);
+  }
+
+  // 功能權限攔截（模組頁）
+  if (user && !isPublic && !path.startsWith("/api")) {
+    const mod = moduleForPath(path);
+    if (mod) {
+      const { data: st } = await supabase
+        .from("staff")
+        .select("role, permissions, active")
+        .eq("id", user.id)
+        .maybeSingle();
+      if (!st || !st.active) {
+        const url = request.nextUrl.clone();
+        url.pathname = "/login";
+        return NextResponse.redirect(url);
+      }
+      const allowed =
+        st.role === "admin" || ((st.permissions as string[] | null) || []).includes(mod);
+      if (!allowed) {
+        const url = request.nextUrl.clone();
+        url.pathname = "/";
+        url.search = "";
+        return NextResponse.redirect(url);
+      }
+    }
   }
 
   return response;

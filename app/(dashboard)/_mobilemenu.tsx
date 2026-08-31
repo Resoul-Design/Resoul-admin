@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { NavLinks } from "./_nav";
 
-export function MobileMenu() {
+export function MobileMenu({ allowed }: { allowed: string[] | null }) {
   const [open, setOpen] = useState(false);
   const path = usePathname();
 
@@ -26,7 +26,7 @@ export function MobileMenu() {
 
       {open && (
         <div className="absolute left-0 right-0 top-full border-t border-[var(--line)] bg-[var(--card)] max-h-[75vh] overflow-y-auto shadow-[var(--shadow)] z-30">
-          <NavLinks onNavigate={() => setOpen(false)} />
+          <NavLinks onNavigate={() => setOpen(false)} allowed={allowed} />
         </div>
       )}
     </>

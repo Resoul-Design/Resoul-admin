@@ -6,6 +6,7 @@ export type Staff = {
   name: string | null;
   role: "admin" | "staff";
   active: boolean;
+  permissions: string[] | null;
   authEmail?: string;
 };
 
@@ -19,7 +20,7 @@ export async function getStaff(): Promise<Staff | null> {
 
   const { data } = await supabase
     .from("staff")
-    .select("id, email, name, role, active")
+    .select("id, email, name, role, active, permissions")
     .eq("id", user.id)
     .eq("active", true)
     .maybeSingle();

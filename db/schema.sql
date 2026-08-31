@@ -22,6 +22,7 @@ create table if not exists public.staff (
   name        text,
   role        text        not null default 'staff' check (role in ('admin','staff')),
   active      boolean     not null default true,
+  permissions text[]      not null default '{}',   -- 可存取功能（模組 key）；管理員自動全部
   created_at  timestamptz not null default now()
 );
 
@@ -90,11 +91,12 @@ create table if not exists public.shifts (
 create index if not exists shifts_date_idx on public.shifts (shift_date);
 
 alter table public.shifts enable row level security;
--- 員工可看全部班表；只有 admin 可編排
+-- 所有在職員工可提交與檢視班表
 drop policy if exists "staff read shifts"  on public.shifts;
 drop policy if exists "admin manage shifts" on public.shifts;
-create policy "staff read shifts"   on public.shifts for select to authenticated using (public.is_staff());
-create policy "admin manage shifts" on public.shifts for all    to authenticated using (public.is_admin()) with check (public.is_admin());
+drop policy if exists "staff rw shifts" on public.shifts;
+create policy "staff rw shifts" on public.shifts
+  for all to authenticated using (public.is_staff()) with check (public.is_staff());
 
 -- 4) 留言板審核：為已登入員工加更新/刪除權限 --------------------
 -- （消費者站的 posts 表原本只准 anon 讀 visible / 新增；審核在此開放給員工）

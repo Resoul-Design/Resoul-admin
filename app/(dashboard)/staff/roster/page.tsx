@@ -27,7 +27,6 @@ export default async function RosterPage({
   searchParams: Promise<{ wk?: string }>;
 }) {
   const me = await getStaff();
-  const isAdmin = me?.role === "admin";
   const sp = await searchParams;
 
   const today = new Date();
@@ -79,7 +78,7 @@ export default async function RosterPage({
         </div>
       </div>
 
-      {isAdmin && (
+      {me && (
         <details className="mb-5 rounded-2xl border border-[var(--line)] bg-[var(--card)]">
           <summary className="cursor-pointer list-none px-5 py-3.5 flex items-center gap-2 font-medium">
             <span className="text-[var(--gold)]">＋</span> 新增更表
@@ -133,7 +132,7 @@ export default async function RosterPage({
                       {s.end_time ? "–" + s.end_time.slice(0, 5) : ""}
                     </div>
                     {s.role_note && <div className="text-[var(--soft)]">{s.role_note}</div>}
-                    {isAdmin && (
+                    {me && (
                       <form action={deleteShift}>
                         <input type="hidden" name="id" value={s.id} />
                         <button className="text-[10px] text-red-600 hover:underline mt-0.5">刪除</button>

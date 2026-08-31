@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { getStaff } from "@/lib/auth";
 import { createStaff, updateStaff } from "./actions";
+import { PermsButton } from "./_perms";
 
 export const dynamic = "force-dynamic";
 
@@ -10,6 +11,7 @@ type Staff = {
   name: string | null;
   role: string;
   active: boolean;
+  permissions: string[] | null;
   created_at: string;
 };
 
@@ -73,6 +75,7 @@ export default async function StaffPage() {
               <th className="px-4 py-3 font-medium">電郵</th>
               <th className="px-4 py-3 font-medium">角色</th>
               <th className="px-4 py-3 font-medium">狀態</th>
+              {isAdmin && <th className="px-4 py-3 font-medium">功能權限</th>}
               {isAdmin && <th className="px-4 py-3 font-medium text-right">更新</th>}
             </tr>
           </thead>
@@ -105,6 +108,16 @@ export default async function StaffPage() {
                     <span className="text-[var(--faint)]">停用</span>
                   )}
                 </td>
+                {isAdmin && (
+                  <td className="px-4 py-3">
+                    <PermsButton
+                      id={s.id}
+                      name={s.name || s.email}
+                      role={s.role}
+                      permissions={s.permissions || []}
+                    />
+                  </td>
+                )}
                 {isAdmin && (
                   <td className="px-4 py-3 text-right">
                     <button form={`f-${s.id}`} className="text-xs px-3 py-1 rounded-md bg-[var(--gold)] text-white hover:opacity-90">

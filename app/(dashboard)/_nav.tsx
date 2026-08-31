@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
+import { keyForHref } from "@/lib/modules";
 
 type Item = { label: string; href: string; soon?: boolean };
 type Group = {
@@ -67,7 +68,13 @@ function groupActive(path: string, g: Group) {
   return (g.children || []).some((c) => isActive(path, c.href));
 }
 
-export function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
+export function NavLinks({
+  onNavigate,
+  allowed,
+}: {
+  onNavigate?: () => void;
+  allowed: string[] | null;
+}) {
   const path = usePathname();
   const [open, setOpen] = useState<Record<string, boolean>>(() => {
     const init: Record<string, boolean> = {};
@@ -75,11 +82,18 @@ export function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
     return init;
   });
 
+  // allowed === null 代表管理員（全部可見）
+  const vis = (href: string) => {
+    const k = keyForHref(href);
+    return !k || allowed === null || allowed.includes(k);
+  };
+
   return (
     <nav className="flex-1 px-3 py-3 space-y-0.5 overflow-y-auto">
       {GROUPS.map((g) => {
         // 單一項目（總覽、員工排更）
         if (!g.children) {
+          if (!vis(g.href!)) return null;
           const active = isActive(path, g.href!);
           return (
             <Link
@@ -106,6 +120,8 @@ export function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
         }
 
         // 有子項的分類（手風琴）
+        const kids = g.children.filter((c) => vis(c.href));
+        if (kids.length === 0) return null;
         const gActive = groupActive(path, g);
         const isOpen = open[g.label] ?? gActive;
         return (
@@ -132,7 +148,7 @@ export function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
             </button>
             {isOpen && (
               <div className="ml-[22px] pl-3 border-l border-[var(--line)] space-y-0.5 py-1">
-                {g.children.map((c) => {
+                {kids.map((c) => {
                   const active = isActive(path, c.href);
                   return (
                     <Link

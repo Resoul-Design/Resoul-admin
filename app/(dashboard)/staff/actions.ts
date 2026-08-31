@@ -4,11 +4,24 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getStaff } from "@/lib/auth";
+import { MODULES } from "@/lib/modules";
 
 async function requireAdmin() {
   const s = await getStaff();
   if (!s || s.role !== "admin") throw new Error("僅限管理員");
   return s;
+}
+
+export async function updateStaffPermissions(formData: FormData) {
+  await requireAdmin();
+  const id = String(formData.get("id") || "");
+  if (!id) return;
+  const perms = MODULES.map((m) => m.key).filter(
+    (k) => formData.get("perm_" + k) === "on"
+  );
+  const supabase = await createClient();
+  await supabase.from("staff").update({ permissions: perms }).eq("id", id);
+  revalidatePath("/staff");
 }
 
 // ---- 員工管理 ----
@@ -50,7 +63,7 @@ export async function updateStaff(formData: FormData) {
 
 // ---- 排更 ----
 export async function addShift(formData: FormData) {
-  await requireAdmin();
+  if (!(await getStaff())) return;
   const staff_id = String(formData.get("staff_id") || "");
   const shift_date = String(formData.get("shift_date") || "");
   if (!staff_id || !shift_date) return;
@@ -66,7 +79,7 @@ export async function addShift(formData: FormData) {
 }
 
 export async function deleteShift(formData: FormData) {
-  await requireAdmin();
+  if (!(await getStaff())) return;
   const id = String(formData.get("id") || "");
   if (!id) return;
   const supabase = await createClient();
