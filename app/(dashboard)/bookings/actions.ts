@@ -19,16 +19,6 @@ function revalidate() {
   revalidatePath("/");
 }
 
-export async function updateBookingStatus(formData: FormData) {
-  const id = String(formData.get("id") || "");
-  const status = String(formData.get("status") || "");
-  if (!id || !VALID.includes(status)) return;
-
-  const supabase = await createClient();
-  await supabase.from("cremation_bookings").update({ status }).eq("id", id);
-  revalidate();
-}
-
 export async function updateBooking(formData: FormData) {
   const id = String(formData.get("id") || "");
   if (!id) return;
