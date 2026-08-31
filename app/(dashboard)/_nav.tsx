@@ -44,7 +44,15 @@ export const GROUPS: Group[] = [
     icon: "❋",
     children: [{ label: "文章記錄", href: "/articles" }],
   },
-  { label: "員工排更", icon: "☷", href: "/staff", soon: true },
+  {
+    label: "員工排更",
+    icon: "☷",
+    children: [
+      { label: "員工管理", href: "/staff" },
+      { label: "排更表", href: "/staff/roster" },
+      { label: "任務指派", href: "/staff/tasks" },
+    ],
+  },
 ];
 
 function isActive(path: string, href: string) {
