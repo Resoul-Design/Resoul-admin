@@ -70,18 +70,28 @@ export default async function FinancePage() {
     productByMonth[mk] = (productByMonth[mk] || 0) + Number(o.totalPriceSet.shopMoney.amount);
   }
 
+  // 有效收入/成本：手動填優先，否則套用方案定價；已取消不計
+  const priceMap: Record<string, { price: number; cost: number }> = {};
+  for (const r of priceRows) priceMap[r.plan] = { price: r.price || 0, cost: r.cost || 0 };
+  const counts = (b: Booking) => b.status !== "cancelled";
+  const effAmt = (b: Booking) =>
+    b.amount ?? (b.plan ? priceMap[b.plan]?.price ?? 0 : 0);
+  const effCost = (b: Booking) =>
+    b.cost ?? (b.plan ? priceMap[b.plan]?.cost ?? 0 : 0);
+
   // 火化收支（按 service_date 月份）
   const cremIncomeByMonth: Record<string, number> = {};
   const cremCostByMonth: Record<string, number> = {};
   for (const b of bookings) {
+    if (!counts(b)) continue;
     const mk = (b.service_date || "").slice(0, 7);
     if (!mk) continue;
-    cremIncomeByMonth[mk] = (cremIncomeByMonth[mk] || 0) + (b.amount || 0);
-    cremCostByMonth[mk] = (cremCostByMonth[mk] || 0) + (b.cost || 0);
+    cremIncomeByMonth[mk] = (cremIncomeByMonth[mk] || 0) + effAmt(b);
+    cremCostByMonth[mk] = (cremCostByMonth[mk] || 0) + effCost(b);
   }
 
-  const cremIncomeTotal = bookings.reduce((n, b) => n + (b.amount || 0), 0);
-  const cremCostTotal = bookings.reduce((n, b) => n + (b.cost || 0), 0);
+  const cremIncomeTotal = bookings.filter(counts).reduce((n, b) => n + effAmt(b), 0);
+  const cremCostTotal = bookings.filter(counts).reduce((n, b) => n + effCost(b), 0);
   const thisMonthCrem = cremIncomeByMonth[curKey] || 0;
   const thisMonthProduct = productByMonth[curKey] || 0;
   const thisMonthProfit = thisMonthCrem - (cremCostByMonth[curKey] || 0) + thisMonthProduct;
@@ -221,8 +231,8 @@ export default async function FinancePage() {
                   <td colSpan={3} className="py-1.5">
                     <form action={updateFinance} className="flex items-center gap-1.5 justify-end">
                       <input type="hidden" name="id" value={b.id} />
-                      <input type="number" step="0.01" name="amount" defaultValue={b.amount ?? ""} className={inputCls} placeholder="收入" />
-                      <input type="number" step="0.01" name="cost" defaultValue={b.cost ?? ""} className={inputCls} placeholder="成本" />
+                      <input type="number" step="0.01" name="amount" defaultValue={b.amount ?? ""} className={inputCls} placeholder={b.plan && priceMap[b.plan] ? String(priceMap[b.plan].price) : "收入"} />
+                      <input type="number" step="0.01" name="cost" defaultValue={b.cost ?? ""} className={inputCls} placeholder={b.plan && priceMap[b.plan] ? String(priceMap[b.plan].cost) : "成本"} />
                       <button className="text-xs px-3 py-1 rounded-md bg-[var(--gold)] text-white hover:opacity-90">存</button>
                     </form>
                   </td>

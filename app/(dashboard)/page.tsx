@@ -123,7 +123,7 @@ export default async function OverviewPage() {
   const months = lastSixMonths();
   const since = months[0].key + "-01";
 
-  const [heldPosts, heldListRes, bookingsRes, shopRes, countRes] =
+  const [heldPosts, heldListRes, bookingsRes, shopRes, countRes, planRes] =
     await Promise.all([
       supabase.from("posts").select("*", { count: "exact", head: true }).eq("status", "held"),
       supabase
@@ -145,7 +145,11 @@ export default async function OverviewPage() {
       shopifyGraphQL<CountResp>(`{ productsCount { count } }`).catch(
         () => ({ productsCount: { count: 0 } }) as CountResp
       ),
+      supabase.from("plan_prices").select("plan, price"),
     ]);
+  const planPrice: Record<string, number> = {};
+  for (const r of (planRes.data ?? []) as { plan: string; price: number }[])
+    planPrice[r.plan] = r.price || 0;
 
   const shopErr = (shopRes as unknown as { __err?: string }).__err || "";
   const orders = shopErr ? [] : shopRes.orders.edges.map((e) => e.node);
@@ -174,8 +178,11 @@ export default async function OverviewPage() {
     created_at: string;
   }[];
   const cremThisMonth = bookings
-    .filter((b) => (b.service_date || "").startsWith(curKey))
-    .reduce((n, b) => n + (b.amount || 0), 0);
+    .filter((b) => (b.service_date || "").startsWith(curKey) && b.status !== "cancelled")
+    .reduce(
+      (n, b) => n + (b.amount ?? (b.plan ? planPrice[b.plan] || 0 : 0)),
+      0
+    );
   const today = todayStr();
   const todayCount = bookings.filter((b) => b.service_date === today).length;
   const activeCount = bookings.filter(
