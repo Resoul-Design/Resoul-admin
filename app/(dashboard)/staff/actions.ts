@@ -32,6 +32,8 @@ export async function createStaff(formData: FormData) {
   const password = String(formData.get("password") || "");
   const role = String(formData.get("role") || "staff") === "admin" ? "admin" : "staff";
   if (!email || password.length < 6) return;
+  // 未設定服務金鑰時優雅返回，避免整版崩潰（需於 Vercel 設 SUPABASE_SERVICE_ROLE_KEY）
+  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) return;
 
   const admin = createAdminClient();
   const { data, error } = await admin.auth.admin.createUser({

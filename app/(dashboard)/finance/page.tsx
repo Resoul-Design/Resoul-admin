@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { shopifyGraphQL } from "@/lib/shopify";
 import { getStaff } from "@/lib/auth";
@@ -6,6 +7,11 @@ import { updateFinance, updatePlanPrice } from "./actions";
 export const dynamic = "force-dynamic";
 
 const pad = (n: number) => String(n).padStart(2, "0");
+function shiftYm(ym: string, delta: number) {
+  const [yy, mm] = ym.split("-").map(Number);
+  const d = new Date(yy, mm - 1 + delta, 1);
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}`;
+}
 function lastSixMonths() {
   const now = new Date();
   const months: { key: string; label: string }[] = [];
@@ -35,11 +41,17 @@ const money = (n: number) => "$" + Math.round(n).toLocaleString();
 const inputCls =
   "w-24 px-2 py-1 rounded-md border border-[var(--line)] bg-white outline-none focus:border-[var(--gold)] text-sm text-right tabular-nums";
 
-export default async function FinancePage() {
+export default async function FinancePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ fm?: string }>;
+}) {
+  const sp = await searchParams;
   const supabase = await createClient();
   const months = lastSixMonths();
-  const since = months[0].key + "-01";
   const curKey = months[5].key;
+  const since = shiftYm(curKey, -11) + "-01"; // 抓近 12 個月訂單，供月份選擇
+  const selMonth = sp.fm && /^\d{4}-\d{2}$/.test(sp.fm) ? sp.fm : curKey;
 
   const me = await getStaff();
   const isAdmin = me?.role === "admin";
@@ -92,27 +104,62 @@ export default async function FinancePage() {
 
   const cremIncomeTotal = bookings.filter(counts).reduce((n, b) => n + effAmt(b), 0);
   const cremCostTotal = bookings.filter(counts).reduce((n, b) => n + effCost(b), 0);
-  const thisMonthCrem = cremIncomeByMonth[curKey] || 0;
-  const thisMonthProduct = productByMonth[curKey] || 0;
-  const thisMonthProfit = thisMonthCrem - (cremCostByMonth[curKey] || 0) + thisMonthProduct;
 
-  const cards = [
-    { label: "本月火化收入", value: money(thisMonthCrem) },
-    { label: "本月產品銷售", value: shopErr ? "—" : money(thisMonthProduct) },
-    { label: "火化成本（累計）", value: money(cremCostTotal) },
-    { label: "本月毛利（估算）", value: money(thisMonthProfit) },
-  ];
+  // 選定月份：預計（全部未取消）vs 實際（已完成）
+  const inMonth = bookings.filter(
+    (b) => (b.service_date || "").startsWith(selMonth) && b.status !== "cancelled"
+  );
+  const projIncome = inMonth.reduce((n, b) => n + effAmt(b), 0);
+  const projCost = inMonth.reduce((n, b) => n + effCost(b), 0);
+  const done = inMonth.filter((b) => b.status === "completed");
+  const actIncome = done.reduce((n, b) => n + effAmt(b), 0);
+  const actCost = done.reduce((n, b) => n + effCost(b), 0);
+  const prodMonth = shopErr ? 0 : productByMonth[selMonth] || 0;
+  const [selY, selM] = selMonth.split("-").map(Number);
 
   return (
     <div>
       <h1 className="text-2xl font-semibold mb-6">財務管理</h1>
 
-      {/* 概況卡 */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
-        {cards.map((c) => (
+      {/* 月份選擇 */}
+      <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+        <h2 className="text-lg font-semibold">
+          {selY} 年 {selM} 月 收支
+        </h2>
+        <div className="flex gap-2 text-sm">
+          <Link href={`/finance?fm=${shiftYm(selMonth, -1)}`} className="px-3 py-1.5 rounded-md border border-[var(--line)] hover:bg-[var(--cream)]">← 上月</Link>
+          <Link href="/finance" className="px-3 py-1.5 rounded-md border border-[var(--line)] hover:bg-[var(--cream)]">本月</Link>
+          <Link href={`/finance?fm=${shiftYm(selMonth, 1)}`} className="px-3 py-1.5 rounded-md border border-[var(--line)] hover:bg-[var(--cream)]">下月 →</Link>
+        </div>
+      </div>
+
+      {/* 預計（全部未取消，按方案價） */}
+      <div className="text-xs text-[var(--soft)] mb-1.5">預計（已排期等，含未完成）</div>
+      <div className="grid grid-cols-3 gap-3 sm:gap-4 mb-4">
+        {[
+          { label: "預計收入", value: money(projIncome) },
+          { label: "預計成本", value: money(projCost) },
+          { label: "預計毛利", value: money(projIncome - projCost) },
+        ].map((c) => (
           <div key={c.label} className="rounded-2xl border border-[var(--line)] bg-[var(--card)] p-4">
             <div className="text-xs text-[var(--soft)] mb-1">{c.label}</div>
-            <div className="text-2xl font-semibold tabular-nums">{c.value}</div>
+            <div className="text-xl sm:text-2xl font-semibold tabular-nums">{c.value}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* 實際（已完成 + 產品銷售） */}
+      <div className="text-xs text-[var(--soft)] mb-1.5">實際（已完成火化 + 產品銷售）</div>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
+        {[
+          { label: "實際火化收入", value: money(actIncome) },
+          { label: "產品銷售", value: shopErr ? "—" : money(prodMonth) },
+          { label: "實際成本", value: money(actCost) },
+          { label: "實際毛利", value: money(actIncome - actCost + prodMonth) },
+        ].map((c) => (
+          <div key={c.label} className="rounded-2xl border border-[var(--line)] bg-[var(--card)] p-4">
+            <div className="text-xs text-[var(--soft)] mb-1">{c.label}</div>
+            <div className="text-xl sm:text-2xl font-semibold tabular-nums">{c.value}</div>
           </div>
         ))}
       </div>
