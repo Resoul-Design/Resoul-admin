@@ -53,6 +53,7 @@ export const GROUPS: Group[] = [
       { label: "任務指派", href: "/staff/tasks" },
     ],
   },
+  { label: "財務管理", icon: "＄", href: "/finance" },
 ];
 
 function isActive(path: string, href: string) {
