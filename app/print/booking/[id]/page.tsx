@@ -80,7 +80,7 @@ export default async function BookingDocPage({
           <div>
             <div className="text-xs text-[var(--soft)] mb-1">客戶</div>
             <div className="font-medium">{b.owner_name || "—"}</div>
-            {b.contact && <div className="text-[var(--soft)]">{b.contact}</div>}
+            {b.contact && <div className="text-[var(--soft)]">電話：{b.contact}</div>}
             {b.pickup_address && <div className="text-[var(--soft)]">{b.pickup_address}</div>}
           </div>
           <div>
