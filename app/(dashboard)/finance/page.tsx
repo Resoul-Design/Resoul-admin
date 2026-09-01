@@ -1,8 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { shopifyGraphQL } from "@/lib/shopify";
-import { getStaff } from "@/lib/auth";
-import { updateFinance, updatePlanPrice } from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -38,8 +36,6 @@ type OrdersResp = {
 };
 
 const money = (n: number) => "$" + Math.round(n).toLocaleString();
-const inputCls =
-  "w-24 px-2 py-1 rounded-md border border-[var(--line)] bg-white outline-none focus:border-[var(--gold)] text-sm text-right tabular-nums";
 
 export default async function FinancePage({
   searchParams,
@@ -53,9 +49,7 @@ export default async function FinancePage({
   const since = shiftYm(curKey, -11) + "-01"; // 抓近 12 個月訂單，供月份選擇
   const selMonth = sp.fm && /^\d{4}-\d{2}$/.test(sp.fm) ? sp.fm : curKey;
 
-  const me = await getStaff();
-  const isAdmin = me?.role === "admin";
-  const [bkRes, shopRes, ppRes] = await Promise.all([
+  const [bkRes, shopRes, ppRes, peRes] = await Promise.all([
     supabase
       .from("cremation_bookings")
       .select("id, case_no, pet_name, owner_name, plan, status, service_date, amount, cost")
@@ -65,6 +59,7 @@ export default async function FinancePage({
       `{ orders(first: 250, query: "created_at:>=${since}") { edges { node { createdAt totalPriceSet { shopMoney { amount currencyCode } } } } } }`
     ).catch((e) => ({ __err: String(e) }) as unknown as OrdersResp),
     supabase.from("plan_prices").select("plan, price, cost"),
+    supabase.from("project_entries").select("booking_id, kind, amount, entry_date"),
   ]);
   const planPrices = (ppRes.data ?? []) as { plan: string; price: number; cost: number }[];
   const PLAN_ORDER = ["風之旅", "雲之旅", "星之旅"];
@@ -85,35 +80,45 @@ export default async function FinancePage({
   // 有效收入/成本：手動填優先，否則套用方案定價；已取消不計
   const priceMap: Record<string, { price: number; cost: number }> = {};
   for (const r of priceRows) priceMap[r.plan] = { price: r.price || 0, cost: r.cost || 0 };
-  const counts = (b: Booking) => b.status !== "cancelled";
   const effAmt = (b: Booking) =>
     b.amount ?? (b.plan ? priceMap[b.plan]?.price ?? 0 : 0);
   const effCost = (b: Booking) =>
     b.cost ?? (b.plan ? priceMap[b.plan]?.cost ?? 0 : 0);
 
-  // 火化收支（按 service_date 月份）
-  const cremIncomeByMonth: Record<string, number> = {};
-  const cremCostByMonth: Record<string, number> = {};
-  for (const b of bookings) {
-    if (!counts(b)) continue;
-    const mk = (b.service_date || "").slice(0, 7);
-    if (!mk) continue;
-    cremIncomeByMonth[mk] = (cremIncomeByMonth[mk] || 0) + effAmt(b);
-    cremCostByMonth[mk] = (cremCostByMonth[mk] || 0) + effCost(b);
+  // 專案明細（實際收支）：按專案 / 按 entry_date 月份加總
+  const entries = (peRes.data ?? []) as {
+    booking_id: string;
+    kind: string;
+    amount: number;
+    entry_date: string;
+  }[];
+  const incByBooking: Record<string, number> = {};
+  const expByBooking: Record<string, number> = {};
+  const incByMonth: Record<string, number> = {};
+  const expByMonth: Record<string, number> = {};
+  for (const e of entries) {
+    const mk = (e.entry_date || "").slice(0, 7);
+    if (e.kind === "income") {
+      incByBooking[e.booking_id] = (incByBooking[e.booking_id] || 0) + (e.amount || 0);
+      if (mk) incByMonth[mk] = (incByMonth[mk] || 0) + (e.amount || 0);
+    } else {
+      expByBooking[e.booking_id] = (expByBooking[e.booking_id] || 0) + (e.amount || 0);
+      if (mk) expByMonth[mk] = (expByMonth[mk] || 0) + (e.amount || 0);
+    }
   }
+  const incTotal = entries.filter((e) => e.kind === "income").reduce((n, e) => n + (e.amount || 0), 0);
+  const expTotal = entries.filter((e) => e.kind === "expense").reduce((n, e) => n + (e.amount || 0), 0);
 
-  const cremIncomeTotal = bookings.filter(counts).reduce((n, b) => n + effAmt(b), 0);
-  const cremCostTotal = bookings.filter(counts).reduce((n, b) => n + effCost(b), 0);
-
-  // 選定月份：預計（全部未取消）vs 實際（已完成）
+  // 預計（未取消，按方案價，依 service_date 月份）
   const inMonth = bookings.filter(
     (b) => (b.service_date || "").startsWith(selMonth) && b.status !== "cancelled"
   );
   const projIncome = inMonth.reduce((n, b) => n + effAmt(b), 0);
   const projCost = inMonth.reduce((n, b) => n + effCost(b), 0);
-  const done = inMonth.filter((b) => b.status === "completed");
-  const actIncome = done.reduce((n, b) => n + effAmt(b), 0);
-  const actCost = done.reduce((n, b) => n + effCost(b), 0);
+
+  // 實際（專案明細，依 entry_date 月份）+ 產品銷售
+  const actIncome = incByMonth[selMonth] || 0;
+  const actCost = expByMonth[selMonth] || 0;
   const prodMonth = shopErr ? 0 : productByMonth[selMonth] || 0;
   const [selY, selM] = selMonth.split("-").map(Number);
 
@@ -164,53 +169,6 @@ export default async function FinancePage({
         ))}
       </div>
 
-      {/* 方案定價（完成火化時自動填入收入/成本） */}
-      <div className="rounded-2xl border border-[var(--line)] bg-[var(--card)] p-5 mb-6">
-        <h2 className="text-base mb-1">方案定價</h2>
-        <p className="text-xs text-[var(--soft)] mb-3">
-          火化完成時，若該筆未手動填收入/成本，會自動套用此定價。
-        </p>
-        <div className="space-y-2">
-          {priceRows.map((r) => (
-            <form
-              key={r.plan}
-              action={updatePlanPrice}
-              className="flex items-center gap-2 text-sm flex-wrap"
-            >
-              <input type="hidden" name="plan" value={r.plan} />
-              <span className="w-20 font-medium">{r.plan}</span>
-              <label className="flex items-center gap-1 text-[var(--soft)]">
-                收入
-                <input
-                  type="number"
-                  step="0.01"
-                  name="price"
-                  defaultValue={r.price ?? 0}
-                  readOnly={!isAdmin}
-                  className="w-28 px-2 py-1 rounded-md border border-[var(--line)] bg-white text-right tabular-nums outline-none focus:border-[var(--gold)]"
-                />
-              </label>
-              <label className="flex items-center gap-1 text-[var(--soft)]">
-                成本
-                <input
-                  type="number"
-                  step="0.01"
-                  name="cost"
-                  defaultValue={r.cost ?? 0}
-                  readOnly={!isAdmin}
-                  className="w-28 px-2 py-1 rounded-md border border-[var(--line)] bg-white text-right tabular-nums outline-none focus:border-[var(--gold)]"
-                />
-              </label>
-              {isAdmin && (
-                <button className="text-xs px-3 py-1 rounded-md bg-[var(--gold)] text-white hover:opacity-90">
-                  存
-                </button>
-              )}
-            </form>
-          ))}
-        </div>
-      </div>
-
       {/* 每月收支 */}
       <div className="rounded-2xl border border-[var(--line)] bg-[var(--card)] p-5 mb-6 overflow-x-auto">
         <h2 className="text-base mb-3">近 6 個月收支</h2>
@@ -226,8 +184,8 @@ export default async function FinancePage({
           </thead>
           <tbody>
             {months.map((m) => {
-              const inc = cremIncomeByMonth[m.key] || 0;
-              const cost = cremCostByMonth[m.key] || 0;
+              const inc = incByMonth[m.key] || 0;
+              const cost = expByMonth[m.key] || 0;
               const prod = productByMonth[m.key] || 0;
               const profit = inc - cost + prod;
               return (
@@ -244,11 +202,14 @@ export default async function FinancePage({
         </table>
       </div>
 
-      {/* 專案收支（可編輯） */}
+      {/* 專案收支（由專案明細自動加總，不可人手修改） */}
       <div className="rounded-2xl border border-[var(--line)] bg-[var(--card)] p-5 overflow-x-auto">
-        <h2 className="text-base mb-1">專案收支</h2>
+        <div className="flex items-center justify-between mb-1">
+          <h2 className="text-base">專案收支</h2>
+          <Link href="/projects" className="text-xs text-[var(--gold)] hover:underline">管理明細 →</Link>
+        </div>
         <p className="text-xs text-[var(--soft)] mb-3">
-          火化收入 {money(cremIncomeTotal)}　·　成本 {money(cremCostTotal)}　·　毛利 {money(cremIncomeTotal - cremCostTotal)}
+          數字由「專案管理」的收支明細自動加總　·　收入 {money(incTotal)}　·　支出 {money(expTotal)}　·　淨額 {money(incTotal - expTotal)}
         </p>
         {bookings.length === 0 ? (
           <p className="text-sm text-[var(--soft)] py-4 text-center">暫無預約記錄。</p>
@@ -259,32 +220,33 @@ export default async function FinancePage({
                 <th className="py-2 pr-3 font-medium">專案編號</th>
                 <th className="py-2 pr-3 font-medium">毛孩 / 主人</th>
                 <th className="py-2 pr-3 font-medium">方案</th>
-                <th className="py-2 pr-3 font-medium">日期</th>
                 <th className="py-2 pr-3 font-medium text-right">收入</th>
-                <th className="py-2 pr-3 font-medium text-right">成本</th>
-                <th className="py-2 font-medium text-right">存</th>
+                <th className="py-2 pr-3 font-medium text-right">支出</th>
+                <th className="py-2 pr-3 font-medium text-right">淨額</th>
+                <th className="py-2 font-medium text-right">明細</th>
               </tr>
             </thead>
             <tbody>
-              {bookings.map((b) => (
-                <tr key={b.id} className="border-b border-[var(--line)] last:border-0">
-                  <td className="py-2 pr-3 whitespace-nowrap text-[var(--gold)]">{b.case_no || "—"}</td>
-                  <td className="py-2 pr-3">
-                    {b.pet_name || "—"}
-                    <span className="text-[var(--soft)]">{b.owner_name ? `　·　${b.owner_name}` : ""}</span>
-                  </td>
-                  <td className="py-2 pr-3 whitespace-nowrap">{b.plan || "—"}</td>
-                  <td className="py-2 pr-3 whitespace-nowrap text-[var(--soft)]">{b.service_date || "—"}</td>
-                  <td colSpan={3} className="py-1.5">
-                    <form action={updateFinance} className="flex items-center gap-1.5 justify-end">
-                      <input type="hidden" name="id" value={b.id} />
-                      <input type="number" step="0.01" name="amount" defaultValue={b.amount ?? ""} className={inputCls} placeholder={b.plan && priceMap[b.plan] ? String(priceMap[b.plan].price) : "收入"} />
-                      <input type="number" step="0.01" name="cost" defaultValue={b.cost ?? ""} className={inputCls} placeholder={b.plan && priceMap[b.plan] ? String(priceMap[b.plan].cost) : "成本"} />
-                      <button className="text-xs px-3 py-1 rounded-md bg-[var(--gold)] text-white hover:opacity-90">存</button>
-                    </form>
-                  </td>
-                </tr>
-              ))}
+              {bookings.map((b) => {
+                const inc = incByBooking[b.id] || 0;
+                const exp = expByBooking[b.id] || 0;
+                return (
+                  <tr key={b.id} className="border-b border-[var(--line)] last:border-0">
+                    <td className="py-2 pr-3 whitespace-nowrap text-[var(--gold)]">{b.case_no || "—"}</td>
+                    <td className="py-2 pr-3">
+                      {b.pet_name || "—"}
+                      <span className="text-[var(--soft)]">{b.owner_name ? `　·　${b.owner_name}` : ""}</span>
+                    </td>
+                    <td className="py-2 pr-3 whitespace-nowrap">{b.plan || "—"}</td>
+                    <td className="py-2 pr-3 text-right tabular-nums">{money(inc)}</td>
+                    <td className="py-2 pr-3 text-right tabular-nums text-[var(--soft)]">{money(exp)}</td>
+                    <td className="py-2 pr-3 text-right tabular-nums font-medium">{money(inc - exp)}</td>
+                    <td className="py-2 text-right">
+                      <Link href={`/projects/${b.id}`} className="text-xs text-[var(--gold)] hover:underline">明細 →</Link>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         )}

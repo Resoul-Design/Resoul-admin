@@ -12,6 +12,7 @@ export const MODULES: ModuleDef[] = [
   { key: "roster", label: "排更表", href: "/staff/roster" },
   { key: "tasks", label: "任務指派", href: "/staff/tasks" },
   { key: "staff", label: "員工管理", href: "/staff" },
+  { key: "projects", label: "專案管理", href: "/projects" },
   { key: "finance", label: "財務管理", href: "/finance" },
   { key: "crm", label: "客戶檔案", href: "/crm" },
   { key: "reports", label: "報表與匯出", href: "/reports" },

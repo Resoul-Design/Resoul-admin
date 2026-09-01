@@ -55,6 +55,7 @@ export const GROUPS: Group[] = [
     ],
   },
   { label: "客戶檔案", icon: "☺", href: "/crm" },
+  { label: "專案管理", icon: "▧", href: "/projects" },
   { label: "財務管理", icon: "＄", href: "/finance" },
   { label: "報表與匯出", icon: "▤", href: "/reports" },
 ];
