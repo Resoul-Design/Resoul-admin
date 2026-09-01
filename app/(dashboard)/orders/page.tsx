@@ -86,6 +86,7 @@ export default async function OrdersPage() {
                 <th className="px-4 py-3 font-medium">付款</th>
                 <th className="px-4 py-3 font-medium">出貨</th>
                 <th className="px-4 py-3 font-medium text-right">金額</th>
+                <th className="px-4 py-3 font-medium text-right">文件</th>
               </tr>
             </thead>
             <tbody>
@@ -114,6 +115,15 @@ export default async function OrdersPage() {
                   <td className="px-4 py-3 text-right whitespace-nowrap">
                     ${Number(o.totalPriceSet.shopMoney.amount).toLocaleString()}{" "}
                     {o.totalPriceSet.shopMoney.currencyCode}
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    <a
+                      href={`/print/order/${o.id.split("/").pop()}`}
+                      target="_blank"
+                      className="text-xs text-[var(--gold)] hover:underline"
+                    >
+                      發票
+                    </a>
                   </td>
                 </tr>
               ))}
