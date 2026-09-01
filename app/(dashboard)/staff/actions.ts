@@ -65,10 +65,15 @@ export async function updateStaff(formData: FormData) {
 
 // ---- 排更 ----
 export async function addShift(formData: FormData) {
-  if (!(await getStaff())) return;
-  const staff_id = String(formData.get("staff_id") || "");
+  const me = await getStaff();
+  if (!me) return;
   const shift_date = String(formData.get("shift_date") || "");
-  if (!staff_id || !shift_date) return;
+  if (!shift_date) return;
+  const isAdmin = me.role === "admin";
+  // 員工只可提交自己；管理員可指定員工並直接批准
+  const staff_id = isAdmin
+    ? String(formData.get("staff_id") || "") || me.id
+    : me.id;
   const supabase = await createClient();
   await supabase.from("shifts").insert({
     staff_id,
@@ -76,16 +81,30 @@ export async function addShift(formData: FormData) {
     start_time: String(formData.get("start_time") || "") || null,
     end_time: String(formData.get("end_time") || "") || null,
     role_note: String(formData.get("role_note") || "").trim() || null,
+    status: isAdmin ? "approved" : "pending",
   });
   revalidatePath("/staff/roster");
 }
 
-export async function deleteShift(formData: FormData) {
-  if (!(await getStaff())) return;
+export async function approveShift(formData: FormData) {
+  await requireAdmin();
   const id = String(formData.get("id") || "");
   if (!id) return;
   const supabase = await createClient();
-  await supabase.from("shifts").delete().eq("id", id);
+  await supabase.from("shifts").update({ status: "approved" }).eq("id", id);
+  revalidatePath("/staff/roster");
+}
+
+export async function deleteShift(formData: FormData) {
+  const me = await getStaff();
+  if (!me) return;
+  const id = String(formData.get("id") || "");
+  if (!id) return;
+  const supabase = await createClient();
+  // 管理員可刪任何；員工只可取消自己的「待批准」提交
+  let q = supabase.from("shifts").delete().eq("id", id);
+  if (me.role !== "admin") q = q.eq("staff_id", me.id).eq("status", "pending");
+  await q;
   revalidatePath("/staff/roster");
 }
 

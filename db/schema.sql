@@ -86,6 +86,7 @@ create table if not exists public.shifts (
   start_time  time,
   end_time    time,
   role_note   text,                                 -- 崗位 / 備註（接送、火化、店務…）
+  status      text        not null default 'pending' check (status in ('pending','approved')),
   created_at  timestamptz not null default now()
 );
 create index if not exists shifts_date_idx on public.shifts (shift_date);
