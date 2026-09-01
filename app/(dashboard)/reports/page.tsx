@@ -18,15 +18,17 @@ const TSTATUS: { key: string; label: string }[] = [
 
 export default async function ReportsPage() {
   const supabase = await createClient();
-  const [bkRes, tkRes] = await Promise.all([
-    supabase.from("cremation_bookings").select("status, amount, cost").limit(2000),
+  const [bkRes, tkRes, peRes] = await Promise.all([
+    supabase.from("cremation_bookings").select("status").limit(2000),
     supabase.from("tasks").select("status").limit(2000),
+    supabase.from("project_entries").select("kind, amount").limit(5000),
   ]);
   const bookings = bkRes.data ?? [];
   const tasks = tkRes.data ?? [];
+  const entries = (peRes.data ?? []) as { kind: string; amount: number }[];
 
-  const income = bookings.reduce((n, b) => n + (b.amount || 0), 0);
-  const cost = bookings.reduce((n, b) => n + (b.cost || 0), 0);
+  const income = entries.filter((e) => e.kind === "income").reduce((n, e) => n + (e.amount || 0), 0);
+  const cost = entries.filter((e) => e.kind === "expense").reduce((n, e) => n + (e.amount || 0), 0);
 
   return (
     <div>
