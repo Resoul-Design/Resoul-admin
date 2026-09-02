@@ -122,6 +122,7 @@ export default async function BookingsPage() {
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2 justify-end whitespace-nowrap">
                       <a href={`/print/booking/${b.id}?type=quote`} target="_blank" className="text-xs text-[var(--gold)] hover:underline">報價單</a>
+                      <a href={`/print/booking/${b.id}?type=invoice`} target="_blank" className="text-xs text-[var(--gold)] hover:underline">發票</a>
                       <a href={`/print/booking/${b.id}?type=receipt`} target="_blank" className="text-xs text-[var(--gold)] hover:underline">收據</a>
                       <EditBookingButton booking={b} />
                     </div>

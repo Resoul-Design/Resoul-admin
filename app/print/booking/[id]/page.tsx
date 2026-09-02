@@ -63,7 +63,8 @@ export default async function BookingDocPage({
   const balance = total - discount - deposits;
 
   const isReceipt = type === "receipt";
-  const titleEn = isReceipt ? "RECEIPT" : "QUOTATION";
+  const titleEn = type === "invoice" ? "INVOICE" : isReceipt ? "RECEIPT" : "QUOTATION";
+  const noLabel = type === "invoice" ? "Invoice No.:" : isReceipt ? "Receipt No.:" : "Quotation No.:";
   const docNo = b.case_no || b.id.slice(0, 8);
   const today = new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
 
@@ -105,7 +106,7 @@ export default async function BookingDocPage({
             </div>
             <div className="text-sm text-right whitespace-nowrap pt-2">
               <div className="grid grid-cols-[auto_auto] gap-x-3 gap-y-1 justify-end">
-                <span className="text-[#6f6156]">{isReceipt ? "Receipt No.:" : "Quotation No.:"}</span>
+                <span className="text-[#6f6156]">{noLabel}</span>
                 <span className="font-medium">{docNo}</span>
                 <span className="text-[#6f6156]">Date:</span>
                 <span>{today}</span>
