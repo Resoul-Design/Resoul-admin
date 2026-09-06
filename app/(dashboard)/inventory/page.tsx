@@ -92,8 +92,8 @@ export default async function InventoryPage() {
       )}
 
       {rows.length > 0 && (
-        <div className="rounded-2xl border border-[var(--line)] bg-[var(--card)] overflow-hidden">
-          <table className="w-full text-sm">
+        <div className="rounded-2xl border border-[var(--line)] bg-[var(--card)] overflow-x-auto">
+          <table className="w-full text-sm min-w-[640px]">
             <thead>
               <tr className="bg-[var(--head)] text-left text-[var(--soft)]">
                 <th className="px-4 py-3 font-medium">產品</th>
