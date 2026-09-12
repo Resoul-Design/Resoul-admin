@@ -5,15 +5,6 @@ import { createBooking } from "./actions";
 export const dynamic = "force-dynamic";
 
 const PLANS = ["風之旅", "雲之旅", "星之旅"];
-const STATUS_LABEL: Record<string, string> = {
-  new: "新收到",
-  scheduled: "已排期",
-  pickup: "接送中",
-  cremating: "火化中",
-  completed: "已完成",
-  cancelled: "已取消",
-};
-const statusLabel = (k: string) => STATUS_LABEL[k] || k;
 
 type Booking = {
   id: string;
@@ -59,20 +50,6 @@ export default async function SchedulePage({
     .limit(1000);
 
   const bookings = (data ?? []) as Booking[];
-
-  const scheduled = bookings
-    .filter(
-      (b) =>
-        b.service_date &&
-        b.status !== "new" &&
-        b.status !== "completed" &&
-        b.status !== "cancelled"
-    )
-    .sort((a, b) =>
-      (a.service_date! + (a.service_time || "")).localeCompare(
-        b.service_date! + (b.service_time || "")
-      )
-    );
 
   const monthPrefix = `${y}-${pad(m)}`;
   const byDay: Record<number, Booking[]> = {};
@@ -200,14 +177,14 @@ export default async function SchedulePage({
                     {(byDay[d] || []).map((b) => (
                       <div
                         key={b.id}
-                        className="text-xs leading-snug px-2 py-1.5 rounded-md bg-[var(--gold)] text-white"
+                        className="text-xs leading-snug px-2 py-1.5 rounded-md bg-[var(--gold)] text-white break-words"
                         title={`${b.service_time?.slice(0, 5) || ""} ${b.pet_name || ""} ${b.owner_name || ""}（${b.plan || ""}）${b.contact || ""}`}
                       >
                         {b.service_time && (
                           <div className="font-medium tabular-nums">{b.service_time.slice(0, 5)}</div>
                         )}
-                        <div className="truncate">{b.pet_name || "預約"}</div>
-                        <div className="truncate opacity-90">{b.owner_name || ""}{b.plan ? " · " + b.plan : ""}</div>
+                        <div className="break-words">{b.pet_name || "預約"}</div>
+                        <div className="break-words opacity-90">{b.owner_name || ""}{b.plan ? " · " + b.plan : ""}</div>
                       </div>
                     ))}
                   </div>
@@ -216,59 +193,6 @@ export default async function SchedulePage({
             </div>
           ))}
         </div>
-      </div>
-
-      {/* 已排期預約 */}
-      <div className="rounded-2xl border border-[var(--line)] bg-[var(--card)] p-5">
-        <h2 className="text-base mb-3">已排期預約</h2>
-        {scheduled.length === 0 ? (
-          <p className="text-sm text-[var(--soft)] py-4 text-center">尚未有已排期的預約。</p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-left text-[var(--soft)] border-b border-[var(--line)]">
-                  <th className="py-2 pr-3 font-medium">日期</th>
-                  <th className="py-2 pr-3 font-medium">時間</th>
-                  <th className="py-2 pr-3 font-medium">毛孩 / 主人</th>
-                  <th className="py-2 pr-3 font-medium">方案</th>
-                  <th className="py-2 pr-3 font-medium">狀態</th>
-                  <th className="py-2 font-medium text-right">月曆</th>
-                </tr>
-              </thead>
-              <tbody>
-                {scheduled.map((b) => (
-                  <tr key={b.id} className="border-b border-[var(--line)] last:border-0">
-                    <td className="py-2 pr-3 whitespace-nowrap">{b.service_date}</td>
-                    <td className="py-2 pr-3 whitespace-nowrap tabular-nums">
-                      {b.service_time ? b.service_time.slice(0, 5) : "—"}
-                    </td>
-                    <td className="py-2 pr-3">
-                      <span>{b.pet_name || "—"}</span>
-                      <span className="text-[var(--soft)]">
-                        {b.owner_name ? `　·　${b.owner_name}` : ""}
-                      </span>
-                    </td>
-                    <td className="py-2 pr-3 whitespace-nowrap">{b.plan || "—"}</td>
-                    <td className="py-2 pr-3 whitespace-nowrap">
-                      <span className="text-xs px-2 py-0.5 rounded-full bg-[var(--cream)] text-[var(--soft)]">
-                        {statusLabel(b.status)}
-                      </span>
-                    </td>
-                    <td className="py-2 text-right whitespace-nowrap">
-                      <Link
-                        href={`/schedule?ym=${b.service_date!.slice(0, 7)}`}
-                        className="text-xs text-[var(--gold)] hover:underline"
-                      >
-                        查看 →
-                      </Link>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
       </div>
     </div>
   );

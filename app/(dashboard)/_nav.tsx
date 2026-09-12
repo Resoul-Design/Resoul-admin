@@ -24,14 +24,7 @@ export const GROUPS: Group[] = [
       { label: "安排火化服務", href: "/schedule" },
     ],
   },
-  {
-    label: "留言審核",
-    icon: "✎",
-    children: [
-      { label: "照顧誌留言", href: "/board/blog" },
-      { label: "同路人留言板", href: "/board/community" },
-    ],
-  },
+  { label: "分享頁留言", icon: "✎", href: "/board/community" },
   {
     label: "紀念產品管理",
     icon: "▣",
@@ -40,24 +33,11 @@ export const GROUPS: Group[] = [
       { label: "倉存 · 出貨", href: "/inventory" },
     ],
   },
-  {
-    label: "宣傳管理",
-    icon: "❋",
-    children: [{ label: "文章記錄", href: "/articles" }],
-  },
-  {
-    label: "員工排更",
-    icon: "☷",
-    children: [
-      { label: "員工管理", href: "/staff" },
-      { label: "排更表", href: "/staff/roster" },
-      { label: "任務指派", href: "/staff/tasks" },
-    ],
-  },
+  { label: "文章記錄", icon: "❋", href: "/articles" },
+  { label: "員工管理", icon: "☷", href: "/staff" },
   { label: "客戶檔案", icon: "☺", href: "/crm" },
   { label: "專案管理", icon: "▧", href: "/projects" },
   { label: "財務管理", icon: "＄", href: "/finance" },
-  { label: "報表與匯出", icon: "▤", href: "/reports" },
 ];
 
 function isActive(path: string, href: string) {

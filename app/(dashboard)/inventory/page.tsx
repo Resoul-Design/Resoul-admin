@@ -1,4 +1,5 @@
 import { shopifyGraphQL } from "@/lib/shopify";
+import { InventoryEditor, type EGroup, type EProduct } from "./_editor";
 
 export const dynamic = "force-dynamic";
 
@@ -9,13 +10,17 @@ type ProductsResp = {
         id: string;
         title: string;
         status: string;
+        productType: string | null;
+        featuredImage: { url: string } | null;
         variants: {
           edges: {
             node: {
+              id: string;
               title: string;
               sku: string | null;
               price: string | null;
               inventoryQuantity: number | null;
+              inventoryItem: { id: string } | null;
             };
           }[];
         };
@@ -25,29 +30,14 @@ type ProductsResp = {
 };
 
 const QUERY = `{
-  products(first: 50, sortKey: TITLE) {
+  products(first: 100, sortKey: TITLE) {
     edges { node {
-      id title status
-      variants(first: 20) { edges { node { title sku price inventoryQuantity } } }
+      id title status productType
+      featuredImage { url }
+      variants(first: 25) { edges { node { id title sku price inventoryQuantity inventoryItem { id } } } }
     } }
   }
 }`;
-
-const STATUS: Record<string, string> = {
-  ACTIVE: "上架中",
-  DRAFT: "草稿",
-  ARCHIVED: "已封存",
-};
-
-type Row = {
-  product: string;
-  status: string;
-  variant: string;
-  sku: string | null;
-  price: string | null;
-  qty: number | null;
-  first: boolean;
-};
 
 export default async function InventoryPage() {
   let data: ProductsResp | null = null;
@@ -59,25 +49,38 @@ export default async function InventoryPage() {
   }
 
   const products = data?.products.edges.map((e) => e.node) ?? [];
-  const rows: Row[] = [];
+
+  // 依產品類型分組
+  const byType = new Map<string, EProduct[]>();
   for (const p of products) {
-    const variants = p.variants.edges.map((v) => v.node);
-    variants.forEach((v, i) => {
-      rows.push({
-        product: p.title,
-        status: p.status,
-        variant: v.title === "Default Title" ? "—" : v.title,
-        sku: v.sku,
-        price: v.price,
-        qty: v.inventoryQuantity,
-        first: i === 0,
-      });
-    });
+    const type = (p.productType || "").trim() || "未分類";
+    const ep: EProduct = {
+      id: p.id,
+      title: p.title,
+      status: p.status,
+      productType: type,
+      image: p.featuredImage?.url ?? null,
+      variants: p.variants.edges.map((v) => ({
+        id: v.node.id,
+        inventoryItemId: v.node.inventoryItem?.id ?? null,
+        title: v.node.title,
+        sku: v.node.sku,
+        price: v.node.price,
+        qty: v.node.inventoryQuantity,
+      })),
+    };
+    (byType.get(type) || byType.set(type, []).get(type)!).push(ep);
   }
+  const groups: EGroup[] = [...byType.entries()]
+    .map(([type, ps]) => ({ type, products: ps }))
+    .sort((a, b) => a.type.localeCompare(b.type, "zh-Hant"));
 
   return (
     <div>
-      <h1 className="text-2xl font-semibold mb-6">倉存 · 出貨</h1>
+      <h1 className="text-2xl font-semibold mb-1">倉存 · 出貨</h1>
+      <p className="text-sm text-[var(--soft)] mb-6">
+        按產品類型分組；可直接修改售價與庫存，儲存後即同步至 Shopify。
+      </p>
 
       {err && (
         <div className="rounded-2xl border border-red-300 bg-[var(--card)] p-6 text-sm text-red-600">
@@ -85,68 +88,13 @@ export default async function InventoryPage() {
         </div>
       )}
 
-      {!err && rows.length === 0 && (
+      {!err && groups.length === 0 && (
         <div className="rounded-2xl border border-[var(--line)] bg-[var(--card)] p-10 text-center text-[var(--soft)]">
           暫無產品。
         </div>
       )}
 
-      {rows.length > 0 && (
-        <div className="rounded-2xl border border-[var(--line)] bg-[var(--card)] overflow-x-auto">
-          <table className="w-full text-sm min-w-[640px]">
-            <thead>
-              <tr className="bg-[var(--head)] text-left text-[var(--soft)]">
-                <th className="px-4 py-3 font-medium">產品</th>
-                <th className="px-4 py-3 font-medium">款式</th>
-                <th className="px-4 py-3 font-medium">SKU</th>
-                <th className="px-4 py-3 font-medium text-right">售價</th>
-                <th className="px-4 py-3 font-medium text-right">庫存</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((r, i) => {
-                const low = (r.qty ?? 0) <= 3;
-                return (
-                  <tr
-                    key={i}
-                    className={
-                      "border-t align-top " +
-                      (r.first ? "border-[var(--line)]" : "border-[var(--line)]/40")
-                    }
-                  >
-                    <td className="px-4 py-3">
-                      {r.first ? (
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium">{r.product}</span>
-                          <span className="text-[11px] px-1.5 py-0.5 rounded-full bg-[var(--cream)] text-[var(--soft)]">
-                            {STATUS[r.status] || r.status}
-                          </span>
-                        </div>
-                      ) : (
-                        ""
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-[var(--soft)]">{r.variant}</td>
-                    <td className="px-4 py-3 text-[var(--soft)]">{r.sku || "—"}</td>
-                    <td className="px-4 py-3 text-right whitespace-nowrap">
-                      {r.price ? "$" + Number(r.price).toLocaleString() : "—"}
-                    </td>
-                    <td
-                      className={
-                        "px-4 py-3 text-right tabular-nums " +
-                        (low ? "text-red-600 font-medium" : "")
-                      }
-                    >
-                      {r.qty ?? "—"}
-                      {low && " ⚠"}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      )}
+      {groups.length > 0 && <InventoryEditor groups={groups} />}
     </div>
   );
 }

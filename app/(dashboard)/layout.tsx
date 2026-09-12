@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { getStaff } from "@/lib/auth";
-import { NavLinks } from "./_nav";
+import { TopNav } from "./_topnav";
 import { UserMenu } from "./_usermenu";
 import { MobileMenu } from "./_mobilemenu";
 
@@ -17,36 +17,28 @@ export default async function DashboardLayout({
   const allowed = staff.role === "admin" ? null : staff.permissions || [];
 
   return (
-    <div className="min-h-screen md:flex">
-      {/* 桌面：左側欄（品牌 + 導覽） */}
-      <aside className="hidden md:flex w-56 shrink-0 flex-col bg-[var(--card)] border-r border-[var(--line)]">
-        <div className="px-5 py-5 border-b border-[var(--line)]">
+    <div className="min-h-screen flex flex-col">
+      {/* 頂部：品牌 + 水平導覽（桌面）／漢堡（手機）+ 使用者選單 */}
+      <header className="sticky top-0 z-30 bg-[var(--card)] border-b border-[var(--line)]">
+        <div className="flex items-center gap-3 px-4 md:px-6 py-2.5">
+          <div className="flex items-center gap-2 md:hidden">
+            <MobileMenu allowed={allowed} />
+          </div>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/resoul-wordmark.png" alt="Resoul" className="h-9 w-auto" />
-          <div className="text-xs text-[var(--soft)] mt-1.5">後台管理系統</div>
-        </div>
-        <NavLinks allowed={allowed} />
-      </aside>
-
-      {/* 右側主區 */}
-      <div className="flex-1 min-w-0 flex flex-col">
-        {/* 頂部功能列（左：手機漢堡選單；右：使用者選單） */}
-        <header className="sticky top-0 z-20 bg-[var(--card)] border-b border-[var(--line)] relative">
-          <div className="flex items-center justify-between px-4 md:px-8 py-2.5">
-            <div className="flex items-center gap-2 md:hidden">
-              <MobileMenu allowed={allowed} />
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/resoul-wordmark.png" alt="Resoul" className="h-7 w-auto" />
-            </div>
-            <div className="hidden md:block" />
+          <img src="/resoul-wordmark.png" alt="Resoul" className="h-8 w-auto shrink-0" />
+          <nav className="hidden md:flex flex-1 min-w-0 overflow-x-auto no-scrollbar">
+            <TopNav allowed={allowed} />
+          </nav>
+          <div className="flex-1 md:hidden" />
+          <div className="shrink-0">
             <UserMenu name={displayName} role={roleLabel} />
           </div>
-        </header>
+        </div>
+      </header>
 
-        <main className="flex-1 min-w-0 px-5 md:px-8 py-6 md:py-8 overflow-x-auto">
-          {children}
-        </main>
-      </div>
+      <main className="flex-1 min-w-0 w-full max-w-[1400px] mx-auto px-4 md:px-6 py-6 md:py-8">
+        {children}
+      </main>
     </div>
   );
 }

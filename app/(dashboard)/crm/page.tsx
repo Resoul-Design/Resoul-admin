@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -76,12 +77,20 @@ export default async function CrmPage() {
                 <th className="px-4 py-3 font-medium text-right">預約次數</th>
                 <th className="px-4 py-3 font-medium text-right">累計消費</th>
                 <th className="px-4 py-3 font-medium">最近服務</th>
+                <th className="px-4 py-3 font-medium text-right">檔案</th>
               </tr>
             </thead>
             <tbody>
               {customers.map((c) => (
-                <tr key={c.key} className="border-t border-[var(--line)]">
-                  <td className="px-4 py-3 font-medium">{c.name}</td>
+                <tr key={c.key} className="border-t border-[var(--line)] hover:bg-[var(--cream)]/40">
+                  <td className="px-4 py-3 font-medium">
+                    <Link
+                      href={`/crm/${encodeURIComponent(c.key)}`}
+                      className="text-[var(--ink)] hover:text-[var(--gold)] hover:underline"
+                    >
+                      {c.name}
+                    </Link>
+                  </td>
                   <td className="px-4 py-3 text-[var(--soft)]">{c.contact || "—"}</td>
                   <td className="px-4 py-3 text-[var(--soft)]">
                     {[...c.pets].join("、") || "—"}
@@ -91,6 +100,14 @@ export default async function CrmPage() {
                     ${Math.round(c.spend).toLocaleString()}
                   </td>
                   <td className="px-4 py-3 text-[var(--soft)] whitespace-nowrap">{c.last}</td>
+                  <td className="px-4 py-3 text-right whitespace-nowrap">
+                    <Link
+                      href={`/crm/${encodeURIComponent(c.key)}`}
+                      className="text-xs text-[var(--gold)] hover:underline"
+                    >
+                      查看 →
+                    </Link>
+                  </td>
                 </tr>
               ))}
             </tbody>
