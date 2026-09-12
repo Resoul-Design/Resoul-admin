@@ -12,6 +12,13 @@ const STATUS_LABEL: Record<string, string> = {
   cancelled: "已取消",
 };
 
+const PAYMENT_LABEL: Record<string, string> = {
+  pending: "待付款",
+  paid: "已付款",
+  failed: "付款失敗",
+  refunded: "已退款",
+};
+
 function badgeClass(status: string) {
   switch (status) {
     case "new":
@@ -30,16 +37,62 @@ function badgeClass(status: string) {
   }
 }
 
+function sourceLabel(source?: string | null) {
+  switch (source) {
+    case "web:cremation-order":
+      return "付款問卷";
+    case "web:cremation-order-en":
+      return "付款問卷 EN";
+    case "web:cremation":
+      return "普通預約";
+    case "web:euthanasia":
+      return "安辭查詢";
+    default:
+      return source || "—";
+  }
+}
+
+function paymentBadgeClass(status?: string | null) {
+  switch (status) {
+    case "paid":
+      return "bg-green-100 text-green-800";
+    case "failed":
+      return "bg-red-100 text-red-700";
+    case "refunded":
+      return "bg-gray-200 text-gray-700";
+    default:
+      return "bg-amber-100 text-amber-800";
+  }
+}
+
+const BASE_SELECT =
+  "id, case_no, owner_name, contact, pet_name, pet_type, plan, service_date, service_time, pickup_address, status, source, notes, created_at";
+
+const PAYMENT_SELECT =
+  BASE_SELECT +
+  ", payment_ref, payment_status, payment_amount, payment_currency, shopify_order_name, paid_at";
+
 export default async function BookingsPage() {
   const supabase = await createClient();
-  const { data, error } = await supabase
+  let paymentColumnsReady = true;
+  const primary = await supabase
     .from("cremation_bookings")
-    .select(
-      "id, case_no, owner_name, contact, pet_name, pet_type, plan, service_date, service_time, pickup_address, status, notes, created_at"
-    )
+    .select(PAYMENT_SELECT)
     .order("created_at", { ascending: false });
+  let rows: unknown[] | null = primary.data as unknown[] | null;
+  let error = primary.error;
 
-  const bookings = (data ?? []) as (BookingData & {
+  if (error && /payment_|shopify_order|paid_at/i.test(error.message)) {
+    paymentColumnsReady = false;
+    const fallback = await supabase
+      .from("cremation_bookings")
+      .select(BASE_SELECT)
+      .order("created_at", { ascending: false });
+    rows = fallback.data as unknown[] | null;
+    error = fallback.error;
+  }
+
+  const bookings = (rows ?? []) as (BookingData & {
     created_at: string;
   })[];
 
@@ -51,8 +104,16 @@ export default async function BookingsPage() {
         <div className="mb-4 text-sm text-red-600">
           讀取失敗：{error.message}
           <div className="text-[var(--soft)] mt-1">
-            若提示欄位不存在，請先於 Supabase 執行 db/migration_booking_fields.sql。
+            若提示欄位不存在，請先於 Supabase 執行 db/migration_booking_fields.sql 及 db/migration_payment_tracking.sql。
           </div>
+        </div>
+      )}
+
+      {!paymentColumnsReady && (
+        <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          付款追蹤欄位尚未建立。預約資料仍會顯示；請於 Supabase 執行
+          <code className="mx-1">db/migration_payment_tracking.sql</code>
+          後，付款狀態與訂單編號會在此顯示。
         </div>
       )}
 
@@ -62,7 +123,7 @@ export default async function BookingsPage() {
         </div>
       ) : (
         <div className="rounded-2xl border border-[var(--line)] bg-[var(--card)] overflow-x-auto">
-          <table className="w-full text-sm min-w-[860px]">
+          <table className="w-full text-sm min-w-[1040px]">
             <thead>
               <tr className="bg-[var(--head)] text-left text-[var(--soft)]">
                 <th className="px-4 py-3 font-medium">收到</th>
@@ -70,6 +131,8 @@ export default async function BookingsPage() {
                 <th className="px-4 py-3 font-medium">主人 · 電話 · 地點</th>
                 <th className="px-4 py-3 font-medium">毛孩</th>
                 <th className="px-4 py-3 font-medium">方案</th>
+                <th className="px-4 py-3 font-medium">來源</th>
+                <th className="px-4 py-3 font-medium">付款</th>
                 <th className="px-4 py-3 font-medium">服務日期</th>
                 <th className="px-4 py-3 font-medium">狀態</th>
                 <th className="px-4 py-3 font-medium text-right">操作</th>
@@ -100,6 +163,35 @@ export default async function BookingsPage() {
                     <div className="text-[var(--soft)] text-xs">{b.pet_type || ""}</div>
                   </td>
                   <td className="px-4 py-3 whitespace-nowrap">{b.plan || "—"}</td>
+                  <td className="px-4 py-3 whitespace-nowrap">
+                    <span className="inline-block px-2 py-0.5 rounded-full text-xs bg-[var(--cream)] text-[var(--soft)]">
+                      {sourceLabel(b.source)}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 whitespace-nowrap">
+                    {paymentColumnsReady ? (
+                      <>
+                        <span
+                          className={
+                            "inline-block px-2 py-0.5 rounded-full text-xs " +
+                            paymentBadgeClass(b.payment_status)
+                          }
+                        >
+                          {PAYMENT_LABEL[b.payment_status || "pending"] || b.payment_status || "待付款"}
+                        </span>
+                        {b.shopify_order_name && (
+                          <div className="text-[var(--soft)] text-xs mt-1">{b.shopify_order_name}</div>
+                        )}
+                        {b.payment_amount != null && (
+                          <div className="text-[var(--soft)] text-xs mt-0.5">
+                            {b.payment_currency || "HKD"} {Number(b.payment_amount).toLocaleString()}
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <span className="text-[var(--faint)] text-xs">待 migration</span>
+                    )}
+                  </td>
                   <td className="px-4 py-3 whitespace-nowrap">
                     {b.service_date || "—"}
                     {b.service_time && (

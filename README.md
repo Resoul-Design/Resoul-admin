@@ -50,7 +50,9 @@ NEXT_PUBLIC_SUPABASE_URL=            # 與消費者站相同
 NEXT_PUBLIC_SUPABASE_ANON_KEY=       # publishable key
 SUPABASE_SERVICE_ROLE_KEY=           # 僅伺服器端使用（審核/管理）
 SHOPIFY_STORE_DOMAIN=                # xxx.myshopify.com
-SHOPIFY_ADMIN_API_TOKEN=             # Shopify custom app Admin token（read_orders, read_products, read_content…）
+SHOPIFY_ADMIN_API_TOKEN=             # Shopify custom app Admin token（read_orders, read_products, write_products, read_content…）
+SHOPIFY_API_SECRET=                  # 用於驗證 Shopify webhook HMAC
+SHOPIFY_WEBHOOK_SECRET=              # 可選；留空時使用 SHOPIFY_API_SECRET
 ```
 
 ## 建置階段
@@ -60,6 +62,16 @@ SHOPIFY_ADMIN_API_TOKEN=             # Shopify custom app Admin token（read_ord
 ## 你需要準備（讓後台可實際運行）
 1. **Supabase service_role key**：Supabase → Project Settings → API →「service_role」（機密，只放伺服器 env）
 2. **Shopify Admin custom app**：Shopify Admin → Settings → Apps → Develop apps → 建 app →
-   授予 `read_orders`、`read_products`、`read_inventory`、`read_content`（暫時只讀最安全）→ 取得 Admin API access token
+   授予 `read_orders`、`read_products`、`write_products`、`read_inventory`、`read_content` → 取得 Admin API access token
 3. 執行 `db/schema.sql`（Supabase SQL Editor）
 4. （選）由 Google Sheet 匯出現有預約 → 匯入 `cremation_bookings`
+
+## 付款狀態 webhook
+
+1. 先在 Supabase SQL Editor 執行 `db/migration_payment_tracking.sql`，為 `cremation_bookings` 加入 `payment_ref`、`payment_status`、付款金額及訂單欄位。
+2. 在 Shopify Admin 建立 webhook：
+   - Topic：`orders/paid`
+   - URL：`https://你的後台網域/api/webhooks/shopify/orders-paid`
+   - Format：JSON
+3. 在 Vercel 後台設定 `SHOPIFY_API_SECRET`（或 `SHOPIFY_WEBHOOK_SECRET`）與 `SUPABASE_SERVICE_ROLE_KEY`。
+4. 消費者站付款問卷會把同一個 `payment_ref` 寫入 Supabase 及付款訂單 attributes；webhook 收到付款成功後會把對應預約更新為 `payment_status='paid'`。

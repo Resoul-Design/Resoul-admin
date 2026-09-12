@@ -15,6 +15,13 @@ export type BookingData = {
   service_time: string | null;
   pickup_address: string | null;
   status: string;
+  source: string | null;
+  payment_ref: string | null;
+  payment_status: string | null;
+  payment_amount: number | null;
+  payment_currency: string | null;
+  shopify_order_name: string | null;
+  paid_at: string | null;
   notes: string | null;
 };
 
