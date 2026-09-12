@@ -68,10 +68,13 @@ SHOPIFY_WEBHOOK_SECRET=              # 可選；留空時使用 SHOPIFY_API_SECR
 
 ## 付款狀態 webhook
 
-1. 先在 Supabase SQL Editor 執行 `db/migration_payment_tracking.sql`，為 `cremation_bookings` 加入 `payment_ref`、`payment_status`、付款金額及訂單欄位。
+1. 先在 Supabase SQL Editor 執行 `db/production_booking_payment_setup.sql`，一次完成公開 booking 提交權限與付款追蹤欄位。
 2. 在 Shopify Admin 建立 webhook：
    - Topic：`orders/paid`
-   - URL：`https://你的後台網域/api/webhooks/shopify/orders-paid`
+   - URL：`https://resoul-admin-five.vercel.app/api/webhooks/shopify/orders-paid`
    - Format：JSON
 3. 在 Vercel 後台設定 `SHOPIFY_API_SECRET`（或 `SHOPIFY_WEBHOOK_SECRET`）與 `SUPABASE_SERVICE_ROLE_KEY`。
 4. 消費者站付款問卷會把同一個 `payment_ref` 寫入 Supabase 及付款訂單 attributes；webhook 收到付款成功後會把對應預約更新為 `payment_status='paid'`。
+
+如只想分開執行 migration，可改為依次執行：
+`db/migration_public_booking.sql`、`db/migration_payment_tracking.sql`。
