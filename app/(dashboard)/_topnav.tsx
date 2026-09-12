@@ -49,14 +49,13 @@ export function TopNav({ allowed }: { allowed: string[] | null }) {
               key={g.label}
               href={g.href!}
               className={
-                "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm whitespace-nowrap transition " +
+                "flex items-center px-3 py-1.5 rounded-lg text-sm whitespace-nowrap transition " +
                 (active
                   ? "bg-[var(--gold)] text-white"
                   : "text-[var(--ink)] hover:bg-[var(--cream)]")
               }
             >
-              <span className={active ? "text-white" : "text-[var(--gold)]"}>{g.icon}</span>
-              <span>{g.label}</span>
+              {g.label}
             </Link>
           );
         }
@@ -71,13 +70,12 @@ export function TopNav({ allowed }: { allowed: string[] | null }) {
             <button
               onClick={() => setOpenKey(isOpen ? null : g.label)}
               className={
-                "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm whitespace-nowrap transition " +
+                "flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm whitespace-nowrap transition " +
                 (gActive || isOpen
                   ? "bg-[var(--cream)] text-[var(--ink)] font-medium"
                   : "text-[var(--ink)] hover:bg-[var(--cream)]")
               }
             >
-              <span className="text-[var(--gold)]">{g.icon}</span>
               <span>{g.label}</span>
               <span className={"text-[10px] text-[var(--soft)] transition-transform " + (isOpen ? "rotate-180" : "")}>▾</span>
             </button>
