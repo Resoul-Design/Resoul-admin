@@ -157,7 +157,7 @@ export default async function OrderDocPage({
           <div className="flex justify-end mt-10">
             <div className="text-right">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/resoul-wordmark.png" alt={COMPANY.name} className="h-8 w-auto inline-block opacity-80" />
+              <img src="/resoul-signature.png" alt={COMPANY.name} className="h-14 w-auto inline-block" />
               <div className="text-xs tracking-[0.25em] text-[#6f6156] mt-1">THANK YOU</div>
             </div>
           </div>
