@@ -8,7 +8,31 @@ export const dynamic = "force-dynamic";
 
 const money = (n: number) => "HK$" + Number(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-type Item = { code: string; desc: string; unit: number; qty: number };
+type Item = {
+  code: string;
+  desc: string;
+  unit: number;
+  qty: number;
+  detail?: { label: string; value: string }[];
+};
+
+// 由 notes 抽出欄位（前端問卷格式：以「｜」分隔，部分為「標籤：值」）
+function parseNotes(notes?: string | null) {
+  const parts = (notes || "").split("｜").map((s) => s.trim()).filter(Boolean);
+  const get = (label: string) => {
+    const seg = parts.find((p) => p.startsWith(label));
+    return seg ? seg.slice(label.length).replace(/^[:：]\s*/, "").trim() : "";
+  };
+  const weight = parts.find((p) => /kg/i.test(p) && !/[:：]/.test(p)) || "";
+  const ref = get("Ref");
+  return {
+    ref,
+    weight,
+    timePref: get("希望時段"),
+    petName: get("毛孩名字"),
+    remark: get("備註"),
+  };
+}
 
 export default async function BookingDocPage({
   params,
@@ -47,12 +71,30 @@ export default async function BookingDocPage({
       : { data: null };
     const unit = b.amount ?? b.payment_amount ?? pp?.price ?? 0;
     const pc = b.plan ? PLAN_CODES[b.plan] : undefined;
+    const n = parseNotes(b.notes);
+    const planFull = (b.plan || "") + (pc?.en ? ` ${pc.en}` : "");
+    const title = planFull
+      ? planFull + (n.weight ? ` - ${n.weight}` : "")
+      : "寵物火化服務";
+    const detail = [
+      { label: "payment_ref", value: b.payment_ref || n.ref },
+      { label: "旅程", value: b.plan || "" },
+      { label: "體重", value: n.weight },
+      { label: "毛孩名字", value: b.pet_name || n.petName },
+      { label: "主人稱呼", value: b.owner_name || "" },
+      { label: "聯絡電話", value: b.contact || "" },
+      { label: "希望日期", value: b.service_date || "" },
+      { label: "希望時段", value: n.timePref },
+      { label: "接送地址", value: b.pickup_address || "-" },
+      { label: "備註", value: n.remark || "-" },
+    ].filter((d) => d.value);
     items = [
       {
         code: pc?.code || "",
-        desc: (pc?.en ? pc.en : "寵物火化服務") + (b.plan ? `（${b.plan}）` : ""),
+        desc: title,
         unit,
         qty: 1,
+        detail,
       },
     ];
   }
@@ -129,7 +171,18 @@ export default async function BookingDocPage({
               {items.map((it, i) => (
                 <tr key={i}>
                   <td className="py-2.5 align-top">{it.code || ""}</td>
-                  <td className="py-2.5 align-top">{it.desc}</td>
+                  <td className="py-2.5 align-top">
+                    <div>{it.desc}</div>
+                    {it.detail && it.detail.length > 0 && (
+                      <div className="mt-1 text-xs text-[#8a7d70] leading-relaxed">
+                        {it.detail.map((d, j) => (
+                          <div key={j}>
+                            {d.label}: {d.value}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </td>
                   <td className="py-2.5 align-top text-right tabular-nums">{money(it.unit)}</td>
                   <td className="py-2.5 align-top text-center tabular-nums">{it.qty}</td>
                   <td className="py-2.5 align-top text-right tabular-nums">{money(it.unit * it.qty)}</td>
@@ -142,7 +195,9 @@ export default async function BookingDocPage({
           <div className="flex items-start justify-between gap-8 mt-16">
             <div className="text-sm max-w-[46%]">
               <div className="text-[#6f6156] tracking-wide mb-1">REMARKS</div>
-              <div className="whitespace-pre-wrap">{b.notes || ""}</div>
+              <div className="whitespace-pre-wrap">
+                {b.notes && !b.notes.startsWith("付款問卷") ? b.notes : "—"}
+              </div>
             </div>
             <div className="text-sm w-[280px]">
               <div className="flex justify-between py-1">
