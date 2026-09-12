@@ -6,9 +6,27 @@ import { moduleForPath } from "@/lib/modules";
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({ request });
 
+  const path = request.nextUrl.pathname;
+  const isPublic =
+    path.startsWith("/login") ||
+    path.startsWith("/auth") ||
+    path.startsWith("/api/shopify");
+
+  const SB_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const SB_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  // 防護：若環境變數未設，唔好令 middleware 崩潰；非公開頁導去 /login。
+  if (!SB_URL || !SB_KEY) {
+    if (!isPublic) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/login";
+      return NextResponse.redirect(url);
+    }
+    return response;
+  }
+
   const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    SB_URL,
+    SB_KEY,
     {
       cookies: {
         getAll() {
@@ -36,12 +54,6 @@ export async function middleware(request: NextRequest) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-
-  const path = request.nextUrl.pathname;
-  const isPublic =
-    path.startsWith("/login") ||
-    path.startsWith("/auth") ||
-    path.startsWith("/api/shopify");
 
   if (!user && !isPublic) {
     const url = request.nextUrl.clone();
