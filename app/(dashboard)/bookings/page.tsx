@@ -12,6 +12,40 @@ function parseTimePref(notes?: string | null): string {
   return v && v !== "—" && v !== "-" ? v : "";
 }
 
+// 產生「加入 Google Calendar」連結（預填日期、標題、客戶資料）
+function gcalUrl(
+  b: { service_date?: string | null; service_time?: string | null; pet_name?: string | null; owner_name?: string | null; contact?: string | null; plan?: string | null; pickup_address?: string | null; shopify_order_name?: string | null },
+  timePref: string,
+  email: string
+): string | null {
+  if (!b.service_date) return null;
+  const ymd = b.service_date.replace(/-/g, "");
+  let dates: string;
+  if (b.service_time) {
+    const hm = b.service_time.slice(0, 5).replace(":", "");
+    const startH = Number(hm.slice(0, 2));
+    const endH = String(Math.min(startH + 2, 23)).padStart(2, "0");
+    dates = `${ymd}T${hm}00/${ymd}T${endH}${hm.slice(2)}00`;
+  } else {
+    const nd = new Date(b.service_date + "T00:00:00");
+    nd.setDate(nd.getDate() + 1);
+    const end = `${nd.getFullYear()}${String(nd.getMonth() + 1).padStart(2, "0")}${String(nd.getDate()).padStart(2, "0")}`;
+    dates = `${ymd}/${end}`;
+  }
+  const title = `Resoul 火化預約 · ${b.pet_name || "毛孩"}`;
+  const details = [
+    `主人：${b.owner_name || "—"}`,
+    `電話：${b.contact || "—"}`,
+    email ? `電郵：${email}` : "",
+    `方案：${b.plan || "—"}`,
+    timePref ? `希望時段：${timePref}` : "",
+    b.shopify_order_name ? `發票編號：${b.shopify_order_name}` : "",
+  ].filter(Boolean).join("\n");
+  const params = new URLSearchParams({ action: "TEMPLATE", text: title, dates, details });
+  if (b.pickup_address) params.set("location", b.pickup_address);
+  return "https://calendar.google.com/calendar/render?" + params.toString();
+}
+
 // 以 payment_ref 對回 Shopify 訂單，取客戶電郵（結帳時收集）
 async function emailByPaymentRef(): Promise<Record<string, string>> {
   try {
@@ -175,6 +209,7 @@ export default async function BookingsPage() {
                 const invoiceNo = b.shopify_order_name || b.case_no || "";
                 const email = b.payment_ref ? emailMap[b.payment_ref] : "";
                 const timePref = parseTimePref(b.notes);
+                const calUrl = gcalUrl(b, timePref, email || "");
                 return (
                 <tr key={b.id} className="border-t border-[var(--line)] align-top">
                   <td className="px-4 py-3 text-[var(--soft)] whitespace-nowrap">
@@ -247,6 +282,9 @@ export default async function BookingsPage() {
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2 justify-end whitespace-nowrap">
+                      {calUrl && (
+                        <a href={calUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-[var(--gold)] hover:underline">📅 加入日曆</a>
+                      )}
                       <a href={`/print/booking/${b.id}?type=quote`} target="_blank" className="text-xs text-[var(--gold)] hover:underline">報價單</a>
                       <a href={`/print/booking/${b.id}?type=invoice`} target="_blank" className="text-xs text-[var(--gold)] hover:underline">發票</a>
                       <a href={`/print/booking/${b.id}?type=receipt`} target="_blank" className="text-xs text-[var(--gold)] hover:underline">收據</a>
