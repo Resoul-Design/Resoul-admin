@@ -29,6 +29,7 @@ type Booking = {
   service_date: string | null;
   service_time: string | null;
   amount: number | null;
+  payment_amount: number | null;
   payment_status: string | null;
   notes: string | null;
   created_at: string;
@@ -46,7 +47,7 @@ export default async function CustomerPage({
   const { data } = await supabase
     .from("cremation_bookings")
     .select(
-      "id, owner_name, contact, pet_name, pet_type, plan, status, service_date, service_time, amount, payment_status, notes, created_at"
+      "id, owner_name, contact, pet_name, pet_type, plan, status, service_date, service_time, amount, payment_amount, payment_status, notes, created_at"
     )
     .order("created_at", { ascending: false })
     .limit(1000);
@@ -60,10 +61,11 @@ export default async function CustomerPage({
     bookings.find((b) => b.owner_name)?.owner_name || key || "客戶";
   const contact = bookings.find((b) => b.contact)?.contact || key;
   const pets = [...new Set(bookings.map((b) => b.pet_name).filter(Boolean))];
-  const spend = bookings.reduce((s, b) => s + (b.amount || 0), 0);
+  const eff = (b: Booking) => b.amount ?? b.payment_amount ?? 0;
+  const spend = bookings.reduce((s, b) => s + eff(b), 0);
   const paidSpend = bookings
     .filter((b) => b.payment_status === "paid")
-    .reduce((s, b) => s + (b.amount || 0), 0);
+    .reduce((s, b) => s + eff(b), 0);
 
   const stat = (label: string, value: string) => (
     <div className="rounded-xl border border-[var(--line)] bg-[var(--card)] px-4 py-3">
@@ -133,7 +135,7 @@ export default async function CustomerPage({
                         : "—"}
                     </td>
                     <td className="px-4 py-3 text-right whitespace-nowrap tabular-nums">
-                      {b.amount ? "$" + Math.round(b.amount).toLocaleString() : "—"}
+                      {eff(b) ? "$" + Math.round(eff(b)).toLocaleString() : "—"}
                     </td>
                   </tr>
                 ))}

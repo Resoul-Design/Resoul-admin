@@ -43,7 +43,7 @@ export async function BoardView({
     .order("crisis_flag", { ascending: false })
     .order("created_at", { ascending: false });
 
-  if (contextType === "community") query = query.eq("context", "board");
+  if (contextType === "community") query = query.in("context", ["board", "memorial"]);
   else query = query.like("context", "blog:%");
 
   if (filter !== "all") query = query.eq("status", filter);

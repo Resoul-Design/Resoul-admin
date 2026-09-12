@@ -13,6 +13,10 @@ type Booking = {
   plan: string | null;
   status: string;
   service_date: string | null;
+  amount: number | null;
+  payment_amount: number | null;
+  payment_status: string | null;
+  shopify_order_name: string | null;
 };
 type Entry = { booking_id: string; kind: string; amount: number };
 
@@ -30,7 +34,7 @@ export default async function ProjectsPage() {
   const [bkRes, peRes] = await Promise.all([
     supabase
       .from("cremation_bookings")
-      .select("id, case_no, pet_name, owner_name, plan, status, service_date")
+      .select("id, case_no, pet_name, owner_name, plan, status, service_date, amount, payment_amount, payment_status, shopify_order_name")
       .order("created_at", { ascending: false })
       .limit(1000),
     supabase.from("project_entries").select("booking_id, kind, amount"),
@@ -70,10 +74,14 @@ export default async function ProjectsPage() {
             <tbody>
               {bookings.map((b) => {
                 const a = agg[b.id] || { income: 0, expense: 0 };
-                const net = a.income - a.expense;
+                // 收入：優先用手動帳目；否則用已付款金額（與付款同步）
+                const paid = b.payment_status === "paid" ? (b.amount ?? b.payment_amount ?? 0) : 0;
+                const income = a.income > 0 ? a.income : paid;
+                const net = income - a.expense;
+                const projNo = b.shopify_order_name || b.case_no || "—";
                 return (
                   <tr key={b.id} className="border-t border-[var(--line)]">
-                    <td className="px-4 py-3 whitespace-nowrap text-[var(--gold)]">{b.case_no || "—"}</td>
+                    <td className="px-4 py-3 whitespace-nowrap text-[var(--gold)]">{projNo}</td>
                     <td className="px-4 py-3">
                       {b.pet_name || "—"}
                       <span className="text-[var(--soft)]">{b.owner_name ? `　·　${b.owner_name}` : ""}</span>
@@ -83,7 +91,7 @@ export default async function ProjectsPage() {
                         {STATUS_LABEL[b.status] || b.status}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-right tabular-nums">{money(a.income)}</td>
+                    <td className="px-4 py-3 text-right tabular-nums">{money(income)}</td>
                     <td className="px-4 py-3 text-right tabular-nums text-[var(--soft)]">{money(a.expense)}</td>
                     <td className="px-4 py-3 text-right tabular-nums font-medium">{money(net)}</td>
                     <td className="px-4 py-3 text-right">

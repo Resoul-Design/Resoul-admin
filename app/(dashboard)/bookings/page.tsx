@@ -1,7 +1,35 @@
 import { createClient } from "@/lib/supabase/server";
+import { shopifyGraphQL } from "@/lib/shopify";
 import { EditBookingButton, type BookingData } from "./_edit";
 
 export const dynamic = "force-dynamic";
+
+// 由 notes 抽出「希望時段」（前端落單時寫入的欄位）
+function parseTimePref(notes?: string | null): string {
+  if (!notes) return "";
+  const m = notes.match(/希望時段[:：]\s*([^｜|]+)/);
+  const v = m ? m[1].trim() : "";
+  return v && v !== "—" && v !== "-" ? v : "";
+}
+
+// 以 payment_ref 對回 Shopify 訂單，取客戶電郵（結帳時收集）
+async function emailByPaymentRef(): Promise<Record<string, string>> {
+  try {
+    const d = await shopifyGraphQL<{
+      orders: { edges: { node: { email: string | null; customAttributes: { key: string; value: string }[] } }[] };
+    }>(
+      `{ orders(first: 100, sortKey: CREATED_AT, reverse: true) { edges { node { email customAttributes { key value } } } } }`
+    );
+    const map: Record<string, string> = {};
+    for (const e of d.orders.edges) {
+      const ref = e.node.customAttributes.find((a) => a.key === "payment_ref")?.value;
+      if (ref && e.node.email) map[ref] = e.node.email;
+    }
+    return map;
+  } catch {
+    return {};
+  }
+}
 
 const STATUS_LABEL: Record<string, string> = {
   new: "新收到",
@@ -94,7 +122,10 @@ export default async function BookingsPage() {
 
   const bookings = (rows ?? []) as (BookingData & {
     created_at: string;
+    notes?: string | null;
   })[];
+
+  const emailMap = paymentColumnsReady ? await emailByPaymentRef() : {};
 
   return (
     <div>
@@ -127,26 +158,31 @@ export default async function BookingsPage() {
             <thead>
               <tr className="bg-[var(--head)] text-left text-[var(--soft)]">
                 <th className="px-4 py-3 font-medium">收到</th>
-                <th className="px-4 py-3 font-medium">專案編號</th>
-                <th className="px-4 py-3 font-medium">主人 · 電話 · 地點</th>
+                <th className="px-4 py-3 font-medium">發票編號</th>
+                <th className="px-4 py-3 font-medium">主人 · 電話 · 電郵 · 地點</th>
                 <th className="px-4 py-3 font-medium">毛孩</th>
                 <th className="px-4 py-3 font-medium">方案</th>
+                <th className="px-4 py-3 font-medium text-right">價錢</th>
                 <th className="px-4 py-3 font-medium">來源</th>
                 <th className="px-4 py-3 font-medium">付款</th>
-                <th className="px-4 py-3 font-medium">服務日期</th>
+                <th className="px-4 py-3 font-medium">服務日期 · 希望時段</th>
                 <th className="px-4 py-3 font-medium">狀態</th>
                 <th className="px-4 py-3 font-medium text-right">操作</th>
               </tr>
             </thead>
             <tbody>
-              {bookings.map((b) => (
+              {bookings.map((b) => {
+                const invoiceNo = b.shopify_order_name || b.case_no || "";
+                const email = b.payment_ref ? emailMap[b.payment_ref] : "";
+                const timePref = parseTimePref(b.notes);
+                return (
                 <tr key={b.id} className="border-t border-[var(--line)] align-top">
                   <td className="px-4 py-3 text-[var(--soft)] whitespace-nowrap">
                     {b.created_at?.slice(0, 10)}
                   </td>
                   <td className="px-4 py-3 whitespace-nowrap">
-                    {b.case_no ? (
-                      <span className="font-medium text-[var(--gold)]">{b.case_no}</span>
+                    {invoiceNo ? (
+                      <span className="font-medium text-[var(--gold)]">{invoiceNo}</span>
                     ) : (
                       <span className="text-[var(--faint)]">—</span>
                     )}
@@ -155,6 +191,7 @@ export default async function BookingsPage() {
                     <div>{b.owner_name || "—"}</div>
                     <div className="text-[var(--soft)] text-xs flex flex-wrap gap-x-2 gap-y-0.5 mt-0.5">
                       {b.contact && <span>📞 {b.contact}</span>}
+                      {email && <span>📧 {email}</span>}
                       {b.pickup_address && <span>📍 {b.pickup_address}</span>}
                     </div>
                   </td>
@@ -163,6 +200,11 @@ export default async function BookingsPage() {
                     <div className="text-[var(--soft)] text-xs">{b.pet_type || ""}</div>
                   </td>
                   <td className="px-4 py-3 whitespace-nowrap">{b.plan || "—"}</td>
+                  <td className="px-4 py-3 whitespace-nowrap text-right tabular-nums">
+                    {b.payment_amount != null
+                      ? (b.payment_currency || "HKD") + " " + Number(b.payment_amount).toLocaleString()
+                      : "—"}
+                  </td>
                   <td className="px-4 py-3 whitespace-nowrap">
                     <span className="inline-block px-2 py-0.5 rounded-full text-xs bg-[var(--cream)] text-[var(--soft)]">
                       {sourceLabel(b.source)}
@@ -170,35 +212,27 @@ export default async function BookingsPage() {
                   </td>
                   <td className="px-4 py-3 whitespace-nowrap">
                     {paymentColumnsReady ? (
-                      <>
-                        <span
-                          className={
-                            "inline-block px-2 py-0.5 rounded-full text-xs " +
-                            paymentBadgeClass(b.payment_status)
-                          }
-                        >
-                          {PAYMENT_LABEL[b.payment_status || "pending"] || b.payment_status || "待付款"}
-                        </span>
-                        {b.shopify_order_name && (
-                          <div className="text-[var(--soft)] text-xs mt-1">{b.shopify_order_name}</div>
-                        )}
-                        {b.payment_amount != null && (
-                          <div className="text-[var(--soft)] text-xs mt-0.5">
-                            {b.payment_currency || "HKD"} {Number(b.payment_amount).toLocaleString()}
-                          </div>
-                        )}
-                      </>
+                      <span
+                        className={
+                          "inline-block px-2 py-0.5 rounded-full text-xs " +
+                          paymentBadgeClass(b.payment_status)
+                        }
+                      >
+                        {PAYMENT_LABEL[b.payment_status || "pending"] || b.payment_status || "待付款"}
+                      </span>
                     ) : (
                       <span className="text-[var(--faint)] text-xs">待 migration</span>
                     )}
                   </td>
                   <td className="px-4 py-3 whitespace-nowrap">
-                    {b.service_date || "—"}
-                    {b.service_time && (
-                      <span className="text-[var(--soft)]">
-                        {" "}
-                        {b.service_time.slice(0, 5)}
-                      </span>
+                    <div>
+                      {b.service_date || "—"}
+                      {b.service_time && (
+                        <span className="text-[var(--soft)]"> {b.service_time.slice(0, 5)}</span>
+                      )}
+                    </div>
+                    {timePref && (
+                      <div className="text-[var(--soft)] text-xs mt-0.5">{timePref}</div>
                     )}
                   </td>
                   <td className="px-4 py-3">
@@ -220,7 +254,8 @@ export default async function BookingsPage() {
                     </div>
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </div>

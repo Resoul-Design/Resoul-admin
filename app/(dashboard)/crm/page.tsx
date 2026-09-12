@@ -11,6 +11,7 @@ type Booking = {
   status: string;
   service_date: string | null;
   amount: number | null;
+  payment_amount: number | null;
   created_at: string;
 };
 
@@ -28,7 +29,7 @@ export default async function CrmPage() {
   const supabase = await createClient();
   const { data } = await supabase
     .from("cremation_bookings")
-    .select("owner_name, contact, pet_name, plan, status, service_date, amount, created_at")
+    .select("owner_name, contact, pet_name, plan, status, service_date, amount, payment_amount, created_at")
     .order("created_at", { ascending: false })
     .limit(1000);
   const bookings = (data ?? []) as Booking[];
@@ -51,7 +52,7 @@ export default async function CrmPage() {
     }
     if (b.pet_name) c.pets.add(b.pet_name);
     c.count += 1;
-    c.spend += b.amount || 0;
+    c.spend += b.amount ?? b.payment_amount ?? 0;
     const d = b.service_date || b.created_at.slice(0, 10);
     if (d > c.last) c.last = d;
     if (b.owner_name && c.name === "—") c.name = b.owner_name;
