@@ -45,7 +45,7 @@ export default async function BookingDocPage({
     const { data: pp } = b.plan
       ? await supabase.from("plan_prices").select("price").eq("plan", b.plan).maybeSingle()
       : { data: null };
-    const unit = b.amount ?? pp?.price ?? 0;
+    const unit = b.amount ?? b.payment_amount ?? pp?.price ?? 0;
     const pc = b.plan ? PLAN_CODES[b.plan] : undefined;
     items = [
       {
@@ -65,7 +65,7 @@ export default async function BookingDocPage({
   const isReceipt = type === "receipt";
   const titleEn = type === "invoice" ? "INVOICE" : isReceipt ? "RECEIPT" : "QUOTATION";
   const noLabel = type === "invoice" ? "Invoice No.:" : isReceipt ? "Receipt No.:" : "Quotation No.:";
-  const docNo = b.case_no || b.id.slice(0, 8);
+  const docNo = b.shopify_order_name || b.case_no || b.id.slice(0, 8);
   const today = new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
 
   return (
