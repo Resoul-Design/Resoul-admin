@@ -2,7 +2,7 @@ import crypto from "crypto";
 
 // OAuth 要求的權限（與 dev dashboard app 設定一致）
 export const SHOPIFY_SCOPES =
-  "read_orders,read_products,read_inventory,read_content";
+  "read_orders,read_products,write_products,read_inventory,read_content";
 
 export function shopDomain(): string {
   return process.env.SHOPIFY_STORE_DOMAIN || "";
