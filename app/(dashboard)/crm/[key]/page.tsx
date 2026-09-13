@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { shopifyGraphQL } from "@/lib/shopify";
 
 export const dynamic = "force-dynamic";
 
@@ -35,6 +36,30 @@ type Booking = {
   created_at: string;
 };
 
+type OrderNode = {
+  name: string;
+  createdAt: string;
+  displayFinancialStatus: string | null;
+  email: string | null;
+  phone: string | null;
+  customAttributes: { key: string; value: string }[];
+  customer: { phone: string | null; email: string | null } | null;
+  totalPriceSet: { shopMoney: { amount: string; currencyCode: string } };
+  lineItems: { edges: { node: { title: string; quantity: number } }[] };
+};
+
+// 電話比對：只取數字尾 8 位
+const phoneKey = (s?: string | null) => (s || "").replace(/\D/g, "").slice(-8);
+
+const FIN: Record<string, string> = {
+  PAID: "已付款",
+  PENDING: "待付款",
+  PARTIALLY_PAID: "部分付款",
+  REFUNDED: "已退款",
+  PARTIALLY_REFUNDED: "部分退款",
+  VOIDED: "已作廢",
+};
+
 export default async function CustomerPage({
   params,
 }: {
@@ -57,15 +82,44 @@ export default async function CustomerPage({
     (b) => (b.contact || b.owner_name || "未知").trim() === key
   );
 
-  const name =
-    bookings.find((b) => b.owner_name)?.owner_name || key || "客戶";
+  const name = bookings.find((b) => b.owner_name)?.owner_name || key || "客戶";
   const contact = bookings.find((b) => b.contact)?.contact || key;
   const pets = [...new Set(bookings.map((b) => b.pet_name).filter(Boolean))];
   const eff = (b: Booking) => b.amount ?? b.payment_amount ?? 0;
-  const spend = bookings.reduce((s, b) => s + eff(b), 0);
-  const paidSpend = bookings
+
+  // 火化：已付款預約金額
+  const cremPaid = bookings
     .filter((b) => b.payment_status === "paid")
     .reduce((s, b) => s + eff(b), 0);
+
+  // 產品銷售：以電話對回非火化 Shopify 訂單（火化訂單帶 payment_ref，已歸入火化）
+  const custPhone = phoneKey(contact);
+  let productOrders: OrderNode[] = [];
+  if (custPhone) {
+    try {
+      const d = await shopifyGraphQL<{ orders: { edges: { node: OrderNode }[] } }>(
+        `{ orders(first: 100, sortKey: CREATED_AT, reverse: true) {
+          edges { node {
+            name createdAt displayFinancialStatus email phone
+            customAttributes { key value }
+            customer { phone email }
+            totalPriceSet { shopMoney { amount currencyCode } }
+            lineItems(first: 10) { edges { node { title quantity } } }
+          } }
+        } }`
+      );
+      productOrders = d.orders.edges
+        .map((e) => e.node)
+        .filter((o) => !(o.customAttributes || []).some((a) => a.key === "payment_ref" && a.value))
+        .filter((o) => {
+          const ph = phoneKey(o.phone) || phoneKey(o.customer?.phone);
+          return ph && ph === custPhone;
+        });
+    } catch {
+      productOrders = [];
+    }
+  }
+  const productSpend = productOrders.reduce((s, o) => s + Number(o.totalPriceSet.shopMoney.amount), 0);
 
   const stat = (label: string, value: string) => (
     <div className="rounded-xl border border-[var(--line)] bg-[var(--card)] px-4 py-3">
@@ -88,87 +142,97 @@ export default async function CustomerPage({
         </div>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-        {stat("預約次數", String(bookings.length))}
-        {stat("累計消費", "$" + Math.round(spend).toLocaleString())}
-        {stat("已付款金額", "$" + Math.round(paidSpend).toLocaleString())}
-        {stat("毛孩數目", String(pets.length))}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+        {stat("火化預約", `${bookings.length} 次`)}
+        {stat("火化消費（已付）", "$" + Math.round(cremPaid).toLocaleString())}
+        {stat("產品銷售", `${productOrders.length} 張`)}
+        {stat("產品消費", "$" + Math.round(productSpend).toLocaleString())}
       </div>
 
-      <h2 className="text-base font-semibold mb-3">購買 / 服務記錄</h2>
-
+      {/* 火化預約記錄 */}
+      <h2 className="text-base font-semibold mb-3 flex items-center gap-2">
+        <span className="text-[var(--gold)]">✦</span> 火化預約記錄
+      </h2>
       {bookings.length === 0 ? (
-        <div className="rounded-2xl border border-[var(--line)] bg-[var(--card)] p-10 text-center text-[var(--soft)]">
-          未有此客戶的記錄。
+        <div className="rounded-2xl border border-[var(--line)] bg-[var(--card)] p-8 text-center text-[var(--soft)] mb-8">
+          未有火化預約記錄。
         </div>
       ) : (
-        <>
-          {/* 桌面表格 */}
-          <div className="hidden md:block rounded-2xl border border-[var(--line)] bg-[var(--card)]">
-            <table className="w-full text-sm table-fixed">
-              <thead>
-                <tr className="bg-[var(--head)] text-left text-[var(--soft)]">
-                  <th className="px-4 py-3 font-medium w-[14%]">日期</th>
-                  <th className="px-4 py-3 font-medium">毛孩</th>
-                  <th className="px-4 py-3 font-medium">方案</th>
-                  <th className="px-4 py-3 font-medium w-[12%]">狀態</th>
-                  <th className="px-4 py-3 font-medium w-[12%]">付款</th>
-                  <th className="px-4 py-3 font-medium text-right w-[14%]">金額</th>
-                </tr>
-              </thead>
-              <tbody>
-                {bookings.map((b) => (
-                  <tr key={b.id} className="border-t border-[var(--line)] align-top">
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      {b.service_date || b.created_at.slice(0, 10)}
-                    </td>
-                    <td className="px-4 py-3 break-words">{b.pet_name || "—"}</td>
-                    <td className="px-4 py-3 break-words">{b.plan || "—"}</td>
-                    <td className="px-4 py-3">
-                      <span className="text-xs px-2 py-0.5 rounded-full bg-[var(--cream)] text-[var(--soft)]">
-                        {STATUS_LABEL[b.status] || b.status}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      {b.payment_status
-                        ? PAY_LABEL[b.payment_status] || b.payment_status
-                        : "—"}
-                    </td>
-                    <td className="px-4 py-3 text-right whitespace-nowrap tabular-nums">
-                      {eff(b) ? "$" + Math.round(eff(b)).toLocaleString() : "—"}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          {/* 手機卡片 */}
-          <div className="md:hidden space-y-3">
-            {bookings.map((b) => (
-              <div key={b.id} className="rounded-2xl border border-[var(--line)] bg-[var(--card)] p-4">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="font-medium">{b.pet_name || "—"}</span>
-                  <span className="text-xs text-[var(--soft)]">
-                    {b.service_date || b.created_at.slice(0, 10)}
-                  </span>
-                </div>
-                <div className="mt-1 text-sm text-[var(--soft)]">{b.plan || "—"}</div>
-                <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
-                  <span className="px-2 py-0.5 rounded-full bg-[var(--cream)] text-[var(--soft)]">
-                    {STATUS_LABEL[b.status] || b.status}
-                  </span>
-                  <span className="px-2 py-0.5 rounded-full bg-[var(--cream)] text-[var(--soft)]">
+        <div className="rounded-2xl border border-[var(--line)] bg-[var(--card)] overflow-x-auto mb-8">
+          <table className="w-full text-sm min-w-[640px]">
+            <thead>
+              <tr className="bg-[var(--head)] text-left text-[var(--soft)] whitespace-nowrap">
+                <th className="px-4 py-3 font-medium">日期</th>
+                <th className="px-4 py-3 font-medium">毛孩</th>
+                <th className="px-4 py-3 font-medium">方案</th>
+                <th className="px-4 py-3 font-medium">狀態</th>
+                <th className="px-4 py-3 font-medium">付款</th>
+                <th className="px-4 py-3 font-medium text-right">金額</th>
+              </tr>
+            </thead>
+            <tbody>
+              {bookings.map((b) => (
+                <tr key={b.id} className="border-t border-[var(--line)] whitespace-nowrap">
+                  <td className="px-4 py-3">{b.service_date || b.created_at.slice(0, 10)}</td>
+                  <td className="px-4 py-3">{b.pet_name || "—"}</td>
+                  <td className="px-4 py-3">{b.plan || "—"}</td>
+                  <td className="px-4 py-3">
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-[var(--cream)] text-[var(--soft)]">
+                      {STATUS_LABEL[b.status] || b.status}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3">
                     {b.payment_status ? PAY_LABEL[b.payment_status] || b.payment_status : "—"}
-                  </span>
-                  <span className="ml-auto font-medium text-[var(--ink)]">
-                    {b.amount ? "$" + Math.round(b.amount).toLocaleString() : "—"}
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </>
+                  </td>
+                  <td className="px-4 py-3 text-right tabular-nums">
+                    {eff(b) ? "$" + Math.round(eff(b)).toLocaleString() : "—"}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* 產品銷售記錄 */}
+      <h2 className="text-base font-semibold mb-3 flex items-center gap-2">
+        <span className="text-[var(--gold)]">▣</span> 產品銷售記錄
+      </h2>
+      {productOrders.length === 0 ? (
+        <div className="rounded-2xl border border-[var(--line)] bg-[var(--card)] p-8 text-center text-[var(--soft)]">
+          未有以此電話配對到的產品訂單。
+        </div>
+      ) : (
+        <div className="rounded-2xl border border-[var(--line)] bg-[var(--card)] overflow-x-auto">
+          <table className="w-full text-sm min-w-[640px]">
+            <thead>
+              <tr className="bg-[var(--head)] text-left text-[var(--soft)] whitespace-nowrap">
+                <th className="px-4 py-3 font-medium">日期</th>
+                <th className="px-4 py-3 font-medium">訂單</th>
+                <th className="px-4 py-3 font-medium">內容</th>
+                <th className="px-4 py-3 font-medium">付款</th>
+                <th className="px-4 py-3 font-medium text-right">金額</th>
+              </tr>
+            </thead>
+            <tbody>
+              {productOrders.map((o) => (
+                <tr key={o.name} className="border-t border-[var(--line)] align-top">
+                  <td className="px-4 py-3 whitespace-nowrap">{o.createdAt.slice(0, 10)}</td>
+                  <td className="px-4 py-3 whitespace-nowrap font-medium">{o.name}</td>
+                  <td className="px-4 py-3 text-[var(--soft)]">
+                    {o.lineItems.edges.map((l) => `${l.node.title}×${l.node.quantity}`).join("、") || "—"}
+                  </td>
+                  <td className="px-4 py-3 whitespace-nowrap">
+                    {FIN[o.displayFinancialStatus || ""] || o.displayFinancialStatus || "—"}
+                  </td>
+                  <td className="px-4 py-3 text-right whitespace-nowrap tabular-nums">
+                    ${Number(o.totalPriceSet.shopMoney.amount).toLocaleString()}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
   );
