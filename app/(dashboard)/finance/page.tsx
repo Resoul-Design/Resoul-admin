@@ -30,9 +30,13 @@ type Booking = {
   service_date: string | null;
   amount: number | null;
   cost: number | null;
+  payment_amount: number | null;
+  payment_status: string | null;
+  paid_at: string | null;
+  created_at: string;
 };
 type OrdersResp = {
-  orders: { edges: { node: { createdAt: string; totalPriceSet: { shopMoney: { amount: string; currencyCode: string } } } }[] };
+  orders: { edges: { node: { createdAt: string; customAttributes: { key: string; value: string }[]; totalPriceSet: { shopMoney: { amount: string; currencyCode: string } } } }[] };
 };
 
 const money = (n: number) => "$" + Math.round(n).toLocaleString();
@@ -52,11 +56,11 @@ export default async function FinancePage({
   const [bkRes, shopRes, ppRes, peRes] = await Promise.all([
     supabase
       .from("cremation_bookings")
-      .select("id, case_no, pet_name, owner_name, plan, status, service_date, amount, cost")
+      .select("id, case_no, pet_name, owner_name, plan, status, service_date, amount, cost, payment_amount, payment_status, paid_at, created_at")
       .order("service_date", { ascending: false, nullsFirst: false })
       .limit(500),
     shopifyGraphQL<OrdersResp>(
-      `{ orders(first: 250, query: "created_at:>=${since}") { edges { node { createdAt totalPriceSet { shopMoney { amount currencyCode } } } } } }`
+      `{ orders(first: 250, query: "created_at:>=${since}") { edges { node { createdAt customAttributes { key value } totalPriceSet { shopMoney { amount currencyCode } } } } } }`
     ).catch((e) => ({ __err: String(e) }) as unknown as OrdersResp),
     supabase.from("plan_prices").select("plan, price, cost"),
     supabase.from("project_entries").select("booking_id, kind, amount, entry_date"),
@@ -71,8 +75,11 @@ export default async function FinancePage({
   const shopErr = (shopRes as unknown as { __err?: string }).__err || "";
   const orders = shopErr ? [] : shopRes.orders.edges.map((e) => e.node);
 
+  // 產品銷售：只計「非火化」Shopify 訂單（火化訂單帶 payment_ref，歸入火化收入，避免重複計算）
   const productByMonth: Record<string, number> = {};
   for (const o of orders) {
+    const isCremation = (o.customAttributes || []).some((a) => a.key === "payment_ref" && a.value);
+    if (isCremation) continue;
     const mk = o.createdAt.slice(0, 7);
     productByMonth[mk] = (productByMonth[mk] || 0) + Number(o.totalPriceSet.shopMoney.amount);
   }
@@ -94,13 +101,11 @@ export default async function FinancePage({
   }[];
   const incByBooking: Record<string, number> = {};
   const expByBooking: Record<string, number> = {};
-  const incByMonth: Record<string, number> = {};
   const expByMonth: Record<string, number> = {};
   for (const e of entries) {
     const mk = (e.entry_date || "").slice(0, 7);
     if (e.kind === "income") {
       incByBooking[e.booking_id] = (incByBooking[e.booking_id] || 0) + (e.amount || 0);
-      if (mk) incByMonth[mk] = (incByMonth[mk] || 0) + (e.amount || 0);
     } else {
       expByBooking[e.booking_id] = (expByBooking[e.booking_id] || 0) + (e.amount || 0);
       if (mk) expByMonth[mk] = (expByMonth[mk] || 0) + (e.amount || 0);
@@ -116,8 +121,17 @@ export default async function FinancePage({
   const projIncome = inMonth.reduce((n, b) => n + effAmt(b), 0);
   const projCost = inMonth.reduce((n, b) => n + effCost(b), 0);
 
-  // 實際（專案明細，依 entry_date 月份）+ 產品銷售
-  const actIncome = incByMonth[selMonth] || 0;
+  // 火化收入（實際）：已付款預約，依 paid_at（無則 service_date / created_at）月份加總
+  const cremRevByMonth: Record<string, number> = {};
+  for (const b of bookings) {
+    if (b.payment_status !== "paid") continue;
+    const d = (b.paid_at || b.service_date || b.created_at || "").slice(0, 7);
+    if (!d) continue;
+    cremRevByMonth[d] = (cremRevByMonth[d] || 0) + (b.amount ?? b.payment_amount ?? effAmt(b));
+  }
+
+  // 實際：火化收入（已付款預約）+ 產品銷售（非火化訂單）+ 火化成本（專案明細支出）
+  const actIncome = cremRevByMonth[selMonth] || 0;
   const actCost = expByMonth[selMonth] || 0;
   const prodMonth = shopErr ? 0 : productByMonth[selMonth] || 0;
   const [selY, selM] = selMonth.split("-").map(Number);
@@ -184,7 +198,7 @@ export default async function FinancePage({
           </thead>
           <tbody>
             {months.map((m) => {
-              const inc = incByMonth[m.key] || 0;
+              const inc = cremRevByMonth[m.key] || 0;
               const cost = expByMonth[m.key] || 0;
               const prod = productByMonth[m.key] || 0;
               const profit = inc - cost + prod;

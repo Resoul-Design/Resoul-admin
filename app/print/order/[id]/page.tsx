@@ -66,39 +66,39 @@ export default async function OrderDocPage({
   const today = new Date(o.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
 
   return (
-    <div className="min-h-screen bg-white text-[#3b2f27] py-8 px-4 flex justify-center">
+    <div className="min-h-screen bg-white text-[#3b2f27] py-6 sm:py-8 px-3 sm:px-4 flex justify-center">
       <style>{`
         @media print { .no-print{display:none!important} html,body{background:#fff!important} }
         @page { margin: 10mm; }
       `}</style>
       <PrintButton />
 
-      <div className="w-full max-w-[820px] border border-[#cfc4b0] p-2">
-        <div className="border border-[#e6dccb] px-8 py-8">
-          <div className="flex items-start justify-between mb-8">
-            <div className="border border-[#cfc4b0] rounded-2xl px-6 py-3">
-              <div className="text-3xl tracking-[0.15em] text-[#6f6156]" style={{ fontFamily: "'Noto Serif TC',serif" }}>INVOICE</div>
+      <div className="w-full max-w-[820px] border border-[#cfc4b0] p-1.5 sm:p-2">
+        <div className="border border-[#e6dccb] px-4 sm:px-8 py-6 sm:py-8">
+          <div className="flex items-start justify-between gap-3 mb-6 sm:mb-8">
+            <div className="border border-[#cfc4b0] rounded-2xl px-4 sm:px-6 py-2.5 sm:py-3">
+              <div className="text-xl sm:text-3xl tracking-[0.15em] text-[#6f6156]" style={{ fontFamily: "'Noto Serif TC',serif" }}>INVOICE</div>
             </div>
-            <div className="text-right">
+            <div className="text-right shrink-0">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/resoul-wordmark.png" alt={COMPANY.name} className="h-12 w-auto inline-block" />
-              <div className="brand-slogan text-xs text-[#6f6156] mt-1">{COMPANY.tagline}</div>
+              <img src="/resoul-wordmark.png" alt={COMPANY.name} className="h-9 sm:h-12 w-auto inline-block" />
+              <div className="brand-slogan text-[10px] sm:text-xs text-[#6f6156] mt-1">{COMPANY.tagline}</div>
             </div>
           </div>
 
-          <div className="flex items-start justify-between gap-6 mb-8">
-            <div className="border border-[#cfc4b0] rounded-2xl px-5 py-4 text-sm min-w-[320px]">
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 sm:gap-6 mb-6 sm:mb-8">
+            <div className="border border-[#cfc4b0] rounded-2xl px-4 sm:px-5 py-4 text-sm w-full sm:min-w-[320px] sm:w-auto">
               <div className="grid grid-cols-[92px_1fr] gap-y-1">
                 <span className="text-[#6f6156]">Issued to:</span>
                 <span>{o.customer?.displayName || "—"}</span>
                 <span className="text-[#6f6156]">Email:</span>
-                <span>{o.customer?.email || "—"}</span>
+                <span className="break-all">{o.customer?.email || "—"}</span>
                 <span className="text-[#6f6156]">Phone number:</span>
                 <span>{o.customer?.phone || "—"}</span>
               </div>
             </div>
-            <div className="text-sm text-right whitespace-nowrap pt-2">
-              <div className="grid grid-cols-[auto_auto] gap-x-3 gap-y-1 justify-end">
+            <div className="text-sm text-left sm:text-right pt-1 sm:pt-2">
+              <div className="grid grid-cols-[auto_1fr] sm:grid-cols-[auto_auto] gap-x-3 gap-y-1 sm:justify-end">
                 <span className="text-[#6f6156]">Invoice No.:</span>
                 <span className="font-medium">{o.name}</span>
                 <span className="text-[#6f6156]">Date:</span>
@@ -107,7 +107,8 @@ export default async function OrderDocPage({
             </div>
           </div>
 
-          <table className="w-full text-sm mb-2">
+          <div className="overflow-x-auto -mx-1 sm:mx-0">
+          <table className="w-full text-sm mb-2 min-w-[480px]">
             <thead>
               <tr className="text-left text-[#6f6156] tracking-wide">
                 <th className="py-2 font-medium w-24">ITEM CODE</th>
@@ -132,13 +133,14 @@ export default async function OrderDocPage({
               })}
             </tbody>
           </table>
+          </div>
 
-          <div className="flex items-start justify-between gap-8 mt-16">
-            <div className="text-sm max-w-[46%]">
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-6 sm:gap-8 mt-10 sm:mt-16">
+            <div className="text-sm sm:max-w-[46%] order-2 sm:order-1">
               <div className="text-[#6f6156] tracking-wide mb-1">REMARKS</div>
               <div className="whitespace-pre-wrap"></div>
             </div>
-            <div className="text-sm w-[280px]">
+            <div className="text-sm w-full sm:w-[280px] order-1 sm:order-2">
               <div className="flex justify-between py-1">
                 <span className="text-[#6f6156]">SUBTOTAL</span>
                 <span className="tabular-nums">{money(subtotal)}</span>

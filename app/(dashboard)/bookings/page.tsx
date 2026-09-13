@@ -190,7 +190,7 @@ export default async function BookingsPage() {
         <div className="rounded-2xl border border-[var(--line)] bg-[var(--card)] overflow-x-auto">
           <table className="w-full text-sm min-w-[1040px]">
             <thead>
-              <tr className="bg-[var(--head)] text-left text-[var(--soft)]">
+              <tr className="bg-[var(--head)] text-left text-[var(--soft)] whitespace-nowrap">
                 <th className="px-4 py-3 font-medium">收到</th>
                 <th className="px-4 py-3 font-medium">發票編號</th>
                 <th className="px-4 py-3 font-medium">主人 · 電話 · 電郵 · 地點</th>
@@ -222,12 +222,10 @@ export default async function BookingsPage() {
                       <span className="text-[var(--faint)]">—</span>
                     )}
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3 whitespace-nowrap">
                     <div>{b.owner_name || "—"}</div>
-                    <div className="text-[var(--soft)] text-xs flex flex-wrap gap-x-2 gap-y-0.5 mt-0.5">
-                      {b.contact && <span>📞 {b.contact}</span>}
-                      {email && <span>📧 {email}</span>}
-                      {b.pickup_address && <span>📍 {b.pickup_address}</span>}
+                    <div className="text-[var(--soft)] text-xs mt-0.5">
+                      {[b.contact ? "📞 " + b.contact : "", email ? "📧 " + email : "", b.pickup_address ? "📍 " + b.pickup_address : ""].filter(Boolean).join("　·　") || "—"}
                     </div>
                   </td>
                   <td className="px-4 py-3">
@@ -260,15 +258,11 @@ export default async function BookingsPage() {
                     )}
                   </td>
                   <td className="px-4 py-3 whitespace-nowrap">
-                    <div>
-                      {b.service_date || "—"}
-                      {b.service_time && (
-                        <span className="text-[var(--soft)]"> {b.service_time.slice(0, 5)}</span>
-                      )}
-                    </div>
-                    {timePref && (
-                      <div className="text-[var(--soft)] text-xs mt-0.5">{timePref}</div>
+                    {b.service_date || "—"}
+                    {b.service_time && (
+                      <span className="text-[var(--soft)]"> {b.service_time.slice(0, 5)}</span>
                     )}
+                    {timePref && <span className="text-[var(--soft)]">　·　{timePref}</span>}
                   </td>
                   <td className="px-4 py-3">
                     <span
