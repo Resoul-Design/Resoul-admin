@@ -167,7 +167,7 @@ export default async function BookingsPage() {
       <h1 className="text-2xl font-semibold mb-6">預約火化記錄</h1>
 
       <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-        ⚠️ 測試期間：「💬 WhatsApp 客人」只會開啟預填草稿，<b>請勿㩒 send 發送任何訊息給客人</b>。正式啟用後可於程式移除此限制。
+        ⚠️ 測試期間：「💬 WhatsApp 客人」只會開啟預填訊息草稿，<b>請勿按下傳送鍵，或向客人發送任何訊息</b>。正式啟用後，可於程式中移除此限制。
       </div>
 
       {error && (
@@ -205,7 +205,7 @@ export default async function BookingsPage() {
                 <th className="px-4 py-3 font-medium">來源</th>
                 <th className="px-4 py-3 font-medium">付款</th>
                 <th className="px-4 py-3 font-medium">服務日期 · 希望時段</th>
-                <th className="px-4 py-3 font-medium">狀態</th>
+                <th className="px-4 py-3 font-medium min-w-[88px]">狀態</th>
                 <th className="px-4 py-3 font-medium text-right">操作</th>
               </tr>
             </thead>
@@ -269,10 +269,10 @@ export default async function BookingsPage() {
                     )}
                     {timePref && <span className="text-[var(--soft)]">　·　{timePref}</span>}
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3 whitespace-nowrap">
                     <span
                       className={
-                        "inline-block px-2 py-0.5 rounded-full text-xs " +
+                        "inline-block whitespace-nowrap px-2 py-0.5 rounded-full text-xs " +
                         badgeClass(b.status)
                       }
                     >

@@ -329,22 +329,20 @@ export default async function OverviewPage() {
           ) : (
             <div className="divide-y divide-[var(--line)]">
               {recentBookings.map((b, i) => (
-                <div key={i} className="flex items-center gap-3 py-2.5 text-sm">
-                  <span className="min-w-0">
-                    <span className="text-[var(--ink)]">{b.owner_name || "—"}</span>
-                    {b.pet_name && (
-                      <span className="text-[var(--soft)]">　·　{b.pet_name}</span>
-                    )}
+                <div key={i} className="grid grid-cols-[140px_120px_minmax(140px,1fr)_96px_64px] items-center gap-3 py-2.5 text-sm">
+                  <span className="truncate text-[var(--ink)]" title={b.owner_name || "—"}>
+                    {b.owner_name || "—"}
                   </span>
-                  {b.plan && (
-                    <span className="text-xs text-[var(--soft)] hidden sm:inline">
-                      {b.plan}
-                    </span>
-                  )}
-                  <span className="ml-auto text-xs px-2 py-0.5 rounded-full bg-[var(--cream)] text-[var(--soft)] whitespace-nowrap">
+                  <span className="truncate text-[var(--soft)]" title={b.pet_name || "—"}>
+                    {b.pet_name || "—"}
+                  </span>
+                  <span className="truncate text-xs text-[var(--soft)]" title={b.plan || "—"}>
+                    {b.plan || "—"}
+                  </span>
+                  <span className="justify-self-end text-xs px-2 py-0.5 rounded-full bg-[var(--cream)] text-[var(--soft)] whitespace-nowrap">
                     {statusLabel(b.status)}
                   </span>
-                  <span className="text-xs text-[var(--soft)] whitespace-nowrap w-16 text-right">
+                  <span className="text-xs text-[var(--soft)] whitespace-nowrap text-right tabular-nums">
                     {(b.service_date || b.created_at)?.slice(5, 10)}
                   </span>
                 </div>
