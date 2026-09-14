@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { shopifyGraphQL } from "@/lib/shopify";
 import { EditBookingButton, type BookingData } from "./_edit";
+import { WhatsAppButton } from "./_whatsapp";
 
 export const dynamic = "force-dynamic";
 
@@ -165,6 +166,10 @@ export default async function BookingsPage() {
     <div>
       <h1 className="text-2xl font-semibold mb-6">預約火化記錄</h1>
 
+      <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+        ⚠️ 測試期間：「💬 WhatsApp 客人」只會開啟預填草稿，<b>請勿㩒 send 發送任何訊息給客人</b>。正式啟用後可於程式移除此限制。
+      </div>
+
       {error && (
         <div className="mb-4 text-sm text-red-600">
           讀取失敗：{error.message}
@@ -282,6 +287,10 @@ export default async function BookingsPage() {
                       <a href={`/print/booking/${b.id}?type=quote`} target="_blank" className="text-xs text-[var(--gold)] hover:underline">報價單</a>
                       <a href={`/print/booking/${b.id}?type=invoice`} target="_blank" className="text-xs text-[var(--gold)] hover:underline">發票</a>
                       <a href={`/print/booking/${b.id}?type=receipt`} target="_blank" className="text-xs text-[var(--gold)] hover:underline">收據</a>
+                      <WhatsAppButton
+                        phone={b.contact}
+                        text={`你好，我哋係 RESOUL 🐾。已收到${b.pet_name || "毛孩"}嘅火化預約${invoiceNo ? "（編號 " + invoiceNo + "）" : ""}。想同你確認接送時間同安排，請問方便嗎？`}
+                      />
                       <EditBookingButton booking={b} />
                     </div>
                   </td>
