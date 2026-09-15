@@ -83,8 +83,8 @@ export default async function ProjectsPage() {
                   <tr key={b.id} className="border-t border-[var(--line)]">
                     <td className="px-4 py-3 whitespace-nowrap text-[var(--gold)]">{projNo}</td>
                     <td className="px-4 py-3">
-                      {b.pet_name || "—"}
-                      <span className="text-[var(--soft)]">{b.owner_name ? `　·　${b.owner_name}` : ""}</span>
+                      <span className="inline-block min-w-[6rem] align-top">{b.pet_name || "—"}</span>
+                      <span className="text-[var(--soft)]"><span className="text-[var(--faint)] mx-1.5">·</span>{b.owner_name || "—"}</span>
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
                       <span className="text-xs px-2 py-0.5 rounded-full bg-[var(--cream)] text-[var(--soft)]">

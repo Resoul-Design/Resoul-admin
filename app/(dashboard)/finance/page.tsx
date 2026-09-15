@@ -248,8 +248,8 @@ export default async function FinancePage({
                   <tr key={b.id} className="border-b border-[var(--line)] last:border-0">
                     <td className="py-2 pr-3 whitespace-nowrap text-[var(--gold)]">{b.case_no || "—"}</td>
                     <td className="py-2 pr-3">
-                      {b.pet_name || "—"}
-                      <span className="text-[var(--soft)]">{b.owner_name ? `　·　${b.owner_name}` : ""}</span>
+                      <span className="inline-block min-w-[6rem] align-top">{b.pet_name || "—"}</span>
+                      <span className="text-[var(--soft)]"><span className="text-[var(--faint)] mx-1.5">·</span>{b.owner_name || "—"}</span>
                     </td>
                     <td className="py-2 pr-3 whitespace-nowrap">{b.plan || "—"}</td>
                     <td className="py-2 pr-3 text-right tabular-nums">{money(inc)}</td>
