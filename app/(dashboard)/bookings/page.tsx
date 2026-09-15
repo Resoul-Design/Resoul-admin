@@ -135,7 +135,17 @@ const PAYMENT_SELECT =
   BASE_SELECT +
   ", payment_ref, payment_status, payment_amount, payment_currency, shopify_order_name, paid_at";
 
-export default async function BookingsPage() {
+function isVet(source?: string | null) {
+  return (source || "").indexOf("euthanasia") >= 0;
+}
+
+export default async function BookingsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ type?: string }>;
+}) {
+  const sp = await searchParams;
+  const type = sp?.type === "vet" || sp?.type === "cremation" ? sp.type : "all";
   const supabase = await createClient();
   let paymentColumnsReady = true;
   const primary = await supabase
@@ -162,12 +172,46 @@ export default async function BookingsPage() {
 
   const emailMap = paymentColumnsReady ? await emailByPaymentRef() : {};
 
+  const counts = {
+    all: bookings.length,
+    cremation: bookings.filter((b) => !isVet(b.source)).length,
+    vet: bookings.filter((b) => isVet(b.source)).length,
+  };
+  const shown =
+    type === "all"
+      ? bookings
+      : bookings.filter((b) => (type === "vet" ? isVet(b.source) : !isVet(b.source)));
+
+  const tabs: { key: string; label: string; n: number }[] = [
+    { key: "all", label: "全部", n: counts.all },
+    { key: "cremation", label: "火化預約", n: counts.cremation },
+    { key: "vet", label: "獸醫評估／安辭查詢", n: counts.vet },
+  ];
+
   return (
     <div>
       <h1 className="text-2xl font-semibold mb-6">預約火化記錄</h1>
 
       <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
         ⚠️ 測試期間：「💬 WhatsApp 客人」只會開啟預填訊息草稿，<b>請勿按下傳送鍵，或向客人發送任何訊息</b>。正式啟用後，可於程式中移除此限制。
+      </div>
+
+      <div className="mb-5 flex flex-wrap gap-2">
+        {tabs.map((t) => (
+          <a
+            key={t.key}
+            href={t.key === "all" ? "/bookings" : `/bookings?type=${t.key}`}
+            className={
+              "px-3 py-1.5 rounded-full text-sm border " +
+              (type === t.key
+                ? "bg-[var(--gold)] text-white border-[var(--gold)]"
+                : "bg-[var(--card)] text-[var(--soft)] border-[var(--line)] hover:text-[var(--ink)]")
+            }
+          >
+            {t.label}
+            <span className="ml-1 opacity-70">{t.n}</span>
+          </a>
+        ))}
       </div>
 
       {error && (
@@ -187,7 +231,7 @@ export default async function BookingsPage() {
         </div>
       )}
 
-      {bookings.length === 0 ? (
+      {shown.length === 0 ? (
         <div className="rounded-2xl border border-[var(--line)] bg-[var(--card)] p-10 text-center text-[var(--soft)]">
           暫無預約記錄。
         </div>
@@ -210,7 +254,7 @@ export default async function BookingsPage() {
               </tr>
             </thead>
             <tbody>
-              {bookings.map((b) => {
+              {shown.map((b) => {
                 const invoiceNo = b.shopify_order_name || b.case_no || "";
                 const email = b.payment_ref ? emailMap[b.payment_ref] : "";
                 const timePref = parseTimePref(b.notes);
