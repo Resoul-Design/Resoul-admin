@@ -15,7 +15,7 @@ function parseTimePref(notes?: string | null): string {
 
 // 產生「加入 Google Calendar」連結（預填日期、標題、客戶資料）
 function gcalUrl(
-  b: { service_date?: string | null; service_time?: string | null; pet_name?: string | null; owner_name?: string | null; contact?: string | null; plan?: string | null; pickup_address?: string | null; shopify_order_name?: string | null },
+  b: { service_date?: string | null; service_time?: string | null; pet_name?: string | null; owner_name?: string | null; contact?: string | null; plan?: string | null; pickup_address?: string | null; shopify_order_name?: string | null; source?: string | null },
   timePref: string,
   email: string
 ): string | null {
@@ -33,7 +33,8 @@ function gcalUrl(
     const end = `${nd.getFullYear()}${String(nd.getMonth() + 1).padStart(2, "0")}${String(nd.getDate()).padStart(2, "0")}`;
     dates = `${ymd}/${end}`;
   }
-  const title = `Resoul 火化預約 · ${b.pet_name || "毛孩"}`;
+  const kind = (b.source || "").includes("euthanasia") ? "獸醫評估／安辭查詢" : "火化預約";
+  const title = `Resoul ${kind} · ${b.pet_name || "毛孩"}`;
   const details = [
     `主人：${b.owner_name || "—"}`,
     `電話：${b.contact || "—"}`,
