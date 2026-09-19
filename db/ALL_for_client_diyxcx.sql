@@ -353,3 +353,33 @@ where b.cost is not null and b.cost > 0
     select 1 from public.project_entries pe
     where pe.booking_id = b.id and pe.kind = 'expense'
   );
+
+-- ===================== migration_product_orders.sql =====================
+
+create table if not exists public.product_orders (
+  shopify_order_id text primary key,
+  order_name text not null,
+  shopify_created_at timestamptz not null,
+  shopify_updated_at timestamptz,
+  customer_name text,
+  email text,
+  phone text,
+  phone_key text,
+  financial_status text,
+  fulfillment_status text,
+  total_amount numeric(12, 2) not null default 0,
+  currency text not null default 'HKD',
+  line_items jsonb not null default '[]'::jsonb,
+  cancelled_at timestamptz,
+  synced_at timestamptz not null default now()
+);
+
+create index if not exists product_orders_phone_idx
+  on public.product_orders (phone_key, shopify_created_at desc);
+create index if not exists product_orders_created_idx
+  on public.product_orders (shopify_created_at desc);
+
+alter table public.product_orders enable row level security;
+drop policy if exists "staff read product orders" on public.product_orders;
+create policy "staff read product orders" on public.product_orders
+  for select to authenticated using (public.is_staff());

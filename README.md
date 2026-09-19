@@ -13,7 +13,7 @@ Resoul 內部使用的後台，集中管理訂單、出貨倉存、預約火化�
 ## 資料來源（不重複造資料）
 | 模組 | 來源 | 說明 |
 |---|---|---|
-| 客戶訂單 | Shopify Admin API | 讀訂單、付款/履行狀態、篩選 |
+| 客戶訂單 | Supabase `product_orders` | Shopify webhook / 手動同步寫入，後台直接查閱 |
 | 倉存 · 出貨記錄 | Shopify Admin API | 庫存量、履行（fulfillment）狀態；額外備註存 Supabase |
 | 預約火化記錄 | Supabase `cremation_bookings` | 由 Google Sheet 搬入；狀態流程管理 |
 | 留言板記錄 | Supabase `posts` | 審核台：held→visible/hidden、危機留言優先 |
@@ -78,3 +78,16 @@ SHOPIFY_WEBHOOK_SECRET=              # 可選；留空時使用 SHOPIFY_API_SECR
 
 如只想分開執行 migration，可改為依次執行：
 `db/migration_public_booking.sql`、`db/migration_payment_tracking.sql`。
+
+## 產品訂單同步
+
+1. 在 Supabase SQL Editor 執行 `db/migration_product_orders.sql`。
+2. 在 Shopify Admin 建立以下 webhook，全部指向：
+   `https://resoul-admin-five.vercel.app/api/webhooks/shopify/orders-sync`
+   - `orders/create`
+   - `orders/updated`
+   - `orders/cancelled`
+3. 原有 `orders/paid` webhook 保留；產品付款時亦會同步到 `product_orders`。
+4. 部署後到「客戶訂單」按一次「同步 Shopify 訂單」，補回現有歷史訂單。
+
+火化付款單帶有 `payment_ref`，同步時會自動排除，避免同一筆收入同時計入火化及產品銷售。

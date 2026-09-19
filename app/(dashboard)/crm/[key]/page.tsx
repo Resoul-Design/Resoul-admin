@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { shopifyGraphQL } from "@/lib/shopify";
+import { phoneKey, type ProductOrderRow } from "@/lib/product-orders";
 
 export const dynamic = "force-dynamic";
 
@@ -35,21 +35,6 @@ type Booking = {
   notes: string | null;
   created_at: string;
 };
-
-type OrderNode = {
-  name: string;
-  createdAt: string;
-  displayFinancialStatus: string | null;
-  email: string | null;
-  phone: string | null;
-  customAttributes: { key: string; value: string }[];
-  customer: { phone: string | null; email: string | null } | null;
-  totalPriceSet: { shopMoney: { amount: string; currencyCode: string } };
-  lineItems: { edges: { node: { title: string; quantity: number } }[] };
-};
-
-// 電話比對：只取數字尾 8 位
-const phoneKey = (s?: string | null) => (s || "").replace(/\D/g, "").slice(-8);
 
 const FIN: Record<string, string> = {
   PAID: "已付款",
@@ -92,34 +77,18 @@ export default async function CustomerPage({
     .filter((b) => b.payment_status === "paid")
     .reduce((s, b) => s + eff(b), 0);
 
-  // 產品銷售：以電話對回非火化 Shopify 訂單（火化訂單帶 payment_ref，已歸入火化）
+  // 產品銷售：直接從 Supabase 同步表按電話尾 8 位配對。
   const custPhone = phoneKey(contact);
-  let productOrders: OrderNode[] = [];
+  let productOrders: ProductOrderRow[] = [];
   if (custPhone) {
-    try {
-      const d = await shopifyGraphQL<{ orders: { edges: { node: OrderNode }[] } }>(
-        `{ orders(first: 100, sortKey: CREATED_AT, reverse: true) {
-          edges { node {
-            name createdAt displayFinancialStatus email phone
-            customAttributes { key value }
-            customer { phone email }
-            totalPriceSet { shopMoney { amount currencyCode } }
-            lineItems(first: 10) { edges { node { title quantity } } }
-          } }
-        } }`
-      );
-      productOrders = d.orders.edges
-        .map((e) => e.node)
-        .filter((o) => !(o.customAttributes || []).some((a) => a.key === "payment_ref" && a.value))
-        .filter((o) => {
-          const ph = phoneKey(o.phone) || phoneKey(o.customer?.phone);
-          return ph && ph === custPhone;
-        });
-    } catch {
-      productOrders = [];
-    }
+    const { data: orderData } = await supabase
+      .from("product_orders")
+      .select("*")
+      .eq("phone_key", custPhone)
+      .order("shopify_created_at", { ascending: false });
+    productOrders = (orderData || []) as ProductOrderRow[];
   }
-  const productSpend = productOrders.reduce((s, o) => s + Number(o.totalPriceSet.shopMoney.amount), 0);
+  const productSpend = productOrders.reduce((sum, order) => sum + Number(order.total_amount), 0);
 
   const stat = (label: string, value: string) => (
     <div className="rounded-xl border border-[var(--line)] bg-[var(--card)] px-4 py-3">
@@ -216,17 +185,17 @@ export default async function CustomerPage({
             </thead>
             <tbody>
               {productOrders.map((o) => (
-                <tr key={o.name} className="border-t border-[var(--line)] align-top">
-                  <td className="px-4 py-3 whitespace-nowrap">{o.createdAt.slice(0, 10)}</td>
-                  <td className="px-4 py-3 whitespace-nowrap font-medium">{o.name}</td>
+                <tr key={o.shopify_order_id} className="border-t border-[var(--line)] align-top">
+                  <td className="px-4 py-3 whitespace-nowrap">{o.shopify_created_at.slice(0, 10)}</td>
+                  <td className="px-4 py-3 whitespace-nowrap font-medium">{o.order_name}</td>
                   <td className="px-4 py-3 text-[var(--soft)]">
-                    {o.lineItems.edges.map((l) => `${l.node.title}×${l.node.quantity}`).join("、") || "—"}
+                    {(o.line_items || []).map((item) => `${item.title}×${item.quantity}`).join("、") || "—"}
                   </td>
                   <td className="px-4 py-3 whitespace-nowrap">
-                    {FIN[o.displayFinancialStatus || ""] || o.displayFinancialStatus || "—"}
+                    {FIN[o.financial_status || ""] || o.financial_status || "—"}
                   </td>
                   <td className="px-4 py-3 text-right whitespace-nowrap tabular-nums">
-                    ${Number(o.totalPriceSet.shopMoney.amount).toLocaleString()}
+                    ${Number(o.total_amount).toLocaleString()}
                   </td>
                 </tr>
               ))}

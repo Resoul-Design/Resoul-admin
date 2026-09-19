@@ -1,43 +1,16 @@
-import crypto from "crypto";
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import {
+  isCremationWebhookOrder,
+  productOrderFromWebhook,
+  type ShopifyWebhookOrder,
+} from "@/lib/product-orders";
+import { verifyShopifyWebhook } from "@/lib/shopify-webhook";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-type ShopifyAttribute = {
-  name?: string;
-  key?: string;
-  value?: string;
-};
-
-type ShopifyOrderPaidPayload = {
-  id?: number | string;
-  admin_graphql_api_id?: string;
-  name?: string;
-  order_number?: number;
-  total_price?: string;
-  currency?: string;
-  processed_at?: string;
-  created_at?: string;
-  note_attributes?: ShopifyAttribute[];
-  line_items?: {
-    properties?: ShopifyAttribute[];
-  }[];
-};
-
-function timingSafeEqualText(a: string, b: string) {
-  const ab = Buffer.from(a);
-  const bb = Buffer.from(b);
-  return ab.length === bb.length && crypto.timingSafeEqual(ab, bb);
-}
-
-function verifyShopifyWebhook(rawBody: string, hmac: string | null) {
-  const secret = process.env.SHOPIFY_API_SECRET || process.env.SHOPIFY_WEBHOOK_SECRET || "";
-  if (!secret || !hmac) return false;
-  const digest = crypto.createHmac("sha256", secret).update(rawBody, "utf8").digest("base64");
-  return timingSafeEqualText(digest, hmac);
-}
+type ShopifyOrderPaidPayload = ShopifyWebhookOrder & { processed_at?: string };
 
 function findPaymentRef(order: ShopifyOrderPaidPayload) {
   const attrs = [
@@ -73,11 +46,18 @@ export async function POST(request: Request) {
 
   const paymentRef = findPaymentRef(order);
   if (!paymentRef) {
-    console.warn("[Resoul] Shopify paid webhook missing payment_ref", {
-      orderId: order.id,
-      orderName: order.name,
-    });
-    return NextResponse.json({ ok: true, matched: false }, { status: 202 });
+    if (isCremationWebhookOrder(order)) {
+      return NextResponse.json({ ok: true, matched: false }, { status: 202 });
+    }
+    const supabase = createAdminClient();
+    const { error } = await supabase
+      .from("product_orders")
+      .upsert(productOrderFromWebhook(order), { onConflict: "shopify_order_id" });
+    if (error) {
+      console.error("[Resoul] Paid product order sync failed", error);
+      return NextResponse.json({ error: "Supabase upsert failed" }, { status: 500 });
+    }
+    return NextResponse.json({ ok: true, matched: false, productOrder: true });
   }
 
   const supabase = createAdminClient();
