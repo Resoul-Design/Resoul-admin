@@ -1,7 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import type { ProductOrderRow } from "@/lib/product-orders";
 import { shopDomain } from "@/lib/shopify";
-import { orderLabel } from "@/lib/order-label";
 import { syncProductOrders } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -63,7 +62,7 @@ export default async function OrdersPage({ searchParams }: {
             </tr></thead>
             <tbody>{orders.map((order) => (
               <tr key={order.shopify_order_id} className="border-t border-[var(--line)] align-top">
-                <td className="px-4 py-3 font-medium">{orderLabel(order.order_name, "product")}</td>
+                <td className="px-4 py-3 font-medium">{order.order_name}</td>
                 <td className="px-4 py-3 whitespace-nowrap text-[var(--soft)]">{order.shopify_created_at.slice(0, 10)}</td>
                 <td className="break-words px-4 py-3">{order.customer_name || "—"}</td>
                 <td className="break-words px-4 py-3 text-[var(--soft)]">{itemsText(order)}</td>
@@ -83,7 +82,7 @@ export default async function OrdersPage({ searchParams }: {
 
       {orders.length > 0 && <div className="space-y-3 md:hidden">{orders.map((order) => (
         <div key={order.shopify_order_id} className="rounded-lg border border-[var(--line)] bg-[var(--card)] p-4">
-          <div className="flex items-center justify-between gap-2"><span className="font-medium">{orderLabel(order.order_name, "product")}</span><span className="text-xs text-[var(--soft)]">{order.shopify_created_at.slice(0, 10)}</span></div>
+          <div className="flex items-center justify-between gap-2"><span className="font-medium">{order.order_name}</span><span className="text-xs text-[var(--soft)]">{order.shopify_created_at.slice(0, 10)}</span></div>
           <div className="mt-1 text-sm">{order.customer_name || "—"}</div><div className="mt-1 break-words text-sm text-[var(--soft)]">{itemsText(order)}</div>
           <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
             <span className="rounded-full bg-[var(--cream)] px-2 py-0.5 text-[var(--soft)]">{FIN[order.financial_status || ""] || order.financial_status || "—"}</span>

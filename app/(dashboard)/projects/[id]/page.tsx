@@ -73,9 +73,9 @@ export default async function ProjectDetailPage({
   const showAutoIncome = manualIncome === 0 && paidIncome > 0;
   const income = manualIncome > 0 ? manualIncome : paidIncome;
   const net = income - expense;
-  const receiptNo = b.shopify_order_name
-    ? orderLabel(b.shopify_order_name, "cremation")
-    : b.case_no || b.payment_ref || "未編號";
+  // 專案編號：火化以 C 開頭（C-####）；單據編號：真實 Shopify 訂單 #RS-####
+  const projectNo = orderLabel(b.shopify_order_name || b.case_no, "cremation");
+  const receiptNo = b.shopify_order_name || b.payment_ref || "—";
   const autoIncomeDate = (b.paid_at || b.service_date || "").slice(0, 10);
 
   return (
@@ -83,7 +83,7 @@ export default async function ProjectDetailPage({
       <div className="flex items-center gap-2 mb-1 text-sm text-[var(--soft)]">
         <Link href="/projects" className="hover:underline">專案管理</Link>
         <span>›</span>
-        <span>{receiptNo}</span>
+        <span>{projectNo}</span>
       </div>
       <div className="flex flex-wrap items-center gap-3 mb-3">
         <h1 className="text-2xl font-semibold">{b.pet_name || "—"}</h1>
@@ -93,6 +93,7 @@ export default async function ProjectDetailPage({
       </div>
       <div className="mb-6 grid gap-x-8 gap-y-1.5 text-sm sm:grid-cols-2 lg:grid-cols-3">
         {[
+          { label: "專案編號", value: projectNo },
           { label: "單據編號", value: receiptNo },
           { label: "客人名稱", value: b.owner_name || "—" },
           { label: "寵物名稱", value: b.pet_name || "—" },
