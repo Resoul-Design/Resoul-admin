@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { shopifyGraphQL } from "@/lib/shopify";
-import { orderLabel } from "@/lib/order-label";
 
 export const dynamic = "force-dynamic";
 
@@ -101,26 +100,11 @@ export default async function FinancePage({
     amount: number;
     entry_date: string;
   }[];
-  const incByBooking: Record<string, number> = {};
-  const expByBooking: Record<string, number> = {};
   const expByMonth: Record<string, number> = {};
   for (const e of entries) {
     const mk = (e.entry_date || "").slice(0, 7);
-    if (e.kind === "income") {
-      incByBooking[e.booking_id] = (incByBooking[e.booking_id] || 0) + (e.amount || 0);
-    } else {
-      expByBooking[e.booking_id] = (expByBooking[e.booking_id] || 0) + (e.amount || 0);
-      if (mk) expByMonth[mk] = (expByMonth[mk] || 0) + (e.amount || 0);
-    }
+    if (e.kind === "expense" && mk) expByMonth[mk] = (expByMonth[mk] || 0) + (e.amount || 0);
   }
-  const expTotal = entries.filter((e) => e.kind === "expense").reduce((n, e) => n + (e.amount || 0), 0);
-  // 每筆專案收入：手動明細優先，否則自動計入已付款金額（與列表一致）
-  const projPaid = (b: Booking) => (b.payment_status === "paid" ? (b.amount ?? b.payment_amount ?? 0) : 0);
-  const projInc = (b: Booking) => {
-    const mi = incByBooking[b.id] || 0;
-    return mi > 0 ? mi : projPaid(b);
-  };
-  const incTotal = bookings.reduce((n, b) => n + projInc(b), 0);
 
   // 預計（未取消，按方案價，依 service_date 月份）
   const inMonth = bookings.filter(
@@ -224,55 +208,6 @@ export default async function FinancePage({
         </table>
       </div>
 
-      {/* 專案收支（由專案明細自動加總，不可人手修改） */}
-      <div className="rounded-2xl border border-[var(--line)] bg-[var(--card)] p-5 overflow-x-auto">
-        <div className="flex items-center justify-between mb-1">
-          <h2 className="text-base">專案收支</h2>
-          <Link href="/projects" className="text-xs text-[var(--gold)] hover:underline">管理明細 →</Link>
-        </div>
-        <p className="text-xs text-[var(--soft)] mb-3">
-          數字由「專案管理」的收支明細自動加總　·　收入 {money(incTotal)}　·　支出 {money(expTotal)}　·　淨額 {money(incTotal - expTotal)}
-        </p>
-        {bookings.length === 0 ? (
-          <p className="text-sm text-[var(--soft)] py-4 text-center">暫無預約記錄。</p>
-        ) : (
-          <table className="w-full text-sm min-w-[680px]">
-            <thead>
-              <tr className="text-left text-[var(--soft)] border-b border-[var(--line)]">
-                <th className="py-2 pr-3 font-medium">專案編號</th>
-                <th className="py-2 pr-3 font-medium">毛孩 / 主人</th>
-                <th className="py-2 pr-3 font-medium">方案</th>
-                <th className="py-2 pr-3 font-medium text-right">收入</th>
-                <th className="py-2 pr-3 font-medium text-right">支出</th>
-                <th className="py-2 pr-3 font-medium text-right">淨額</th>
-                <th className="py-2 font-medium text-right">明細</th>
-              </tr>
-            </thead>
-            <tbody>
-              {bookings.map((b) => {
-                const inc = projInc(b);
-                const exp = expByBooking[b.id] || 0;
-                return (
-                  <tr key={b.id} className="border-b border-[var(--line)] last:border-0">
-                    <td className="py-2 pr-3 whitespace-nowrap text-[var(--gold)]">{orderLabel(b.shopify_order_name || b.case_no, "cremation")}</td>
-                    <td className="py-2 pr-3">
-                      <span className="inline-block min-w-[6rem] align-top">{b.pet_name || "—"}</span>
-                      <span className="text-[var(--soft)]"><span className="text-[var(--faint)] mx-1.5">·</span>{b.owner_name || "—"}</span>
-                    </td>
-                    <td className="py-2 pr-3 whitespace-nowrap">{b.plan || "—"}</td>
-                    <td className="py-2 pr-3 text-right tabular-nums">{money(inc)}</td>
-                    <td className="py-2 pr-3 text-right tabular-nums text-[var(--soft)]">{money(exp)}</td>
-                    <td className="py-2 pr-3 text-right tabular-nums font-medium">{money(inc - exp)}</td>
-                    <td className="py-2 text-right">
-                      <Link href={`/projects/${b.id}`} className="text-xs text-[var(--gold)] hover:underline">明細 →</Link>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        )}
-      </div>
     </div>
   );
 }
