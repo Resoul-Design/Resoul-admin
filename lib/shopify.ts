@@ -1,4 +1,5 @@
 import crypto from "crypto";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 // OAuth 要求的權限（與 dev dashboard app 設定一致）
 export const SHOPIFY_SCOPES =
@@ -67,7 +68,15 @@ export async function shopifyGraphQL<T = unknown>(
   query: string,
   variables?: Record<string, unknown>
 ): Promise<T> {
-  const token = process.env.SHOPIFY_ADMIN_API_TOKEN;
+  let token = process.env.SHOPIFY_ADMIN_API_TOKEN;
+  if (!token && process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    const { data } = await createAdminClient()
+      .from("shopify_credentials")
+      .select("access_token")
+      .eq("id", "primary")
+      .maybeSingle();
+    token = data?.access_token;
+  }
   if (!token) throw new Error("缺少 SHOPIFY_ADMIN_API_TOKEN（請先完成 OAuth 授權）");
   const res = await fetch(
     `https://${shopDomain()}/admin/api/2026-07/graphql.json`,

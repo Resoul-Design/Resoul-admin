@@ -2,6 +2,17 @@ import { shopifyGraphQL } from "@/lib/shopify";
 
 export const dynamic = "force-dynamic";
 
+const articleText = (html: string | null) =>
+  (html || "（沒有內容）")
+    .replace(/<br\s*\/?\s*>/gi, "\n")
+    .replace(/<\/p>/gi, "\n\n")
+    .replace(/<[^>]*>/g, "")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .trim();
+
 type BlogsResp = {
   blogs: {
     edges: {
@@ -94,12 +105,9 @@ export default async function ArticlesPage() {
                       </span>
                     </summary>
                     <div className="px-4 pb-4 border-t border-[var(--line)] pt-3">
-                      <div
-                        className="article-body max-h-[420px] overflow-y-auto pr-1 [scrollbar-gutter:stable]"
-                        dangerouslySetInnerHTML={{
-                          __html: a.node.body || "（沒有內容）",
-                        }}
-                      />
+                      <div className="article-body max-h-[420px] overflow-y-auto whitespace-pre-wrap pr-1 [scrollbar-gutter:stable]">
+                        {articleText(a.node.body)}
+                      </div>
                     </div>
                   </details>
                 ))}
