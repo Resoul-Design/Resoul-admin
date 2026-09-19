@@ -8,6 +8,15 @@ const money = (n: number) => "$" + Math.round(n).toLocaleString();
 const inputCls =
   "px-3 py-2 rounded-lg border border-[var(--line)] bg-white outline-none focus:border-[var(--gold)] text-sm";
 
+const STATUS_LABEL: Record<string, string> = {
+  new: "新收到",
+  scheduled: "已排期",
+  pickup: "接送中",
+  cremating: "火化中",
+  completed: "已完成",
+  cancelled: "已取消",
+};
+
 type Entry = {
   id: string;
   kind: string;
@@ -58,6 +67,7 @@ export default async function ProjectDetailPage({
 
   const income = entries.filter((e) => e.kind === "income").reduce((n, e) => n + (e.amount || 0), 0);
   const expense = entries.filter((e) => e.kind === "expense").reduce((n, e) => n + (e.amount || 0), 0);
+  const net = income - expense;
 
   return (
     <div>
@@ -66,28 +76,38 @@ export default async function ProjectDetailPage({
         <span>›</span>
         <span>{b.case_no || "（未編號）"}</span>
       </div>
-      <h1 className="text-2xl font-semibold mb-1">
-        {b.pet_name || "—"}
-        <span className="text-base text-[var(--soft)] font-normal">
-          {b.owner_name ? `　·　${b.owner_name}` : ""}
+      <div className="flex flex-wrap items-center gap-3 mb-1">
+        <h1 className="text-2xl font-semibold">
+          {b.pet_name || "—"}
+          <span className="text-base text-[var(--soft)] font-normal">
+            {b.owner_name ? `　·　${b.owner_name}` : ""}
+          </span>
+        </h1>
+        <span className="text-xs px-2.5 py-1 rounded-full bg-[var(--cream)] text-[var(--soft)] tabular-nums">
+          {b.case_no || "未編號"}
         </span>
-      </h1>
+        <span className="text-xs px-2.5 py-1 rounded-full bg-[var(--cream)] text-[var(--gold-deep)] border border-[var(--line)]">
+          {STATUS_LABEL[b.status] || b.status}
+        </span>
+      </div>
       <p className="text-sm text-[var(--soft)] mb-6">
         {b.plan || ""}{b.service_date ? `　·　${b.service_date}` : ""}
       </p>
 
       {/* 收支小結 */}
       <div className="grid grid-cols-3 gap-3 sm:gap-4 mb-6">
-        {[
-          { label: "收入", value: money(income) },
-          { label: "支出", value: money(expense) },
-          { label: "淨額", value: money(income - expense) },
-        ].map((c) => (
-          <div key={c.label} className="rounded-2xl border border-[var(--line)] bg-[var(--card)] p-4">
-            <div className="text-xs text-[var(--soft)] mb-1">{c.label}</div>
-            <div className="text-xl sm:text-2xl font-semibold tabular-nums">{c.value}</div>
-          </div>
-        ))}
+        <div className="rounded-2xl border border-[var(--line)] border-l-4 border-l-green-500 bg-[var(--card)] p-4">
+          <div className="text-xs text-[var(--soft)] mb-1">收入 Income</div>
+          <div className="text-xl sm:text-2xl font-semibold tabular-nums text-green-700">{money(income)}</div>
+        </div>
+        <div className="rounded-2xl border border-[var(--line)] border-l-4 border-l-amber-500 bg-[var(--card)] p-4">
+          <div className="text-xs text-[var(--soft)] mb-1">支出 Expense</div>
+          <div className="text-xl sm:text-2xl font-semibold tabular-nums text-amber-700">{money(expense)}</div>
+        </div>
+        <div className={"rounded-2xl border border-[var(--line)] border-l-4 bg-[var(--card)] p-4 " + (net >= 0 ? "border-l-[var(--gold)]" : "border-l-red-500")}>
+          <div className="text-xs text-[var(--soft)] mb-1">淨額 Net</div>
+          <div className={"text-xl sm:text-2xl font-semibold tabular-nums " + (net >= 0 ? "text-[var(--ink)]" : "text-red-700")}>{money(net)}</div>
+        </div>
       </div>
 
       {/* 新增明細 */}
@@ -152,7 +172,9 @@ export default async function ProjectDetailPage({
                     </span>
                   </td>
                   <td className="px-4 py-3">{e.description}</td>
-                  <td className="px-4 py-3 text-right tabular-nums">{money(e.amount)}</td>
+                  <td className={"px-4 py-3 text-right tabular-nums font-medium " + (e.kind === "income" ? "text-green-700" : "text-amber-700")}>
+                    {(e.kind === "income" ? "+" : "−") + money(e.amount)}
+                  </td>
                   <td className="px-4 py-3">
                     {e.file_path && urlMap[e.id] ? (
                       <a href={urlMap[e.id]} target="_blank" className="text-xs text-[var(--gold)] hover:underline">下載</a>
@@ -170,6 +192,13 @@ export default async function ProjectDetailPage({
                 </tr>
               ))}
             </tbody>
+            <tfoot>
+              <tr className="border-t-2 border-[var(--line)] bg-[var(--head)] font-semibold">
+                <td className="px-4 py-3" colSpan={3}>淨額 Net（收入 − 支出）</td>
+                <td className={"px-4 py-3 text-right tabular-nums " + (net >= 0 ? "text-[var(--ink)]" : "text-red-700")}>{money(net)}</td>
+                <td className="px-4 py-3" colSpan={2}></td>
+              </tr>
+            </tfoot>
           </table>
         </div>
       )}

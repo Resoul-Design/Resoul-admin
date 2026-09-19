@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import type { ProductOrderRow } from "@/lib/product-orders";
+import { shopDomain } from "@/lib/shopify";
 import { syncProductOrders } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -24,6 +25,12 @@ export default async function OrdersPage({ searchParams }: {
   const orders = (data || []) as ProductOrderRow[];
   const itemsText = (order: ProductOrderRow) =>
     (order.line_items || []).map((item) => `${item.title}×${item.quantity}`).join("、") || "—";
+  const orderId = (order: ProductOrderRow) => order.shopify_order_id.split("/").pop() || "";
+  const whatsappUrl = (order: ProductOrderRow) => {
+    const phone = (order.phone || "").replace(/\D/g, "");
+    return phone ? `https://wa.me/${phone.startsWith("852") ? phone : `852${phone}`}?text=${encodeURIComponent(`你好 ${order.customer_name || ""}，關於你的 Resoul 訂單 ${order.order_name}：`)}` : null;
+  };
+  const editUrl = (order: ProductOrderRow) => `https://${shopDomain()}/admin/orders/${orderId(order)}`;
 
   return (
     <div>
@@ -51,7 +58,7 @@ export default async function OrdersPage({ searchParams }: {
               <th className="w-[9%] px-4 py-3 font-medium">訂單</th><th className="w-[11%] px-4 py-3 font-medium">日期</th>
               <th className="w-[14%] px-4 py-3 font-medium">客戶</th><th className="px-4 py-3 font-medium">內容</th>
               <th className="w-[9%] px-4 py-3 font-medium">付款</th><th className="w-[9%] px-4 py-3 font-medium">出貨</th>
-              <th className="w-[13%] px-4 py-3 text-right font-medium">金額</th><th className="w-[8%] px-4 py-3 text-right font-medium">文件</th>
+              <th className="w-[11%] px-4 py-3 text-right font-medium">金額</th><th className="w-[26%] px-4 py-3 text-right font-medium">操作</th>
             </tr></thead>
             <tbody>{orders.map((order) => (
               <tr key={order.shopify_order_id} className="border-t border-[var(--line)] align-top">
@@ -62,7 +69,11 @@ export default async function OrdersPage({ searchParams }: {
                 <td className="px-4 py-3">{FIN[order.financial_status || ""] || order.financial_status || "—"}</td>
                 <td className="px-4 py-3">{FUL[order.fulfillment_status || ""] || order.fulfillment_status || "—"}</td>
                 <td className="px-4 py-3 text-right whitespace-nowrap">${Number(order.total_amount).toLocaleString()} {order.currency}</td>
-                <td className="px-4 py-3 text-right"><a href={`/print/order/${order.shopify_order_id.split("/").pop()}`} target="_blank" className="text-xs text-[var(--gold)] hover:underline">發票</a></td>
+                <td className="px-4 py-3"><div className="flex flex-wrap justify-end gap-2">
+                  <a href={`/print/order/${orderId(order)}`} target="_blank" className="rounded-md border border-[var(--line)] px-2.5 py-1.5 text-xs text-[var(--gold)] hover:bg-[var(--cream)]">收據</a>
+                  {whatsappUrl(order) && <a href={whatsappUrl(order)!} target="_blank" rel="noopener noreferrer" className="rounded-md border border-green-300 px-2.5 py-1.5 text-xs text-green-700 hover:bg-green-50">WhatsApp 客人</a>}
+                  <a href={editUrl(order)} target="_blank" rel="noopener noreferrer" className="rounded-md border border-[var(--line)] px-2.5 py-1.5 text-xs text-[var(--ink)] hover:bg-[var(--cream)]">編輯</a>
+                </div></td>
               </tr>
             ))}</tbody>
           </table>
@@ -77,6 +88,11 @@ export default async function OrdersPage({ searchParams }: {
             <span className="rounded-full bg-[var(--cream)] px-2 py-0.5 text-[var(--soft)]">{FIN[order.financial_status || ""] || order.financial_status || "—"}</span>
             <span className="rounded-full bg-[var(--cream)] px-2 py-0.5 text-[var(--soft)]">{FUL[order.fulfillment_status || ""] || order.fulfillment_status || "—"}</span>
             <span className="ml-auto font-medium">${Number(order.total_amount).toLocaleString()} {order.currency}</span>
+          </div>
+          <div className="mt-3 flex flex-wrap gap-2 border-t border-[var(--line)] pt-3">
+            <a href={`/print/order/${orderId(order)}`} target="_blank" className="rounded-md border border-[var(--line)] px-3 py-2 text-xs text-[var(--gold)]">收據</a>
+            {whatsappUrl(order) && <a href={whatsappUrl(order)!} target="_blank" rel="noopener noreferrer" className="rounded-md border border-green-300 px-3 py-2 text-xs text-green-700">WhatsApp 客人</a>}
+            <a href={editUrl(order)} target="_blank" rel="noopener noreferrer" className="rounded-md border border-[var(--line)] px-3 py-2 text-xs">編輯</a>
           </div>
         </div>
       ))}</div>}

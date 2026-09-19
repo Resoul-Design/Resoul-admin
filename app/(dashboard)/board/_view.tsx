@@ -10,6 +10,16 @@ type Post = {
   image_path: string | null;
   status: string;
   crisis_flag: boolean;
+  pet_name: string | null;
+  years: string | null;
+  one_line: string | null;
+  visibility: string | null;
+};
+
+const VIS_LABEL: Record<string, string> = {
+  public: "公開",
+  link: "只限連結",
+  private: "私人保存",
 };
 
 const STATUS_LABEL: Record<string, string> = {
@@ -124,18 +134,36 @@ export async function BoardView({
                 )}
               </div>
 
+              {(p.pet_name || p.years) && (
+                <div className="text-sm font-semibold mb-0.5">
+                  {p.pet_name || "毛孩"}
+                  {p.years ? <span className="font-normal text-[var(--soft)]">　{p.years}</span> : null}
+                </div>
+              )}
+              {p.one_line && (
+                <div className="text-sm italic text-[var(--soft)] mb-1">「{p.one_line}」</div>
+              )}
+
               <div className="text-sm mb-1">
                 <span className="text-[var(--soft)]">{p.name || "匿名"}：</span>
                 <span className="whitespace-pre-wrap">{p.body}</span>
               </div>
 
+              {p.visibility && (
+                <div className="text-xs text-[var(--soft)] mt-1">
+                  私隱：{VIS_LABEL[p.visibility] || p.visibility}
+                </div>
+              )}
+
               {p.image_path && (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={IMG_BASE + p.image_path}
-                  alt="留言相片"
-                  className="mt-2 max-h-40 rounded-lg border border-[var(--line)]"
-                />
+                <a href={IMG_BASE + p.image_path} target="_blank" rel="noopener noreferrer" className="inline-block">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={IMG_BASE + p.image_path}
+                    alt="留言相片"
+                    className="mt-2 max-h-64 rounded-lg border border-[var(--line)] hover:opacity-90 transition"
+                  />
+                </a>
               )}
 
               <div className="flex gap-2 mt-3">

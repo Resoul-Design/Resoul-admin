@@ -32,9 +32,19 @@ type Booking = {
   amount: number | null;
   payment_amount: number | null;
   payment_status: string | null;
+  payment_ref: string | null;
+  shopify_order_name: string | null;
   notes: string | null;
   created_at: string;
 };
+
+// 單據編號：優先 Shopify 訂單號，其次付款參考碼，最後由備註抽取 Ref
+function receiptNo(b: Booking): string {
+  if (b.shopify_order_name) return b.shopify_order_name;
+  if (b.payment_ref) return b.payment_ref;
+  const m = (b.notes || "").match(/Ref[:：]\s*(RS-[A-Za-z0-9-]+)/i);
+  return m ? m[1] : "—";
+}
 
 const FIN: Record<string, string> = {
   PAID: "已付款",
@@ -57,7 +67,7 @@ export default async function CustomerPage({
   const { data } = await supabase
     .from("cremation_bookings")
     .select(
-      "id, owner_name, contact, pet_name, pet_type, plan, status, service_date, service_time, amount, payment_amount, payment_status, notes, created_at"
+      "id, owner_name, contact, pet_name, pet_type, plan, status, service_date, service_time, amount, payment_amount, payment_status, payment_ref, shopify_order_name, notes, created_at"
     )
     .order("created_at", { ascending: false })
     .limit(1000);
@@ -132,6 +142,7 @@ export default async function CustomerPage({
             <thead>
               <tr className="bg-[var(--head)] text-left text-[var(--soft)] whitespace-nowrap">
                 <th className="px-4 py-3 font-medium">日期</th>
+                <th className="px-4 py-3 font-medium">單據編號</th>
                 <th className="px-4 py-3 font-medium">毛孩</th>
                 <th className="px-4 py-3 font-medium">方案</th>
                 <th className="px-4 py-3 font-medium">狀態</th>
@@ -143,6 +154,7 @@ export default async function CustomerPage({
               {bookings.map((b) => (
                 <tr key={b.id} className="border-t border-[var(--line)] whitespace-nowrap">
                   <td className="px-4 py-3">{b.service_date || b.created_at.slice(0, 10)}</td>
+                  <td className="px-4 py-3 font-medium tabular-nums">{receiptNo(b)}</td>
                   <td className="px-4 py-3">{b.pet_name || "—"}</td>
                   <td className="px-4 py-3">{b.plan || "—"}</td>
                   <td className="px-4 py-3">
