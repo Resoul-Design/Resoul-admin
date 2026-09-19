@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { phoneKey, type ProductOrderRow } from "@/lib/product-orders";
+import { orderLabel } from "@/lib/order-label";
 
 export const dynamic = "force-dynamic";
 
@@ -40,7 +41,7 @@ type Booking = {
 
 // 單據編號：優先 Shopify 訂單號，其次付款參考碼，最後由備註抽取 Ref
 function receiptNo(b: Booking): string {
-  if (b.shopify_order_name) return b.shopify_order_name;
+  if (b.shopify_order_name) return orderLabel(b.shopify_order_name, "cremation");
   if (b.payment_ref) return b.payment_ref;
   const m = (b.notes || "").match(/Ref[:：]\s*(RS-[A-Za-z0-9-]+)/i);
   return m ? m[1] : "—";
@@ -199,7 +200,7 @@ export default async function CustomerPage({
               {productOrders.map((o) => (
                 <tr key={o.shopify_order_id} className="border-t border-[var(--line)] align-top">
                   <td className="px-4 py-3 whitespace-nowrap">{o.shopify_created_at.slice(0, 10)}</td>
-                  <td className="px-4 py-3 whitespace-nowrap font-medium">{o.order_name}</td>
+                  <td className="px-4 py-3 whitespace-nowrap font-medium">{orderLabel(o.order_name, "product")}</td>
                   <td className="px-4 py-3 text-[var(--soft)]">
                     {(o.line_items || []).map((item) => `${item.title}×${item.quantity}`).join("、") || "—"}
                   </td>

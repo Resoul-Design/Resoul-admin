@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { orderLabel } from "@/lib/order-label";
 
 export const dynamic = "force-dynamic";
 
@@ -78,7 +79,7 @@ export default async function ProjectsPage() {
                 const paid = b.payment_status === "paid" ? (b.amount ?? b.payment_amount ?? 0) : 0;
                 const income = a.income > 0 ? a.income : paid;
                 const net = income - a.expense;
-                const projNo = b.shopify_order_name || b.case_no || "—";
+                const projNo = orderLabel(b.shopify_order_name || b.case_no, "cremation");
                 return (
                   <tr key={b.id} className="border-t border-[var(--line)]">
                     <td className="px-4 py-3 whitespace-nowrap text-[var(--gold)]">{projNo}</td>

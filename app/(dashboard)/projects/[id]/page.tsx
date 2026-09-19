@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { addEntry, deleteEntry } from "../actions";
+import { orderLabel } from "@/lib/order-label";
 
 export const dynamic = "force-dynamic";
 
@@ -37,7 +38,7 @@ export default async function ProjectDetailPage({
   const [bkRes, peRes] = await Promise.all([
     supabase
       .from("cremation_bookings")
-      .select("id, case_no, pet_name, owner_name, plan, status, service_date")
+      .select("id, case_no, pet_name, owner_name, contact, plan, status, service_date, amount, payment_amount, payment_status, payment_ref, shopify_order_name, paid_at")
       .eq("id", id)
       .maybeSingle(),
     supabase
@@ -65,40 +66,53 @@ export default async function ProjectDetailPage({
     if (signed[i].data?.signedUrl) urlMap[e.id] = signed[i].data!.signedUrl;
   });
 
-  const income = entries.filter((e) => e.kind === "income").reduce((n, e) => n + (e.amount || 0), 0);
+  const manualIncome = entries.filter((e) => e.kind === "income").reduce((n, e) => n + (e.amount || 0), 0);
   const expense = entries.filter((e) => e.kind === "expense").reduce((n, e) => n + (e.amount || 0), 0);
+  // 客人已付款的金額自動計為收入（若已另有手動收入明細，則以手動為準，避免重複計算）
+  const paidIncome = b.payment_status === "paid" ? (b.amount ?? b.payment_amount ?? 0) : 0;
+  const showAutoIncome = manualIncome === 0 && paidIncome > 0;
+  const income = manualIncome > 0 ? manualIncome : paidIncome;
   const net = income - expense;
+  const receiptNo = b.shopify_order_name
+    ? orderLabel(b.shopify_order_name, "cremation")
+    : b.case_no || b.payment_ref || "未編號";
+  const autoIncomeDate = (b.paid_at || b.service_date || "").slice(0, 10);
 
   return (
     <div>
       <div className="flex items-center gap-2 mb-1 text-sm text-[var(--soft)]">
         <Link href="/projects" className="hover:underline">專案管理</Link>
         <span>›</span>
-        <span>{b.case_no || "（未編號）"}</span>
+        <span>{receiptNo}</span>
       </div>
-      <div className="flex flex-wrap items-center gap-3 mb-1">
-        <h1 className="text-2xl font-semibold">
-          {b.pet_name || "—"}
-          <span className="text-base text-[var(--soft)] font-normal">
-            {b.owner_name ? `　·　${b.owner_name}` : ""}
-          </span>
-        </h1>
-        <span className="text-xs px-2.5 py-1 rounded-full bg-[var(--cream)] text-[var(--soft)] tabular-nums">
-          {b.case_no || "未編號"}
-        </span>
+      <div className="flex flex-wrap items-center gap-3 mb-3">
+        <h1 className="text-2xl font-semibold">{b.pet_name || "—"}</h1>
         <span className="text-xs px-2.5 py-1 rounded-full bg-[var(--cream)] text-[var(--gold-deep)] border border-[var(--line)]">
           {STATUS_LABEL[b.status] || b.status}
         </span>
       </div>
-      <p className="text-sm text-[var(--soft)] mb-6">
-        {b.plan || ""}{b.service_date ? `　·　${b.service_date}` : ""}
-      </p>
+      <div className="mb-6 grid gap-x-8 gap-y-1.5 text-sm sm:grid-cols-2 lg:grid-cols-3">
+        {[
+          { label: "單據編號", value: receiptNo },
+          { label: "客人名稱", value: b.owner_name || "—" },
+          { label: "寵物名稱", value: b.pet_name || "—" },
+          { label: "聯絡電話", value: b.contact || "—" },
+          { label: "方案", value: b.plan || "—" },
+          { label: "服務日期", value: b.service_date || "—" },
+        ].map((f) => (
+          <div key={f.label} className="flex gap-2">
+            <span className="text-[var(--soft)] shrink-0">{f.label}：</span>
+            <span className="text-[var(--ink)] break-words">{f.value}</span>
+          </div>
+        ))}
+      </div>
 
       {/* 收支小結 */}
       <div className="grid grid-cols-3 gap-3 sm:gap-4 mb-6">
         <div className="rounded-2xl border border-[var(--line)] border-l-4 border-l-green-500 bg-[var(--card)] p-4">
           <div className="text-xs text-[var(--soft)] mb-1">收入 Income</div>
           <div className="text-xl sm:text-2xl font-semibold tabular-nums text-green-700">{money(income)}</div>
+          {showAutoIncome && <div className="text-[11px] text-[var(--soft)] mt-1">已付款自動計入</div>}
         </div>
         <div className="rounded-2xl border border-[var(--line)] border-l-4 border-l-amber-500 bg-[var(--card)] p-4">
           <div className="text-xs text-[var(--soft)] mb-1">支出 Expense</div>
@@ -145,7 +159,7 @@ export default async function ProjectDetailPage({
       </details>
 
       {/* 明細列表 */}
-      {entries.length === 0 ? (
+      {entries.length === 0 && !showAutoIncome ? (
         <div className="rounded-2xl border border-[var(--line)] bg-[var(--card)] p-10 text-center text-[var(--soft)]">
           暫無收支明細。
         </div>
@@ -163,6 +177,18 @@ export default async function ProjectDetailPage({
               </tr>
             </thead>
             <tbody>
+              {showAutoIncome && (
+                <tr className="border-t border-[var(--line)] bg-green-50/40">
+                  <td className="px-4 py-3 whitespace-nowrap text-[var(--soft)]">{autoIncomeDate || "—"}</td>
+                  <td className="px-4 py-3">
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-800">收入</span>
+                  </td>
+                  <td className="px-4 py-3">火化服務（已付款）<span className="text-xs text-[var(--soft)]">　· 系統自動</span></td>
+                  <td className="px-4 py-3 text-right tabular-nums font-medium text-green-700">{"+" + money(paidIncome)}</td>
+                  <td className="px-4 py-3"><span className="text-[var(--faint)]">—</span></td>
+                  <td className="px-4 py-3 text-right text-xs text-[var(--faint)]">自動</td>
+                </tr>
+              )}
               {entries.map((e) => (
                 <tr key={e.id} className="border-t border-[var(--line)]">
                   <td className="px-4 py-3 whitespace-nowrap text-[var(--soft)]">{e.entry_date}</td>

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { shopifyGraphQL } from "@/lib/shopify";
+import { orderLabel } from "@/lib/order-label";
 
 export const dynamic = "force-dynamic";
 
@@ -34,6 +35,7 @@ type Booking = {
   payment_status: string | null;
   paid_at: string | null;
   created_at: string;
+  shopify_order_name: string | null;
 };
 type OrdersResp = {
   orders: { edges: { node: { createdAt: string; customAttributes: { key: string; value: string }[]; totalPriceSet: { shopMoney: { amount: string; currencyCode: string } } } }[] };
@@ -56,7 +58,7 @@ export default async function FinancePage({
   const [bkRes, shopRes, ppRes, peRes] = await Promise.all([
     supabase
       .from("cremation_bookings")
-      .select("id, case_no, pet_name, owner_name, plan, status, service_date, amount, cost, payment_amount, payment_status, paid_at, created_at")
+      .select("id, case_no, pet_name, owner_name, plan, status, service_date, amount, cost, payment_amount, payment_status, paid_at, created_at, shopify_order_name")
       .order("service_date", { ascending: false, nullsFirst: false })
       .limit(500),
     shopifyGraphQL<OrdersResp>(
@@ -111,8 +113,14 @@ export default async function FinancePage({
       if (mk) expByMonth[mk] = (expByMonth[mk] || 0) + (e.amount || 0);
     }
   }
-  const incTotal = entries.filter((e) => e.kind === "income").reduce((n, e) => n + (e.amount || 0), 0);
   const expTotal = entries.filter((e) => e.kind === "expense").reduce((n, e) => n + (e.amount || 0), 0);
+  // 每筆專案收入：手動明細優先，否則自動計入已付款金額（與列表一致）
+  const projPaid = (b: Booking) => (b.payment_status === "paid" ? (b.amount ?? b.payment_amount ?? 0) : 0);
+  const projInc = (b: Booking) => {
+    const mi = incByBooking[b.id] || 0;
+    return mi > 0 ? mi : projPaid(b);
+  };
+  const incTotal = bookings.reduce((n, b) => n + projInc(b), 0);
 
   // 預計（未取消，按方案價，依 service_date 月份）
   const inMonth = bookings.filter(
@@ -242,11 +250,11 @@ export default async function FinancePage({
             </thead>
             <tbody>
               {bookings.map((b) => {
-                const inc = incByBooking[b.id] || 0;
+                const inc = projInc(b);
                 const exp = expByBooking[b.id] || 0;
                 return (
                   <tr key={b.id} className="border-b border-[var(--line)] last:border-0">
-                    <td className="py-2 pr-3 whitespace-nowrap text-[var(--gold)]">{b.case_no || "—"}</td>
+                    <td className="py-2 pr-3 whitespace-nowrap text-[var(--gold)]">{orderLabel(b.shopify_order_name || b.case_no, "cremation")}</td>
                     <td className="py-2 pr-3">
                       <span className="inline-block min-w-[6rem] align-top">{b.pet_name || "—"}</span>
                       <span className="text-[var(--soft)]"><span className="text-[var(--faint)] mx-1.5">·</span>{b.owner_name || "—"}</span>
