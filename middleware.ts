@@ -10,7 +10,8 @@ export async function middleware(request: NextRequest) {
   const isPublic =
     path.startsWith("/login") ||
     path.startsWith("/auth") ||
-    path.startsWith("/api/shopify");
+    path.startsWith("/api/shopify") ||
+    path.startsWith("/api/webhooks/shopify");
 
   const SB_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const SB_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
