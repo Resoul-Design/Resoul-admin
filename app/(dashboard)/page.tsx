@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { shopifyGraphQL } from "@/lib/shopify";
+import { getOrdersSinceCached, getProductsCountCached } from "@/lib/revenue";
 import { getStaff } from "@/lib/auth";
 import { Clock } from "./_clock";
 
@@ -25,18 +25,6 @@ function lastSixMonths() {
   }
   return months;
 }
-
-type OrdersResp = {
-  orders: {
-    edges: {
-      node: {
-        createdAt: string;
-        totalPriceSet: { shopMoney: { amount: string; currencyCode: string } };
-      };
-    }[];
-  };
-};
-type CountResp = { productsCount: { count: number } };
 
 const BOOKING_STATUS: { key: string; label: string; color: string }[] = [
   { key: "new", label: "新收到", color: "#c8a86b" },
@@ -122,78 +110,66 @@ export default async function OverviewPage() {
   const supabase = await createClient();
   const months = lastSixMonths();
   const since = months[0].key + "-01";
+  const curKey = months[5].key;
+  const today = todayStr();
+  const monthStart = curKey + "-01";
 
-  const [heldPosts, heldListRes, bookingsRes, shopRes, countRes, peRes] =
-    await Promise.all([
+  // 輕量查詢：狀態分佈用聚合 count（不拉全部資料）；列表只取最近 6 筆
+  const statusCountsP = Promise.all(
+    BOOKING_STATUS.map((s) =>
+      supabase.from("cremation_bookings").select("id", { count: "exact", head: true }).eq("status", s.key)
+    )
+  );
+  const [
+    [heldPosts, heldListRes, recentRes, todayRes, incomeRes, ordersRes, productsCount],
+    statusCounts,
+  ] = await Promise.all([
+    Promise.all([
       supabase.from("posts").select("*", { count: "exact", head: true }).eq("status", "held"),
-      supabase
-        .from("posts")
-        .select("name, body, crisis_flag, context, created_at")
-        .eq("status", "held")
-        .order("created_at", { ascending: false })
-        .limit(4),
-      supabase
-        .from("cremation_bookings")
-        .select("owner_name, pet_name, plan, status, service_date, amount, created_at")
-        .order("created_at", { ascending: false })
-        .limit(1000),
-      shopifyGraphQL<OrdersResp>(
-        `{ orders(first: 250, query: "created_at:>=${since}") {
-           edges { node { createdAt totalPriceSet { shopMoney { amount currencyCode } } } }
-        } }`
-      ).catch((e) => ({ __err: String(e) }) as unknown as OrdersResp),
-      shopifyGraphQL<CountResp>(`{ productsCount { count } }`).catch(
-        () => ({ productsCount: { count: 0 } }) as CountResp
-      ),
-      supabase.from("project_entries").select("kind, amount, entry_date"),
-    ]);
-  const projEntries = (peRes.data ?? []) as {
-    kind: string;
-    amount: number;
-    entry_date: string;
-  }[];
+      supabase.from("posts").select("name, body, crisis_flag, context, created_at").eq("status", "held").order("created_at", { ascending: false }).limit(4),
+      supabase.from("cremation_bookings").select("owner_name, pet_name, plan, status, service_date, created_at").order("created_at", { ascending: false }).limit(6),
+      supabase.from("cremation_bookings").select("id", { count: "exact", head: true }).eq("service_date", today),
+      supabase.from("project_entries").select("amount").eq("kind", "income").gte("entry_date", monthStart),
+      getOrdersSinceCached(since),
+      getProductsCountCached(),
+    ]),
+    statusCountsP,
+  ]);
 
-  const shopErr = (shopRes as unknown as { __err?: string }).__err || "";
-  const orders = shopErr ? [] : shopRes.orders.edges.map((e) => e.node);
-
+  // 訂單營業額（分頁抓取 + 5 分鐘快取）
+  const shopErr = ordersRes.ok ? "" : ordersRes.error || "error";
   const revByMonth: Record<string, number> = {};
   const cntByMonth: Record<string, number> = {};
   let currency = "HKD";
-  for (const o of orders) {
+  for (const o of ordersRes.rows) {
     const m = o.createdAt.slice(0, 7);
-    revByMonth[m] = (revByMonth[m] || 0) + Number(o.totalPriceSet.shopMoney.amount);
+    revByMonth[m] = (revByMonth[m] || 0) + o.amount;
     cntByMonth[m] = (cntByMonth[m] || 0) + 1;
-    currency = o.totalPriceSet.shopMoney.currencyCode || currency;
+    currency = o.currency || currency;
   }
-  const curKey = months[5].key;
   const thisMonthRevenue = revByMonth[curKey] || 0;
   const thisMonthOrders = cntByMonth[curKey] || 0;
   const maxRev = Math.max(1, ...months.map((m) => revByMonth[m.key] || 0));
 
-  const bookings = (bookingsRes.data ?? []) as {
+  // 狀態分佈與進行中／總數（由聚合 count 得出）
+  const bookingDist = BOOKING_STATUS.map((s, i) => ({ ...s, value: statusCounts[i].count ?? 0 }));
+  const totalBookings = bookingDist.reduce((n, s) => n + s.value, 0);
+  const activeCount = bookingDist
+    .filter((s) => s.key !== "completed" && s.key !== "cancelled")
+    .reduce((n, s) => n + s.value, 0);
+  const todayCount = todayRes.count ?? 0;
+
+  const cremThisMonth = ((incomeRes.data ?? []) as { amount: number }[]).reduce((n, e) => n + (e.amount || 0), 0);
+
+  const recentBookings = (recentRes.data ?? []) as {
     owner_name: string | null;
     pet_name: string | null;
     plan: string | null;
     status: string;
     service_date: string | null;
-    amount: number | null;
     created_at: string;
   }[];
-  const cremThisMonth = projEntries
-    .filter((e) => e.kind === "income" && (e.entry_date || "").startsWith(curKey))
-    .reduce((n, e) => n + (e.amount || 0), 0);
-  const today = todayStr();
-  const todayCount = bookings.filter((b) => b.service_date === today).length;
-  const activeCount = bookings.filter(
-    (b) => b.status !== "completed" && b.status !== "cancelled"
-  ).length;
-  const bookingDist = BOOKING_STATUS.map((s) => ({
-    ...s,
-    value: bookings.filter((b) => b.status === s.key).length,
-  }));
-  const recentBookings = bookings.slice(0, 6);
-  const statusLabel = (k: string) =>
-    BOOKING_STATUS.find((s) => s.key === k)?.label || k;
+  const statusLabel = (k: string) => BOOKING_STATUS.find((s) => s.key === k)?.label || k;
 
   const heldList = (heldListRes.data ?? []) as {
     name: string | null;
@@ -209,7 +185,7 @@ export default async function OverviewPage() {
     { icon: "✦", label: "進行中預約", value: activeCount },
     { icon: "📅", label: "今日預約", value: todayCount },
     { icon: "✎", label: "待審留言", value: heldPosts.count ?? 0, alert: (heldPosts.count ?? 0) > 0 },
-    { icon: "▦", label: "產品數", value: countRes.productsCount.count },
+    { icon: "▦", label: "產品數", value: productsCount },
   ];
 
   return (
@@ -252,10 +228,11 @@ export default async function OverviewPage() {
       <div className="grid lg:grid-cols-3 gap-4 mb-4">
         {/* 營業額 bar chart */}
         <div className="lg:col-span-2 rounded-2xl border border-[var(--line)] bg-[var(--card)] p-5">
-          <div className="flex items-baseline justify-between mb-4">
+          <div className="flex items-baseline justify-between mb-1">
             <h2 className="text-base">近 6 個月營業額</h2>
             <span className="text-xs text-[var(--soft)]">{currency}</span>
           </div>
+          <p className="mb-3 text-[11px] text-[var(--soft)]">Shopify 訂單金額，近 6 個月；數據每 5 分鐘更新。</p>
           {shopErr ? (
             <p className="text-sm text-[var(--soft)] py-10 text-center">
               未能讀取 Shopify 訂單（請確認此環境已設定 SHOPIFY_ADMIN_API_TOKEN）。
@@ -298,7 +275,7 @@ export default async function OverviewPage() {
           <div className="flex items-center gap-4">
             <Donut
               segments={bookingDist.map((s) => ({ value: s.value, color: s.color }))}
-              centerValue={bookings.length}
+              centerValue={totalBookings}
               centerLabel="總預約"
             />
             <div className="space-y-1.5 text-sm min-w-0">

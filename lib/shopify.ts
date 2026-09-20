@@ -94,3 +94,63 @@ export async function shopifyGraphQL<T = unknown>(
   if (json.errors) throw new Error(JSON.stringify(json.errors));
   return json.data as T;
 }
+
+export type OrderLite = {
+  createdAt: string;
+  amount: number;
+  currency: string;
+  isCremation: boolean;
+};
+
+type OrdersPageResp = {
+  orders: {
+    edges: {
+      cursor: string;
+      node: {
+        createdAt: string;
+        cancelledAt: string | null;
+        customAttributes: { key: string; value: string }[];
+        totalPriceSet: { shopMoney: { amount: string; currencyCode: string } };
+      };
+    }[];
+    pageInfo: { hasNextPage: boolean };
+  };
+};
+
+// 以游標分頁抓取指定日期起的所有訂單（避免 first:250 漏單）。
+// includeCancelled=false 時略過已取消訂單。最多抓 maxPages 頁作安全上限。
+export async function fetchOrdersSince(
+  sinceDate: string,
+  opts: { includeCancelled?: boolean; maxPages?: number } = {}
+): Promise<OrderLite[]> {
+  const maxPages = opts.maxPages ?? 40;
+  const rows: OrderLite[] = [];
+  let after: string | null = null;
+  let pages = 0;
+  const query = `query Orders($after: String) {
+    orders(first: 250, after: $after, sortKey: CREATED_AT, query: "created_at:>=${sinceDate}") {
+      edges { cursor node {
+        createdAt cancelledAt
+        customAttributes { key value }
+        totalPriceSet { shopMoney { amount currencyCode } }
+      } }
+      pageInfo { hasNextPage }
+    }
+  }`;
+  do {
+    const d: OrdersPageResp = await shopifyGraphQL<OrdersPageResp>(query, { after });
+    const edges = d.orders.edges;
+    for (const e of edges) {
+      if (!opts.includeCancelled && e.node.cancelledAt) continue;
+      rows.push({
+        createdAt: e.node.createdAt,
+        amount: Number(e.node.totalPriceSet.shopMoney.amount),
+        currency: e.node.totalPriceSet.shopMoney.currencyCode || "HKD",
+        isCremation: (e.node.customAttributes || []).some((a) => a.key === "payment_ref" && a.value),
+      });
+    }
+    after = d.orders.pageInfo.hasNextPage ? edges.at(-1)?.cursor || null : null;
+    pages++;
+  } while (after && pages < maxPages);
+  return rows;
+}

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { shopifyGraphQL } from "@/lib/shopify";
+import { getOrdersSinceCached } from "@/lib/revenue";
 
 export const dynamic = "force-dynamic";
 
@@ -36,10 +36,6 @@ type Booking = {
   created_at: string;
   shopify_order_name: string | null;
 };
-type OrdersResp = {
-  orders: { edges: { node: { createdAt: string; customAttributes: { key: string; value: string }[]; totalPriceSet: { shopMoney: { amount: string; currencyCode: string } } } }[] };
-};
-
 const money = (n: number) => "$" + Math.round(n).toLocaleString();
 
 export default async function FinancePage({
@@ -54,15 +50,13 @@ export default async function FinancePage({
   const since = shiftYm(curKey, -11) + "-01"; // 抓近 12 個月訂單，供月份選擇
   const selMonth = sp.fm && /^\d{4}-\d{2}$/.test(sp.fm) ? sp.fm : curKey;
 
-  const [bkRes, shopRes, ppRes, peRes] = await Promise.all([
+  const [bkRes, ordersRes, ppRes, peRes] = await Promise.all([
     supabase
       .from("cremation_bookings")
       .select("id, case_no, pet_name, owner_name, plan, status, service_date, amount, cost, payment_amount, payment_status, paid_at, created_at, shopify_order_name")
       .order("service_date", { ascending: false, nullsFirst: false })
       .limit(500),
-    shopifyGraphQL<OrdersResp>(
-      `{ orders(first: 250, query: "created_at:>=${since}") { edges { node { createdAt customAttributes { key value } totalPriceSet { shopMoney { amount currencyCode } } } } } }`
-    ).catch((e) => ({ __err: String(e) }) as unknown as OrdersResp),
+    getOrdersSinceCached(since),
     supabase.from("plan_prices").select("plan, price, cost"),
     supabase.from("project_entries").select("booking_id, kind, amount, entry_date"),
   ]);
@@ -73,16 +67,15 @@ export default async function FinancePage({
   );
 
   const bookings = (bkRes.data ?? []) as Booking[];
-  const shopErr = (shopRes as unknown as { __err?: string }).__err || "";
-  const orders = shopErr ? [] : shopRes.orders.edges.map((e) => e.node);
+  const shopErr = ordersRes.ok ? "" : ordersRes.error || "error";
+  const orders = ordersRes.rows;
 
   // 產品銷售：只計「非火化」Shopify 訂單（火化訂單帶 payment_ref，歸入火化收入，避免重複計算）
   const productByMonth: Record<string, number> = {};
   for (const o of orders) {
-    const isCremation = (o.customAttributes || []).some((a) => a.key === "payment_ref" && a.value);
-    if (isCremation) continue;
+    if (o.isCremation) continue;
     const mk = o.createdAt.slice(0, 7);
-    productByMonth[mk] = (productByMonth[mk] || 0) + Number(o.totalPriceSet.shopMoney.amount);
+    productByMonth[mk] = (productByMonth[mk] || 0) + o.amount;
   }
 
   // 有效收入/成本：手動填優先，否則套用方案定價；已取消不計
@@ -130,7 +123,8 @@ export default async function FinancePage({
 
   return (
     <div>
-      <h1 className="text-2xl font-semibold mb-6">財務管理</h1>
+      <h1 className="text-2xl font-semibold mb-1">財務管理</h1>
+      <p className="mb-6 text-xs text-[var(--soft)]">產品銷售取自 Shopify 訂單（近 12 個月，游標分頁抓取；數據每 5 分鐘更新）。火化收入取自已付款預約／專案明細。{shopErr ? "　⚠️ 暫時未能讀取 Shopify 訂單。" : ""}</p>
 
       {/* 月份選擇 */}
       <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
