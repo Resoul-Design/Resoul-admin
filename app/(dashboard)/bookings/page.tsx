@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { shopifyGraphQL } from "@/lib/shopify";
-import { EditBookingButton, type BookingData } from "./_edit";
-import { WhatsAppButton } from "./_whatsapp";
+import { type BookingData } from "./_edit";
+import { BookingsTable, type BookingRow } from "./_table";
 
 export const dynamic = "force-dynamic";
 
@@ -140,13 +140,7 @@ function isVet(source?: string | null) {
   return (source || "").indexOf("euthanasia") >= 0;
 }
 
-export default async function BookingsPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ type?: string }>;
-}) {
-  const sp = await searchParams;
-  const type = sp?.type === "vet" || sp?.type === "cremation" ? sp.type : "all";
+export default async function BookingsPage() {
   const supabase = await createClient();
   let paymentColumnsReady = true;
   const primary = await supabase
@@ -173,21 +167,43 @@ export default async function BookingsPage({
 
   const emailMap = paymentColumnsReady ? await emailByPaymentRef() : {};
 
-  const counts = {
-    all: bookings.length,
-    cremation: bookings.filter((b) => !isVet(b.source)).length,
-    vet: bookings.filter((b) => isVet(b.source)).length,
-  };
-  const shown =
-    type === "all"
-      ? bookings
-      : bookings.filter((b) => (type === "vet" ? isVet(b.source) : !isVet(b.source)));
-
-  const tabs: { key: string; label: string; n: number }[] = [
-    { key: "all", label: "全部", n: counts.all },
-    { key: "cremation", label: "火化預約", n: counts.cremation },
-    { key: "vet", label: "獸醫評估／安辭查詢", n: counts.vet },
-  ];
+  const tableRows: BookingRow[] = bookings.map((b) => {
+    const invoiceNo = b.shopify_order_name || b.case_no || "";
+    const email = (b.payment_ref ? emailMap[b.payment_ref] : "") || "";
+    const timePref = parseTimePref(b.notes);
+    const serviceLine = [
+      b.service_date || "",
+      b.service_time ? b.service_time.slice(0, 5) : "",
+      timePref ? "· " + timePref : "",
+    ].filter(Boolean).join(" ");
+    const vet = isVet(b.source);
+    return {
+      id: b.id,
+      created: b.created_at?.slice(0, 10) || "",
+      invoiceNo,
+      owner: b.owner_name || "",
+      contact: b.contact || "",
+      email,
+      address: b.pickup_address || "",
+      petName: b.pet_name || "",
+      petType: b.pet_type || "",
+      plan: b.plan || "",
+      amountText: b.payment_amount != null ? (b.payment_currency || "HKD") + " " + Number(b.payment_amount).toLocaleString() : "—",
+      sourceKey: vet ? "vet" : "cremation",
+      sourceLabel: sourceLabel(b.source),
+      statusKey: b.status,
+      statusLabel: STATUS_LABEL[b.status] || b.status,
+      statusClass: badgeClass(b.status),
+      paymentLabel: PAYMENT_LABEL[b.payment_status || "pending"] || b.payment_status || "待付款",
+      paymentClass: paymentBadgeClass(b.payment_status),
+      serviceDate: b.service_date || "",
+      serviceLine,
+      calUrl: gcalUrl(b, timePref, email),
+      waText: `你好，我哋係 RESOUL 🐾。已收到${b.pet_name || "毛孩"}嘅${vet ? "查詢" : "火化預約"}${invoiceNo ? "（編號 " + invoiceNo + "）" : ""}。想同你確認接送時間同安排，請問方便嗎？`,
+      search: [b.owner_name, b.contact, email, b.pet_name, invoiceNo, b.plan, b.pickup_address].filter(Boolean).join(" ").toLowerCase(),
+      booking: b,
+    };
+  });
 
   return (
     <div>
@@ -195,24 +211,6 @@ export default async function BookingsPage({
 
       <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
         ⚠️ 測試期間：「💬 WhatsApp 客人」只會開啟預填訊息草稿，<b>請勿按下傳送鍵，或向客人發送任何訊息</b>。正式啟用後，可於程式中移除此限制。
-      </div>
-
-      <div className="mb-5 flex flex-wrap gap-2">
-        {tabs.map((t) => (
-          <a
-            key={t.key}
-            href={t.key === "all" ? "/bookings" : `/bookings?type=${t.key}`}
-            className={
-              "px-3 py-1.5 rounded-full text-sm border " +
-              (type === t.key
-                ? "bg-[var(--gold)] text-white border-[var(--gold)]"
-                : "bg-[var(--card)] text-[var(--soft)] border-[var(--line)] hover:text-[var(--ink)]")
-            }
-          >
-            {t.label}
-            <span className="ml-1 opacity-70">{t.n}</span>
-          </a>
-        ))}
       </div>
 
       {error && (
@@ -232,119 +230,12 @@ export default async function BookingsPage({
         </div>
       )}
 
-      {shown.length === 0 ? (
+      {bookings.length === 0 ? (
         <div className="rounded-2xl border border-[var(--line)] bg-[var(--card)] p-10 text-center text-[var(--soft)]">
           暫無預約記錄。
         </div>
       ) : (
-        <div className="rounded-2xl border border-[var(--line)] bg-[var(--card)] overflow-x-auto">
-          <table className="w-full text-sm min-w-[1040px]">
-            <thead>
-              <tr className="bg-[var(--head)] text-left text-[var(--soft)] whitespace-nowrap">
-                <th className="px-4 py-3 font-medium">收到</th>
-                <th className="px-4 py-3 font-medium">發票編號</th>
-                <th className="px-4 py-3 font-medium">主人 · 電話 · 電郵 · 地點</th>
-                <th className="px-4 py-3 font-medium">毛孩</th>
-                <th className="px-4 py-3 font-medium">方案</th>
-                <th className="px-4 py-3 font-medium text-right">價錢</th>
-                <th className="px-4 py-3 font-medium">來源</th>
-                <th className="px-4 py-3 font-medium">付款</th>
-                <th className="px-4 py-3 font-medium">服務日期 · 希望時段</th>
-                <th className="px-4 py-3 font-medium min-w-[88px]">狀態</th>
-                <th className="px-4 py-3 font-medium text-right">操作</th>
-              </tr>
-            </thead>
-            <tbody>
-              {shown.map((b) => {
-                const invoiceNo = b.shopify_order_name || b.case_no || "";
-                const email = b.payment_ref ? emailMap[b.payment_ref] : "";
-                const timePref = parseTimePref(b.notes);
-                const calUrl = gcalUrl(b, timePref, email || "");
-                return (
-                <tr key={b.id} className="border-t border-[var(--line)] align-top">
-                  <td className="px-4 py-3 text-[var(--soft)] whitespace-nowrap">
-                    {b.created_at?.slice(0, 10)}
-                  </td>
-                  <td className="px-4 py-3 whitespace-nowrap">
-                    {invoiceNo ? (
-                      <span className="font-medium text-[var(--gold)]">{invoiceNo}</span>
-                    ) : (
-                      <span className="text-[var(--faint)]">—</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 whitespace-nowrap">
-                    <div>{b.owner_name || "—"}</div>
-                    <div className="text-[var(--soft)] text-xs mt-0.5">
-                      {[b.contact ? "📞 " + b.contact : "", email ? "📧 " + email : "", b.pickup_address ? "📍 " + b.pickup_address : ""].filter(Boolean).join("　·　") || "—"}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3">
-                    <div>{b.pet_name || "—"}</div>
-                    <div className="text-[var(--soft)] text-xs">{b.pet_type || ""}</div>
-                  </td>
-                  <td className="px-4 py-3 whitespace-nowrap">{b.plan || "—"}</td>
-                  <td className="px-4 py-3 whitespace-nowrap text-right tabular-nums">
-                    {b.payment_amount != null
-                      ? (b.payment_currency || "HKD") + " " + Number(b.payment_amount).toLocaleString()
-                      : "—"}
-                  </td>
-                  <td className="px-4 py-3 whitespace-nowrap">
-                    <span className="inline-block px-2 py-0.5 rounded-full text-xs bg-[var(--cream)] text-[var(--soft)]">
-                      {sourceLabel(b.source)}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 whitespace-nowrap">
-                    {paymentColumnsReady ? (
-                      <span
-                        className={
-                          "inline-block px-2 py-0.5 rounded-full text-xs " +
-                          paymentBadgeClass(b.payment_status)
-                        }
-                      >
-                        {PAYMENT_LABEL[b.payment_status || "pending"] || b.payment_status || "待付款"}
-                      </span>
-                    ) : (
-                      <span className="text-[var(--faint)] text-xs">待 migration</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 whitespace-nowrap">
-                    {b.service_date || "—"}
-                    {b.service_time && (
-                      <span className="text-[var(--soft)]"> {b.service_time.slice(0, 5)}</span>
-                    )}
-                    {timePref && <span className="text-[var(--soft)]">　·　{timePref}</span>}
-                  </td>
-                  <td className="px-4 py-3 whitespace-nowrap">
-                    <span
-                      className={
-                        "inline-block whitespace-nowrap px-2 py-0.5 rounded-full text-xs " +
-                        badgeClass(b.status)
-                      }
-                    >
-                      {STATUS_LABEL[b.status] || b.status}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-2 justify-end whitespace-nowrap">
-                      {calUrl && (
-                        <a href={calUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-[var(--gold)] hover:underline">📅 加入日曆</a>
-                      )}
-                      <a href={`/print/booking/${b.id}?type=quote`} target="_blank" className="text-xs text-[var(--gold)] hover:underline">報價單</a>
-                      <a href={`/print/booking/${b.id}?type=invoice`} target="_blank" className="text-xs text-[var(--gold)] hover:underline">發票</a>
-                      <a href={`/print/booking/${b.id}?type=receipt`} target="_blank" className="text-xs text-[var(--gold)] hover:underline">收據</a>
-                      <WhatsAppButton
-                        phone={b.contact}
-                        text={`你好，我哋係 RESOUL 🐾。已收到${b.pet_name || "毛孩"}嘅火化預約${invoiceNo ? "（編號 " + invoiceNo + "）" : ""}。想同你確認接送時間同安排，請問方便嗎？`}
-                      />
-                      <EditBookingButton booking={b} />
-                    </div>
-                  </td>
-                </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+        <BookingsTable rows={tableRows} paymentReady={paymentColumnsReady} />
       )}
     </div>
   );
