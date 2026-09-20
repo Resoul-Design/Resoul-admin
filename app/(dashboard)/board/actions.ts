@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { logAudit } from "@/lib/audit";
 
 const VALID = ["held", "visible", "hidden"];
 
@@ -18,6 +19,7 @@ export async function setPostStatus(formData: FormData) {
 
   const supabase = await createClient();
   await supabase.from("posts").update({ status }).eq("id", id);
+  await logAudit("set_post_status", "posts", id, status);
   revalidateBoards();
 }
 
@@ -27,5 +29,6 @@ export async function deletePost(formData: FormData) {
 
   const supabase = await createClient();
   await supabase.from("posts").delete().eq("id", id);
+  await logAudit("delete_post", "posts", id);
   revalidateBoards();
 }

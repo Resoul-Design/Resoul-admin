@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { nextCaseNo } from "@/lib/caseno";
+import { logAudit } from "@/lib/audit";
 
 const VALID = [
   "new",
@@ -61,5 +62,6 @@ export async function updateBooking(formData: FormData) {
   }
 
   await supabase.from("cremation_bookings").update(update).eq("id", id);
+  await logAudit("update_booking", "cremation_bookings", id, `狀態=${status}`);
   revalidate();
 }

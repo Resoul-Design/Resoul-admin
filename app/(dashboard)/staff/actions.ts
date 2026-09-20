@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getStaff } from "@/lib/auth";
 import { MODULES } from "@/lib/modules";
+import { logAudit } from "@/lib/audit";
 
 async function requireAdmin() {
   const s = await getStaff();
@@ -21,6 +22,7 @@ export async function updateStaffPermissions(formData: FormData) {
   );
   const supabase = await createClient();
   await supabase.from("staff").update({ permissions: perms }).eq("id", id);
+  await logAudit("update_permissions", "staff", id, perms.join(", "));
   revalidatePath("/staff");
 }
 
@@ -49,6 +51,7 @@ export async function createStaff(formData: FormData) {
     role,
     active: true,
   });
+  await logAudit("create_staff", "staff", data.user.id, `${email}｜${role}`);
   revalidatePath("/staff");
 }
 
@@ -60,6 +63,7 @@ export async function updateStaff(formData: FormData) {
   const active = formData.get("active") === "on";
   const supabase = await createClient();
   await supabase.from("staff").update({ role, active }).eq("id", id);
+  await logAudit("update_staff", "staff", id, `role=${role}｜active=${active}`);
   revalidatePath("/staff");
 }
 

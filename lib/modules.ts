@@ -16,6 +16,7 @@ export const MODULES: ModuleDef[] = [
   { key: "finance", label: "財務管理", href: "/finance" },
   { key: "crm", label: "客戶檔案", href: "/crm" },
   { key: "reports", label: "報表與匯出", href: "/reports" },
+  { key: "audit", label: "審計記錄", href: "/audit" },
 ];
 
 const BY_HREF = [...MODULES].sort((a, b) => b.href.length - a.href.length);

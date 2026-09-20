@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getStaff } from "@/lib/auth";
+import { logAudit } from "@/lib/audit";
 
 export async function addEntry(formData: FormData) {
   const me = await getStaff();
@@ -38,6 +39,7 @@ export async function addEntry(formData: FormData) {
   if (booking_id) row.booking_id = booking_id;
   else row.order_ref = order_ref;
   await supabase.from("project_entries").insert(row);
+  await logAudit("add_entry", "project_entries", booking_id || order_ref, `${kind} ${amount}｜${description}`);
 
   if (booking_id) revalidatePath(`/projects/${booking_id}`);
   if (order_ref) revalidatePath(`/projects/order/${order_ref.split("/").pop()}`);
@@ -63,6 +65,7 @@ export async function deleteEntry(formData: FormData) {
   if (data?.file_path) {
     await supabase.storage.from("project-files").remove([data.file_path]);
   }
+  await logAudit("delete_entry", "project_entries", id, booking_id || order_ref || null);
 
   if (booking_id) revalidatePath(`/projects/${booking_id}`);
   if (order_ref) revalidatePath(`/projects/order/${order_ref.split("/").pop()}`);
@@ -80,6 +83,7 @@ export async function deleteProject(formData: FormData) {
   // 先刪明細（若外鍵未設 cascade 亦安全），再刪預約本身
   await admin.from("project_entries").delete().eq("booking_id", id);
   await admin.from("cremation_bookings").delete().eq("id", id);
+  await logAudit("delete_project", "cremation_bookings", id);
   revalidatePath("/projects");
   revalidatePath("/finance");
   revalidatePath("/");
