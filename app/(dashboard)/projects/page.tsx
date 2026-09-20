@@ -1,11 +1,9 @@
-import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { orderLabel } from "@/lib/order-label";
 import type { ProductOrderRow } from "@/lib/product-orders";
+import { ProjectsTable } from "./_table";
 
 export const dynamic = "force-dynamic";
-
-const money = (n: number) => "$" + Math.round(n).toLocaleString();
 
 type Booking = {
   id: string;
@@ -44,6 +42,7 @@ type Row = {
   secondary: string;
   plan: string;
   status: string;
+  kind: "cremation" | "product";
   income: number;
   expense: number;
   date: string;
@@ -94,6 +93,7 @@ export default async function ProjectsPage() {
       secondary: b.owner_name || "—",
       plan: b.plan || "火化服務",
       status: cancelled ? "已取消" : refunded ? "已退款" : STATUS_LABEL[b.status] || b.status,
+      kind: "cremation",
       income,
       expense: a.expense,
       date: b.service_date || b.created_at?.slice(0, 10) || "",
@@ -115,6 +115,7 @@ export default async function ProjectsPage() {
       secondary: items || "產品訂單",
       plan: "紀念產品",
       status: cancelled ? "已取消" : FIN[o.financial_status || ""] || o.financial_status || "—",
+      kind: "product",
       income,
       expense: a.expense,
       date: o.shopify_created_at?.slice(0, 10) || "",
@@ -137,42 +138,7 @@ export default async function ProjectsPage() {
           暫無專案。預約火化記錄與產品訂單會成為專案。
         </div>
       ) : (
-        <div className="rounded-2xl border border-[var(--line)] bg-[var(--card)] overflow-x-auto">
-          <table className="w-full text-sm min-w-[880px]">
-            <thead>
-              <tr className="bg-[var(--head)] text-left text-[var(--soft)]">
-                <th className="px-4 py-3 font-medium">專案編號</th>
-                <th className="px-4 py-3 font-medium">名稱</th>
-                <th className="px-4 py-3 font-medium">主人／內容</th>
-                <th className="px-4 py-3 font-medium">類別</th>
-                <th className="px-4 py-3 font-medium">狀態</th>
-                <th className="px-4 py-3 font-medium text-right">收入</th>
-                <th className="px-4 py-3 font-medium text-right">支出</th>
-                <th className="px-4 py-3 font-medium text-right">淨額</th>
-                <th className="px-4 py-3 font-medium text-right">明細</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((r) => (
-                <tr key={r.key} className="border-t border-[var(--line)]">
-                  <td className="px-4 py-3 whitespace-nowrap text-[var(--gold)]">{r.projectNo}</td>
-                  <td className="px-4 py-3">{r.primary}</td>
-                  <td className="px-4 py-3 text-[var(--soft)]">{r.secondary}</td>
-                  <td className="px-4 py-3 whitespace-nowrap text-[var(--soft)]">{r.plan}</td>
-                  <td className="px-4 py-3 whitespace-nowrap">
-                    <span className="text-xs px-2 py-0.5 rounded-full bg-[var(--cream)] text-[var(--soft)]">{r.status}</span>
-                  </td>
-                  <td className="px-4 py-3 text-right tabular-nums">{money(r.income)}</td>
-                  <td className="px-4 py-3 text-right tabular-nums text-[var(--soft)]">{money(r.expense)}</td>
-                  <td className="px-4 py-3 text-right tabular-nums font-medium">{money(r.income - r.expense)}</td>
-                  <td className="px-4 py-3 text-right">
-                    <Link href={r.href} className="text-xs text-[var(--gold)] hover:underline">管理 →</Link>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <ProjectsTable rows={rows} />
       )}
     </div>
   );
