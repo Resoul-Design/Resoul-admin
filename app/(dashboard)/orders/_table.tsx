@@ -123,9 +123,11 @@ export function OrdersTable({ rows }: { rows: OrderRow[] }) {
               <td className="px-4 py-3">{r.fulLabel}</td>
               <td className="px-4 py-3 text-right whitespace-nowrap">{money(r.amount, r.currency)}</td>
               <td className="px-4 py-3"><div className="flex flex-wrap justify-end gap-2">
-                <a href={r.printHref} target="_blank" className="rounded-md border border-[var(--line)] px-2.5 py-1.5 text-xs text-[var(--gold)] hover:bg-[var(--cream)]">收據</a>
-                {r.whatsapp && <a href={r.whatsapp} target="_blank" rel="noopener noreferrer" className="rounded-md border border-green-300 px-2.5 py-1.5 text-xs text-green-700 hover:bg-green-50">WhatsApp 客人</a>}
-                <a href={r.editUrl} target="_blank" rel="noopener noreferrer" className="rounded-md border border-[var(--line)] px-2.5 py-1.5 text-xs text-[var(--ink)] hover:bg-[var(--cream)]">編輯</a>
+                {r.cancelled ? <span className="text-xs text-[var(--faint)]">已取消</span> : <>
+                  <a href={r.printHref} target="_blank" className="rounded-md border border-[var(--line)] px-2.5 py-1.5 text-xs text-[var(--gold)] hover:bg-[var(--cream)]">收據</a>
+                  {r.whatsapp && <a href={r.whatsapp} target="_blank" rel="noopener noreferrer" className="rounded-md border border-green-300 px-2.5 py-1.5 text-xs text-green-700 hover:bg-green-50">WhatsApp 客人</a>}
+                  <a href={r.editUrl} target="_blank" rel="noopener noreferrer" className="rounded-md border border-[var(--line)] px-2.5 py-1.5 text-xs text-[var(--ink)] hover:bg-[var(--cream)]">編輯</a>
+                </>}
               </div></td>
             </tr>
           ))}</tbody>
@@ -144,11 +146,13 @@ export function OrdersTable({ rows }: { rows: OrderRow[] }) {
             <span className="rounded-full bg-[var(--cream)] px-2 py-0.5 text-[var(--soft)]">{r.fulLabel}</span>
             <span className="ml-auto font-medium">{money(r.amount, r.currency)}</span>
           </div>
-          <div className="mt-3 flex flex-wrap gap-2 border-t border-[var(--line)] pt-3">
-            <a href={r.printHref} target="_blank" className="rounded-md border border-[var(--line)] px-3 py-2 text-xs text-[var(--gold)]">收據</a>
-            {r.whatsapp && <a href={r.whatsapp} target="_blank" rel="noopener noreferrer" className="rounded-md border border-green-300 px-3 py-2 text-xs text-green-700">WhatsApp 客人</a>}
-            <a href={r.editUrl} target="_blank" rel="noopener noreferrer" className="rounded-md border border-[var(--line)] px-3 py-2 text-xs">編輯</a>
-          </div>
+          {!r.cancelled && (
+            <div className="mt-3 flex flex-wrap gap-2 border-t border-[var(--line)] pt-3">
+              <a href={r.printHref} target="_blank" className="rounded-md border border-[var(--line)] px-3 py-2 text-xs text-[var(--gold)]">收據</a>
+              {r.whatsapp && <a href={r.whatsapp} target="_blank" rel="noopener noreferrer" className="rounded-md border border-green-300 px-3 py-2 text-xs text-green-700">WhatsApp 客人</a>}
+              <a href={r.editUrl} target="_blank" rel="noopener noreferrer" className="rounded-md border border-[var(--line)] px-3 py-2 text-xs">編輯</a>
+            </div>
+          )}
         </div>
       ))}</div>
 

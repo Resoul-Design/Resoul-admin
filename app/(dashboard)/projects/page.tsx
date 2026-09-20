@@ -81,8 +81,11 @@ export default async function ProjectsPage() {
   const rows: Row[] = [];
   for (const b of bookings) {
     const a = byBooking[b.id] || { income: 0, expense: 0 };
+    const cancelled = b.status === "cancelled";
+    const refunded = b.payment_status === "refunded";
     const paid = b.payment_status === "paid" ? (b.amount ?? b.payment_amount ?? 0) : 0;
-    const income = a.income > 0 ? a.income : paid;
+    // 已取消／已退款：收入不計
+    const income = cancelled || refunded ? 0 : a.income > 0 ? a.income : paid;
     rows.push({
       key: "b:" + b.id,
       href: `/projects/${b.id}`,
@@ -90,7 +93,7 @@ export default async function ProjectsPage() {
       primary: b.pet_name || "—",
       secondary: b.owner_name || "—",
       plan: b.plan || "火化服務",
-      status: STATUS_LABEL[b.status] || b.status,
+      status: cancelled ? "已取消" : refunded ? "已退款" : STATUS_LABEL[b.status] || b.status,
       income,
       expense: a.expense,
       date: b.service_date || b.created_at?.slice(0, 10) || "",
@@ -98,7 +101,11 @@ export default async function ProjectsPage() {
   }
   for (const o of productOrders) {
     const a = byOrder[o.shopify_order_id] || { income: 0, expense: 0 };
-    const income = a.income > 0 ? a.income : Number(o.total_amount || 0);
+    const fin = (o.financial_status || "").toLowerCase();
+    const cancelled = !!o.cancelled_at;
+    const refunded = fin === "refunded" || fin === "partially_refunded" || fin === "voided";
+    // 已取消／已退款：收入不計
+    const income = cancelled || refunded ? 0 : a.income > 0 ? a.income : Number(o.total_amount || 0);
     const items = (o.line_items || []).map((it) => `${it.title}×${it.quantity}`).join("、");
     rows.push({
       key: "o:" + o.shopify_order_id,
@@ -107,7 +114,7 @@ export default async function ProjectsPage() {
       primary: o.customer_name || "—",
       secondary: items || "產品訂單",
       plan: "紀念產品",
-      status: FIN[o.financial_status || ""] || o.financial_status || "—",
+      status: cancelled ? "已取消" : FIN[o.financial_status || ""] || o.financial_status || "—",
       income,
       expense: a.expense,
       date: o.shopify_created_at?.slice(0, 10) || "",
