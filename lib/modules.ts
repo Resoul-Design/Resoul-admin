@@ -17,6 +17,7 @@ export const MODULES: ModuleDef[] = [
   { key: "crm", label: "客戶檔案", href: "/crm" },
   { key: "reports", label: "報表與匯出", href: "/reports" },
   { key: "audit", label: "審計記錄", href: "/audit" },
+  { key: "sync", label: "同步狀態", href: "/sync" },
 ];
 
 const BY_HREF = [...MODULES].sort((a, b) => b.href.length - a.href.length);
