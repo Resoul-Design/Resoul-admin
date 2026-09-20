@@ -9,6 +9,7 @@ export async function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname;
   const isPublic =
     path.startsWith("/login") ||
+    path.startsWith("/reset") ||
     path.startsWith("/auth") ||
     path.startsWith("/api/webhooks/shopify");
 
@@ -58,6 +59,11 @@ export async function middleware(request: NextRequest) {
   if (!user && !isPublic) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
+    // 登入後回到原本頁面（deep-link）；只保留站內路徑
+    if (!path.startsWith("/api")) {
+      url.search = "";
+      url.searchParams.set("callbackUrl", path + (request.nextUrl.search || ""));
+    }
     return NextResponse.redirect(url);
   }
 
