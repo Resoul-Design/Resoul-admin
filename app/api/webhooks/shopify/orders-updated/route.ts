@@ -52,6 +52,12 @@ export async function POST(request: Request) {
   const isRefunded = fin === "refunded" || fin === "partially_refunded" || fin === "voided";
   const paymentRef = findPaymentRef(order);
 
+  // 略過殘缺 payload（例如 orders/delete 只帶 {id}），避免寫入空白訂單
+  const incomplete = !order.name && !(order.line_items && order.line_items.length);
+  if (incomplete) {
+    return NextResponse.json({ ok: true, skipped: "incomplete_payload" });
+  }
+
   // 產品訂單：同步最新狀態（包含取消／退款）
   if (!paymentRef) {
     if (isCremationWebhookOrder(order)) {
