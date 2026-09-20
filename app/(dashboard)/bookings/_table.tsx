@@ -148,8 +148,7 @@ export function BookingsTable({ rows, paymentReady }: { rows: BookingRow[]; paym
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2 justify-end whitespace-nowrap">
                       {r.calUrl && <a href={r.calUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-[var(--gold)] hover:underline">📅 加入日曆</a>}
-                      <a href={`/print/booking/${r.id}?type=receipt`} target="_blank" className="text-xs text-[var(--gold)] hover:underline">收據</a>
-                      {r.shopifyOrderUrl && <a href={r.shopifyOrderUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-[var(--gold)] hover:underline">Shopify 發票</a>}
+                      {r.shopifyOrderUrl && <a href={r.shopifyOrderUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-[var(--gold)] hover:underline">發票</a>}
                       <WhatsAppButton phone={r.contact} text={r.waText} />
                       <EditBookingButton booking={r.booking} />
                     </div>

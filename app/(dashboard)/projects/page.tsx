@@ -138,11 +138,12 @@ export default async function ProjectsPage() {
         </div>
       ) : (
         <div className="rounded-2xl border border-[var(--line)] bg-[var(--card)] overflow-x-auto">
-          <table className="w-full text-sm min-w-[760px]">
+          <table className="w-full text-sm min-w-[880px]">
             <thead>
               <tr className="bg-[var(--head)] text-left text-[var(--soft)]">
                 <th className="px-4 py-3 font-medium">專案編號</th>
                 <th className="px-4 py-3 font-medium">名稱</th>
+                <th className="px-4 py-3 font-medium">主人／內容</th>
                 <th className="px-4 py-3 font-medium">類別</th>
                 <th className="px-4 py-3 font-medium">狀態</th>
                 <th className="px-4 py-3 font-medium text-right">收入</th>
@@ -155,10 +156,8 @@ export default async function ProjectsPage() {
               {rows.map((r) => (
                 <tr key={r.key} className="border-t border-[var(--line)]">
                   <td className="px-4 py-3 whitespace-nowrap text-[var(--gold)]">{r.projectNo}</td>
-                  <td className="px-4 py-3">
-                    <span className="inline-block min-w-[6rem] align-top">{r.primary}</span>
-                    <span className="text-[var(--soft)]"><span className="text-[var(--faint)] mx-1.5">·</span>{r.secondary}</span>
-                  </td>
+                  <td className="px-4 py-3">{r.primary}</td>
+                  <td className="px-4 py-3 text-[var(--soft)]">{r.secondary}</td>
                   <td className="px-4 py-3 whitespace-nowrap text-[var(--soft)]">{r.plan}</td>
                   <td className="px-4 py-3 whitespace-nowrap">
                     <span className="text-xs px-2 py-0.5 rounded-full bg-[var(--cream)] text-[var(--soft)]">{r.status}</span>
