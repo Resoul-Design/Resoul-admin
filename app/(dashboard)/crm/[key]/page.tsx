@@ -137,7 +137,7 @@ export default async function CustomerPage({
           未有火化預約記錄。
         </div>
       ) : (
-        <div className="rounded-2xl border border-[var(--line)] bg-[var(--card)] overflow-x-auto mb-8">
+        <><div className="hidden md:block rounded-2xl border border-[var(--line)] bg-[var(--card)] overflow-x-auto mb-8">
           <table className="w-full text-sm min-w-[640px]">
             <thead>
               <tr className="bg-[var(--head)] text-left text-[var(--soft)] whitespace-nowrap">
@@ -173,6 +173,23 @@ export default async function CustomerPage({
             </tbody>
           </table>
         </div>
+        <div className="space-y-3 md:hidden mb-8">
+          {bookings.map((b) => (
+            <div key={b.id} className="rounded-2xl border border-[var(--line)] bg-[var(--card)] p-4">
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-medium tabular-nums text-[var(--gold)]">{receiptNo(b)}</span>
+                <span className="text-xs px-2 py-0.5 rounded-full bg-[var(--cream)] text-[var(--soft)]">{STATUS_LABEL[b.status] || b.status}</span>
+              </div>
+              <div className="mt-1 text-sm">{b.pet_name || "—"}　·　{b.plan || "—"}</div>
+              <div className="mt-2 flex items-center gap-3 text-xs">
+                <span className="text-[var(--soft)]">{b.service_date || b.created_at.slice(0, 10)}</span>
+                <span>{b.payment_status ? PAY_LABEL[b.payment_status] || b.payment_status : "—"}</span>
+                <span className="ml-auto font-medium tabular-nums">{eff(b) ? "$" + Math.round(eff(b)).toLocaleString() : "—"}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+        </>
       )}
 
       {/* 產品銷售記錄 */}
@@ -184,7 +201,7 @@ export default async function CustomerPage({
           未有以此電話配對到的產品訂單。
         </div>
       ) : (
-        <div className="rounded-2xl border border-[var(--line)] bg-[var(--card)] overflow-x-auto">
+        <><div className="hidden md:block rounded-2xl border border-[var(--line)] bg-[var(--card)] overflow-x-auto">
           <table className="w-full text-sm min-w-[640px]">
             <thead>
               <tr className="bg-[var(--head)] text-left text-[var(--soft)] whitespace-nowrap">
@@ -214,6 +231,22 @@ export default async function CustomerPage({
             </tbody>
           </table>
         </div>
+        <div className="space-y-3 md:hidden">
+          {productOrders.map((o) => (
+            <div key={o.shopify_order_id} className="rounded-2xl border border-[var(--line)] bg-[var(--card)] p-4">
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-medium">{o.order_name}</span>
+                <span className="ml-auto font-medium tabular-nums">${Number(o.total_amount).toLocaleString()}</span>
+              </div>
+              <div className="mt-1 text-sm text-[var(--soft)]">{(o.line_items || []).map((item) => `${item.title}×${item.quantity}`).join("、") || "—"}</div>
+              <div className="mt-2 flex items-center gap-3 text-xs">
+                <span className="text-[var(--soft)]">{o.shopify_created_at.slice(0, 10)}</span>
+                <span>{FIN[o.financial_status || ""] || o.financial_status || "—"}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+        </>
       )}
     </div>
   );

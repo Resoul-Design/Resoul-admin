@@ -68,7 +68,7 @@ export default async function CrmPage() {
           暫無客戶資料。
         </div>
       ) : (
-        <div className="rounded-2xl border border-[var(--line)] bg-[var(--card)] overflow-x-auto">
+        <><div className="hidden md:block rounded-2xl border border-[var(--line)] bg-[var(--card)] overflow-x-auto">
           <table className="w-full text-sm min-w-[640px]">
             <thead>
               <tr className="bg-[var(--head)] text-left text-[var(--soft)]">
@@ -114,6 +114,24 @@ export default async function CrmPage() {
             </tbody>
           </table>
         </div>
+
+        <div className="space-y-3 md:hidden">
+          {customers.map((c) => (
+            <Link key={c.key} href={`/crm/${encodeURIComponent(c.key)}`} className="block rounded-2xl border border-[var(--line)] bg-[var(--card)] p-4">
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-medium">{c.name}</span>
+                <span className="text-xs text-[var(--soft)]">{c.last}</span>
+              </div>
+              <div className="mt-0.5 text-xs text-[var(--soft)]">{c.contact || "—"}</div>
+              {[...c.pets].length > 0 && <div className="mt-1 text-sm">毛孩：{[...c.pets].join("、")}</div>}
+              <div className="mt-2 flex items-center gap-4 text-xs">
+                <span className="text-[var(--soft)]">預約 <span className="tabular-nums text-[var(--ink)]">{c.count}</span> 次</span>
+                <span className="ml-auto font-medium">累計 <span className="tabular-nums">${Math.round(c.spend).toLocaleString()}</span></span>
+              </div>
+            </Link>
+          ))}
+        </div>
+        </>
       )}
     </div>
   );

@@ -93,7 +93,7 @@ export function ProjectsTable({ rows }: { rows: ProjectRow[] }) {
       {shown.length === 0 ? (
         <div className="rounded-2xl border border-[var(--line)] bg-[var(--card)] p-10 text-center text-[var(--soft)]">沒有符合的專案。</div>
       ) : (
-        <div className="rounded-2xl border border-[var(--line)] bg-[var(--card)] overflow-x-auto">
+        <><div className="hidden md:block rounded-2xl border border-[var(--line)] bg-[var(--card)] overflow-x-auto">
           <table className="w-full text-sm min-w-[880px]">
             <thead>
               <tr className="bg-[var(--head)] text-left text-[var(--soft)]">
@@ -129,6 +129,25 @@ export function ProjectsTable({ rows }: { rows: ProjectRow[] }) {
             </tbody>
           </table>
         </div>
+
+        <div className="space-y-3 md:hidden">
+          {shown.map((r) => (
+            <Link key={r.key} href={r.href} className="block rounded-2xl border border-[var(--line)] bg-[var(--card)] p-4">
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-medium text-[var(--gold)]">{r.projectNo}</span>
+                <span className="text-xs px-2 py-0.5 rounded-full bg-[var(--cream)] text-[var(--soft)]">{r.status}</span>
+              </div>
+              <div className="mt-1 text-sm">{r.primary}{r.secondary ? `　·　${r.secondary}` : ""}</div>
+              <div className="mt-0.5 text-xs text-[var(--soft)]">{r.plan}</div>
+              <div className="mt-2 flex items-center gap-4 text-xs">
+                <span>收入 <span className="tabular-nums">{money(r.income)}</span></span>
+                <span className="text-[var(--soft)]">支出 <span className="tabular-nums">{money(r.expense)}</span></span>
+                <span className="ml-auto font-medium">淨額 <span className="tabular-nums">{money(r.income - r.expense)}</span></span>
+              </div>
+            </Link>
+          ))}
+        </div>
+        </>
       )}
 
       {pages > 1 && (

@@ -170,9 +170,9 @@ export default async function FinancePage({
       </div>
 
       {/* 每月收支 */}
-      <div className="rounded-2xl border border-[var(--line)] bg-[var(--card)] p-5 mb-6 overflow-x-auto">
+      <div className="rounded-2xl border border-[var(--line)] bg-[var(--card)] p-5 mb-6">
         <h2 className="text-base mb-3">近 6 個月收支</h2>
-        <table className="w-full text-sm min-w-[560px]">
+        <table className="hidden md:table w-full text-sm">
           <thead>
             <tr className="text-left text-[var(--soft)] border-b border-[var(--line)]">
               <th className="py-2 pr-3 font-medium">月份</th>
@@ -200,6 +200,28 @@ export default async function FinancePage({
             })}
           </tbody>
         </table>
+
+        <div className="space-y-2 md:hidden">
+          {months.map((m) => {
+            const inc = cremRevByMonth[m.key] || 0;
+            const cost = expByMonth[m.key] || 0;
+            const prod = productByMonth[m.key] || 0;
+            const profit = inc - cost + prod;
+            return (
+              <div key={m.key} className="rounded-xl border border-[var(--line)] p-3">
+                <div className="flex items-center justify-between">
+                  <span className="font-medium">{m.label}</span>
+                  <span className="tabular-nums font-medium">毛利 {money(profit)}</span>
+                </div>
+                <div className="mt-1 flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-[var(--soft)]">
+                  <span>火化收入 <span className="tabular-nums text-[var(--ink)]">{money(inc)}</span></span>
+                  <span>成本 <span className="tabular-nums">{money(cost)}</span></span>
+                  <span>產品 <span className="tabular-nums text-[var(--ink)]">{shopErr ? "—" : money(prod)}</span></span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
       </div>
 
     </div>

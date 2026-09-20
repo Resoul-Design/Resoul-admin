@@ -68,7 +68,7 @@ export default async function StaffPage() {
         </details>
       )}
 
-      <div className="rounded-2xl border border-[var(--line)] bg-[var(--card)] overflow-x-auto">
+      <div className="hidden md:block rounded-2xl border border-[var(--line)] bg-[var(--card)] overflow-x-auto">
         <table className="w-full text-sm min-w-[600px]">
           <thead>
             <tr className="bg-[var(--head)] text-left text-[var(--soft)]">
@@ -134,6 +134,36 @@ export default async function StaffPage() {
             ))}
           </tbody>
         </table>
+      </div>
+
+      <div className="space-y-3 md:hidden">
+        {staff.map((s) => (
+          <div key={s.id} className="rounded-2xl border border-[var(--line)] bg-[var(--card)] p-4">
+            <div className="flex items-center justify-between gap-2">
+              <span className="font-medium">{s.name || "—"}</span>
+              {isAdmin ? null : <span className={s.active ? "text-xs text-green-700" : "text-xs text-[var(--faint)]"}>{s.active ? "在職" : "停用"}</span>}
+            </div>
+            <div className="text-xs text-[var(--soft)]">{s.email}</div>
+            {isAdmin ? (
+              <>
+                <form action={updateStaff} id={`m-${s.id}`} className="mt-2 flex flex-wrap items-center gap-3 text-xs">
+                  <input type="hidden" name="id" value={s.id} />
+                  <select name="role" defaultValue={s.role} className="text-xs border border-[var(--line)] rounded-md px-2 py-1 bg-white">
+                    <option value="staff">員工</option>
+                    <option value="admin">管理員</option>
+                  </select>
+                  <label className="flex items-center gap-1.5"><input type="checkbox" name="active" defaultChecked={s.active} form={`m-${s.id}`} />在職</label>
+                </form>
+                <div className="mt-2 flex items-center gap-3">
+                  <PermsButton id={s.id} name={s.name || s.email} role={s.role} permissions={s.permissions || []} />
+                  <ConfirmSubmitButton form={`m-${s.id}`} message="確定更新此員工的角色／狀態？" className="text-xs px-3 py-1 rounded-md bg-[var(--gold)] text-white hover:opacity-90">儲存</ConfirmSubmitButton>
+                </div>
+              </>
+            ) : (
+              <div className="mt-1 text-sm">{s.role === "admin" ? "管理員" : "員工"}</div>
+            )}
+          </div>
+        ))}
       </div>
 
       {!isAdmin && (

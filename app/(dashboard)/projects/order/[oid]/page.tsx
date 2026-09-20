@@ -157,7 +157,7 @@ export default async function ProductProjectPage({
           暫無收支明細。
         </div>
       ) : (
-        <div className="rounded-2xl border border-[var(--line)] bg-[var(--card)] overflow-x-auto">
+        <><div className="hidden md:block rounded-2xl border border-[var(--line)] bg-[var(--card)] overflow-x-auto">
           <table className="w-full text-sm min-w-[640px]">
             <thead>
               <tr className="bg-[var(--head)] text-left text-[var(--soft)]">
@@ -218,6 +218,48 @@ export default async function ProductProjectPage({
             </tfoot>
           </table>
         </div>
+
+        <div className="space-y-3 md:hidden">
+          {showAutoIncome && (
+            <div className="rounded-2xl border border-[var(--line)] bg-green-50/40 p-4">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-800">收入 · 自動</span>
+                <span className="tabular-nums font-medium text-green-700">{"+" + money(paidIncome)}</span>
+              </div>
+              <div className="mt-1 text-sm">產品訂單（已付款）</div>
+              <div className="mt-0.5 text-xs text-[var(--soft)]">{o.shopify_created_at?.slice(0, 10) || "—"}</div>
+            </div>
+          )}
+          {entries.map((e) => (
+            <div key={e.id} className="rounded-2xl border border-[var(--line)] bg-[var(--card)] p-4">
+              <div className="flex items-center justify-between gap-2">
+                <span className={"text-xs px-2 py-0.5 rounded-full " + (e.kind === "income" ? "bg-green-100 text-green-800" : "bg-amber-100 text-amber-800")}>
+                  {e.kind === "income" ? "收入" : "支出"}
+                </span>
+                <span className={"tabular-nums font-medium " + (e.kind === "income" ? "text-green-700" : "text-amber-700")}>
+                  {(e.kind === "income" ? "+" : "−") + money(e.amount)}
+                </span>
+              </div>
+              <div className="mt-1 text-sm">{e.description}</div>
+              <div className="mt-2 flex items-center gap-3 text-xs">
+                <span className="text-[var(--soft)]">{e.entry_date}</span>
+                {e.file_path && urlMap[e.id] && (
+                  <a href={urlMap[e.id]} target="_blank" className="text-[var(--gold)] hover:underline">下載收據</a>
+                )}
+                <form action={deleteEntry} className="ml-auto">
+                  <input type="hidden" name="id" value={e.id} />
+                  <input type="hidden" name="order_ref" value={o.shopify_order_id} />
+                  <button className="text-red-600 hover:underline">刪除</button>
+                </form>
+              </div>
+            </div>
+          ))}
+          <div className="rounded-2xl border-2 border-[var(--line)] bg-[var(--head)] p-4 flex items-center justify-between font-semibold">
+            <span>淨額 Net</span>
+            <span className={"tabular-nums " + (net >= 0 ? "text-[var(--ink)]" : "text-red-700")}>{money(net)}</span>
+          </div>
+        </div>
+        </>
       )}
     </div>
   );

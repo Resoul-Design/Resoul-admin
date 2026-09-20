@@ -47,7 +47,7 @@ export default async function AuditPage() {
       {!error && logs.length === 0 ? (
         <div className="rounded-2xl border border-[var(--line)] bg-[var(--card)] p-10 text-center text-[var(--soft)]">暫無記錄。</div>
       ) : !error && (
-        <div className="rounded-2xl border border-[var(--line)] bg-[var(--card)] overflow-x-auto">
+        <><div className="hidden md:block rounded-2xl border border-[var(--line)] bg-[var(--card)] overflow-x-auto">
           <table className="w-full text-sm min-w-[760px]">
             <thead>
               <tr className="bg-[var(--head)] text-left text-[var(--soft)] whitespace-nowrap">
@@ -71,6 +71,19 @@ export default async function AuditPage() {
             </tbody>
           </table>
         </div>
+        <div className="space-y-2 md:hidden">
+          {logs.map((l) => (
+            <div key={l.id} className="rounded-2xl border border-[var(--line)] bg-[var(--card)] p-4">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-sm font-medium">{ACTION_LABEL[l.action] || l.action}</span>
+                <span className="text-xs text-[var(--soft)]">{l.created_at?.slice(0, 16).replace("T", " ")}</span>
+              </div>
+              <div className="mt-0.5 text-xs text-[var(--soft)]">{l.actor_email || "—"}　·　{l.entity || "—"}{l.entity_id ? ` · ${l.entity_id}` : ""}</div>
+              {l.detail && <div className="mt-1 text-sm break-words">{l.detail}</div>}
+            </div>
+          ))}
+        </div>
+        </>
       )}
     </div>
   );

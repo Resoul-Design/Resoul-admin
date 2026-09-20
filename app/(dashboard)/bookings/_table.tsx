@@ -112,7 +112,7 @@ export function BookingsTable({ rows, paymentReady }: { rows: BookingRow[]; paym
       {shown.length === 0 ? (
         <div className="rounded-2xl border border-[var(--line)] bg-[var(--card)] p-10 text-center text-[var(--soft)]">沒有符合的預約。</div>
       ) : (
-        <div className="rounded-2xl border border-[var(--line)] bg-[var(--card)] overflow-x-auto">
+        <><div className="hidden md:block rounded-2xl border border-[var(--line)] bg-[var(--card)] overflow-x-auto">
           <table className="w-full text-sm min-w-[860px]">
             <thead>
               <tr className="bg-[var(--head)] text-left text-[var(--soft)] whitespace-nowrap">
@@ -159,6 +159,31 @@ export function BookingsTable({ rows, paymentReady }: { rows: BookingRow[]; paym
             </tbody>
           </table>
         </div>
+
+        <div className="space-y-3 md:hidden">
+          {shown.map((r) => (
+            <div key={r.id} className="rounded-2xl border border-[var(--line)] bg-[var(--card)] p-4">
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-medium text-[var(--gold)]">{r.invoiceNo || "（未有編號）"}</span>
+                <span className={"px-2 py-0.5 rounded-full text-xs " + r.statusClass}>{r.statusLabel}</span>
+              </div>
+              <div className="mt-1 text-sm">{r.owner || "—"}　·　{r.petName || "—"}{r.petType ? `（${r.petType}）` : ""}</div>
+              <div className="mt-0.5 text-xs text-[var(--soft)]">{r.plan || "—"}{r.contact ? "　·　📞 " + r.contact : ""}</div>
+              <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+                <span>{r.serviceDateTime || "—"}{r.timePref ? "　·　" + r.timePref : ""}</span>
+                {paymentReady && <span className={"px-2 py-0.5 rounded-full " + r.paymentClass}>{r.paymentLabel}</span>}
+                <span className="ml-auto font-medium tabular-nums">{r.amountText}</span>
+              </div>
+              <div className="mt-3 flex flex-wrap items-center gap-3 border-t border-[var(--line)] pt-3">
+                {r.calUrl && <a href={r.calUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-[var(--gold)] hover:underline">📅 加入日曆</a>}
+                {r.shopifyOrderUrl && <a href={r.shopifyOrderUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-[var(--gold)] hover:underline">發票</a>}
+                <WhatsAppButton phone={r.contact} text={r.waText} />
+                <EditBookingButton booking={r.booking} />
+              </div>
+            </div>
+          ))}
+        </div>
+        </>
       )}
 
       {pages > 1 && (
