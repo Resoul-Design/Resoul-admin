@@ -10,31 +10,46 @@ const BSTATUS: { key: string; label: string }[] = [
   { key: "completed", label: "已完成" },
   { key: "cancelled", label: "已取消" },
 ];
-const TSTATUS: { key: string; label: string }[] = [
-  { key: "todo", label: "待辦" },
-  { key: "doing", label: "進行中" },
-  { key: "done", label: "完成" },
-];
+
+type Booking = {
+  status: string;
+  amount: number | null;
+  payment_amount: number | null;
+  payment_status: string | null;
+};
+type Entry = { booking_id: string | null; kind: string; amount: number };
 
 export default async function ReportsPage() {
   const supabase = await createClient();
-  const [bkRes, tkRes, peRes] = await Promise.all([
-    supabase.from("cremation_bookings").select("status").limit(2000),
-    supabase.from("tasks").select("status").limit(2000),
-    supabase.from("project_entries").select("kind, amount").limit(5000),
+  const [bkRes, peRes] = await Promise.all([
+    supabase.from("cremation_bookings").select("id, status, amount, payment_amount, payment_status").limit(2000),
+    supabase.from("project_entries").select("booking_id, kind, amount").limit(5000),
   ]);
-  const bookings = bkRes.data ?? [];
-  const tasks = tkRes.data ?? [];
-  const entries = (peRes.data ?? []) as { kind: string; amount: number }[];
+  const bookings = (bkRes.data ?? []) as (Booking & { id: string })[];
+  const entries = (peRes.data ?? []) as Entry[];
 
-  const income = entries.filter((e) => e.kind === "income").reduce((n, e) => n + (e.amount || 0), 0);
+  // 手動收入按專案加總（與「專案管理／財務」一致）
+  const incByBooking: Record<string, number> = {};
+  for (const e of entries) {
+    if (e.kind === "income" && e.booking_id) {
+      incByBooking[e.booking_id] = (incByBooking[e.booking_id] || 0) + (e.amount || 0);
+    }
+  }
+  // 火化收入（累計）：每筆預約以手動收入優先，否則取已付款金額；已取消／退款不計
+  const income = bookings.reduce((n, b) => {
+    if (b.status === "cancelled" || b.payment_status === "refunded") return n;
+    const manual = incByBooking[b.id] || 0;
+    const paid = b.payment_status === "paid" ? (b.amount ?? b.payment_amount ?? 0) : 0;
+    return n + (manual > 0 ? manual : paid);
+  }, 0);
+  // 成本（累計）：專案支出明細
   const cost = entries.filter((e) => e.kind === "expense").reduce((n, e) => n + (e.amount || 0), 0);
 
   return (
     <div>
       <h1 className="text-2xl font-semibold mb-6">報表與匯出</h1>
 
-      <div className="grid lg:grid-cols-3 gap-4 mb-6">
+      <div className="grid gap-4 mb-6 sm:grid-cols-2">
         {/* 預約概況 */}
         <div className="rounded-2xl border border-[var(--line)] bg-[var(--card)] p-5">
           <h2 className="text-base mb-3">預約概況</h2>
@@ -52,26 +67,10 @@ export default async function ReportsPage() {
           </div>
         </div>
 
-        {/* 任務概況 */}
+        {/* 火化收支 */}
         <div className="rounded-2xl border border-[var(--line)] bg-[var(--card)] p-5">
-          <h2 className="text-base mb-3">任務概況</h2>
-          <div className="space-y-1.5 text-sm">
-            {TSTATUS.map((s) => (
-              <div key={s.key} className="flex justify-between">
-                <span className="text-[var(--soft)]">{s.label}</span>
-                <span className="tabular-nums">{tasks.filter((t) => t.status === s.key).length}</span>
-              </div>
-            ))}
-            <div className="flex justify-between border-t border-[var(--line)] pt-1.5 mt-1.5 font-medium">
-              <span>總計</span>
-              <span className="tabular-nums">{tasks.length}</span>
-            </div>
-          </div>
-        </div>
-
-        {/* 財務概況 */}
-        <div className="rounded-2xl border border-[var(--line)] bg-[var(--card)] p-5">
-          <h2 className="text-base mb-3">火化收支（累計）</h2>
+          <h2 className="text-base mb-1">火化收支（累計）</h2>
+          <p className="mb-3 text-[11px] text-[var(--soft)]">收入＝已付款預約金額（或手動收入明細）；成本＝專案支出明細；已取消／退款不計。</p>
           <div className="space-y-1.5 text-sm">
             <div className="flex justify-between">
               <span className="text-[var(--soft)]">收入</span>
@@ -95,9 +94,6 @@ export default async function ReportsPage() {
         <div className="flex flex-wrap gap-3">
           <a href="/api/export/bookings" className="px-4 py-2 rounded-lg text-sm bg-[var(--gold)] text-white hover:opacity-90">
             匯出預約火化記錄
-          </a>
-          <a href="/api/export/tasks" className="px-4 py-2 rounded-lg text-sm border border-[var(--line)] hover:bg-[var(--cream)]">
-            匯出任務
           </a>
         </div>
       </div>
