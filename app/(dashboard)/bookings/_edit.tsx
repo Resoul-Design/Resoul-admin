@@ -90,7 +90,14 @@ export function EditBookingButton({ booking }: { booking: BookingData }) {
 
             <form
               action={updateBooking}
-              onSubmit={() => setOpen(false)}
+              onSubmit={(e) => {
+                const status = (e.currentTarget.elements.namedItem("status") as HTMLSelectElement | null)?.value;
+                if (status === "cancelled" && !confirm("確定將此預約標為「已取消」？")) {
+                  e.preventDefault();
+                  return;
+                }
+                setOpen(false);
+              }}
               className="grid sm:grid-cols-2 gap-3"
             >
               <input type="hidden" name="id" value={b.id} />

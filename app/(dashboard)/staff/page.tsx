@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { getStaff } from "@/lib/auth";
 import { createStaff, updateStaff } from "./actions";
+import { ConfirmSubmitButton } from "./_confirm";
 import { PermsButton } from "./_perms";
 
 export const dynamic = "force-dynamic";
@@ -120,9 +121,13 @@ export default async function StaffPage() {
                 )}
                 {isAdmin && (
                   <td className="px-4 py-3 text-right">
-                    <button form={`f-${s.id}`} className="text-xs px-3 py-1 rounded-md bg-[var(--gold)] text-white hover:opacity-90">
+                    <ConfirmSubmitButton
+                      form={`f-${s.id}`}
+                      message="確定更新此員工的角色／狀態？"
+                      className="text-xs px-3 py-1 rounded-md bg-[var(--gold)] text-white hover:opacity-90"
+                    >
                       存
-                    </button>
+                    </ConfirmSubmitButton>
                   </td>
                 )}
               </tr>

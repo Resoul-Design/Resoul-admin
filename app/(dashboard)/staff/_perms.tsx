@@ -45,7 +45,7 @@ export function PermsButton({
               <h3 className="text-lg font-semibold">{name} · 功能權限</h3>
               <button onClick={() => setOpen(false)} className="text-[var(--soft)] hover:text-[var(--ink)]">✕</button>
             </div>
-            <form action={updateStaffPermissions} onSubmit={() => setOpen(false)}>
+            <form action={updateStaffPermissions} onSubmit={(e) => { if (!confirm("確定更新此員工的功能權限？")) { e.preventDefault(); return; } setOpen(false); }}>
               <input type="hidden" name="id" value={id} />
               <div className="grid grid-cols-2 gap-x-3 gap-y-2 mb-5">
                 {MODULES.map((m) => (

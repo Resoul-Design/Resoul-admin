@@ -17,27 +17,45 @@ type Group = {
 export const GROUPS: Group[] = [
   { label: "總覽", icon: "◆", href: "/" },
   {
-    label: "火化服務",
+    label: "日常營運",
     icon: "✦",
     children: [
-      { label: "客戶預約火化記錄", href: "/bookings" },
+      { label: "火化預約", href: "/bookings" },
       { label: "安排火化服務", href: "/schedule" },
-    ],
-  },
-  { label: "分享頁留言", icon: "✎", href: "/board/community" },
-  {
-    label: "紀念產品管理",
-    icon: "▣",
-    children: [
       { label: "客戶訂單", href: "/orders" },
       { label: "倉存 · 出貨", href: "/inventory" },
     ],
   },
-  { label: "文章記錄", icon: "❋", href: "/articles" },
-  { label: "員工管理", icon: "☷", href: "/staff" },
-  { label: "客戶檔案", icon: "☺", href: "/crm" },
-  { label: "專案管理", icon: "▧", href: "/projects" },
-  { label: "財務管理", icon: "＄", href: "/finance" },
+  {
+    label: "內容",
+    icon: "✎",
+    children: [
+      { label: "同路人留言板", href: "/board/community" },
+      { label: "照顧誌留言", href: "/board/blog" },
+      { label: "文章記錄", href: "/articles" },
+    ],
+  },
+  {
+    label: "人事財務",
+    icon: "＄",
+    children: [
+      { label: "員工管理", href: "/staff" },
+      { label: "排更表", href: "/staff/roster" },
+      { label: "任務指派", href: "/staff/tasks" },
+      { label: "財務管理", href: "/finance" },
+      { label: "專案管理", href: "/projects" },
+      { label: "客戶檔案", href: "/crm" },
+    ],
+  },
+  {
+    label: "系統",
+    icon: "⚙",
+    children: [
+      { label: "報表與匯出", href: "/reports" },
+      { label: "審計記錄", href: "/audit" },
+      { label: "同步狀態", href: "/sync" },
+    ],
+  },
 ];
 
 function isActive(path: string, href: string) {

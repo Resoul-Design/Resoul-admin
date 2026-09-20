@@ -121,7 +121,7 @@ export default async function OverviewPage() {
     )
   );
   const [
-    [heldPosts, heldListRes, recentRes, todayRes, incomeRes, ordersRes, productsCount],
+    [heldPosts, heldListRes, recentRes, todayRes, incomeRes, ordersRes, productsCount, heldCrisisRes],
     statusCounts,
   ] = await Promise.all([
     Promise.all([
@@ -132,9 +132,11 @@ export default async function OverviewPage() {
       supabase.from("project_entries").select("amount").eq("kind", "income").gte("entry_date", monthStart),
       getOrdersSinceCached(since),
       getProductsCountCached(),
+      supabase.from("posts").select("id", { count: "exact", head: true }).eq("status", "held").eq("crisis_flag", true),
     ]),
     statusCountsP,
   ]);
+  const crisisHeld = heldCrisisRes.count ?? 0;
 
   // 訂單營業額（分頁抓取 + 5 分鐘快取）
   const shopErr = ordersRes.ok ? "" : ordersRes.error || "error";
@@ -200,6 +202,21 @@ export default async function OverviewPage() {
         </div>
         <div className="text-white/90 text-sm">Resoul 後台</div>
       </div>
+
+      {/* 危機留言醒目入口 */}
+      {crisisHeld > 0 && (
+        <Link
+          href="/board/community?filter=held"
+          className="mb-6 flex items-center gap-3 rounded-2xl border border-red-300 bg-red-50 px-5 py-4 transition hover:bg-red-100"
+        >
+          <span className="text-2xl">⚠️</span>
+          <div className="min-w-0 flex-1">
+            <div className="font-semibold text-red-700">有 {crisisHeld} 則「危機字眼」留言待審</div>
+            <div className="text-sm text-red-600/90">可能涉及情緒危機，請盡快查看並處理。</div>
+          </div>
+          <span className="shrink-0 rounded-lg bg-red-600 px-3 py-1.5 text-sm font-medium text-white">立即審核 →</span>
+        </Link>
+      )}
 
       {/* KPI 圖標大數字 */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4 mb-6">
@@ -306,7 +323,7 @@ export default async function OverviewPage() {
           ) : (
             <div className="divide-y divide-[var(--line)]">
               {recentBookings.map((b, i) => (
-                <div key={i} className="grid grid-cols-[140px_120px_minmax(140px,1fr)_96px_64px] items-center gap-3 py-2.5 text-sm">
+                <div key={i} className="grid grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_minmax(0,1.6fr)_auto_auto] items-center gap-3 py-2.5 text-sm">
                   <span className="truncate text-[var(--ink)]" title={b.owner_name || "—"}>
                     {b.owner_name || "—"}
                   </span>

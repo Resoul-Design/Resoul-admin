@@ -1,5 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { shopifyGraphQL, shopDomain } from "@/lib/shopify";
+import { syncProductOrders } from "../orders/actions";
 
 export const dynamic = "force-dynamic";
 
@@ -97,8 +98,17 @@ export default async function SyncStatusPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-semibold mb-1">同步狀態自我檢查</h1>
-      <p className="mb-5 text-sm text-[var(--soft)]">檢查 Shopify、Supabase、環境變數與 webhook 是否已正確連接。此頁只讀，不會顯示任何機密內容。</p>
+      <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold mb-1">同步狀態自我檢查</h1>
+          <p className="text-sm text-[var(--soft)]">檢查 Shopify、Supabase、環境變數與 webhook 是否已正確連接。此頁只讀，不會顯示任何機密內容。</p>
+        </div>
+        <form action={syncProductOrders}>
+          <button className="rounded-lg bg-[var(--gold)] px-4 py-2 text-sm font-medium text-white hover:opacity-90 whitespace-nowrap">
+            ⟳ 立即同步 Shopify 訂單
+          </button>
+        </form>
+      </div>
 
       <div className={"mb-6 rounded-2xl border p-4 " + (overall === "ok" ? "border-green-300 bg-green-50" : overall === "warn" ? "border-amber-300 bg-amber-50" : "border-red-300 bg-red-50")}>
         <div className="flex items-center gap-2">
