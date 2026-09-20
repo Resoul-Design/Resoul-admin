@@ -21,6 +21,7 @@ export type BookingData = {
   payment_amount: number | null;
   payment_currency: string | null;
   shopify_order_name: string | null;
+  shopify_order_id: string | null;
   paid_at: string | null;
   notes: string | null;
 };

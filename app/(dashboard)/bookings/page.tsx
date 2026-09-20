@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { shopifyGraphQL } from "@/lib/shopify";
+import { shopifyGraphQL, shopDomain } from "@/lib/shopify";
 import { type BookingData } from "./_edit";
 import { BookingsTable, type BookingRow } from "./_table";
 
@@ -134,7 +134,7 @@ const BASE_SELECT =
 
 const PAYMENT_SELECT =
   BASE_SELECT +
-  ", payment_ref, payment_status, payment_amount, payment_currency, shopify_order_name, paid_at";
+  ", payment_ref, payment_status, payment_amount, payment_currency, shopify_order_name, shopify_order_id, paid_at";
 
 function isVet(source?: string | null) {
   return (source || "").indexOf("euthanasia") >= 0;
@@ -201,6 +201,9 @@ export default async function BookingsPage() {
       calUrl: gcalUrl(b, timePref, email),
       waText: `你好，我哋係 RESOUL 🐾。已收到${b.pet_name || "毛孩"}嘅${vet ? "查詢" : "火化預約"}${invoiceNo ? "（編號 " + invoiceNo + "）" : ""}。想同你確認接送時間同安排，請問方便嗎？`,
       search: [b.owner_name, b.contact, email, b.pet_name, invoiceNo, b.plan, b.pickup_address].filter(Boolean).join(" ").toLowerCase(),
+      shopifyOrderUrl: b.shopify_order_id
+        ? `https://${shopDomain()}/admin/orders/${String(b.shopify_order_id).split("/").pop()}`
+        : null,
       booking: b,
     };
   });
