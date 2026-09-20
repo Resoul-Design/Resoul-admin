@@ -23,7 +23,8 @@ export type BookingRow = {
   paymentLabel: string;
   paymentClass: string;
   serviceDate: string;
-  serviceLine: string;
+  serviceDateTime: string;
+  timePref: string;
   calUrl: string | null;
   waText: string;
   search: string;
@@ -140,7 +141,10 @@ export function BookingsTable({ rows, paymentReady }: { rows: BookingRow[]; paym
                   <td className="px-4 py-3 whitespace-nowrap">{r.plan || "—"}</td>
                   <td className="px-4 py-3 whitespace-nowrap text-right tabular-nums">{r.amountText}</td>
                   <td className="px-4 py-3 whitespace-nowrap">{paymentReady ? <span className={"inline-block px-2 py-0.5 rounded-full text-xs " + r.paymentClass}>{r.paymentLabel}</span> : <span className="text-[var(--faint)] text-xs">待 migration</span>}</td>
-                  <td className="px-4 py-3 whitespace-nowrap">{r.serviceLine || "—"}</td>
+                  <td className="px-4 py-3 whitespace-nowrap">
+                    <div>{r.serviceDateTime || "—"}</div>
+                    {r.timePref && <div className="text-xs text-[var(--soft)]">{r.timePref}</div>}
+                  </td>
                   <td className="px-4 py-3 whitespace-nowrap"><span className={"inline-block whitespace-nowrap px-2 py-0.5 rounded-full text-xs " + r.statusClass}>{r.statusLabel}</span></td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2 justify-end whitespace-nowrap">
