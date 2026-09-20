@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { shopifyGraphQL, shopDomain } from "@/lib/shopify";
+import { shopDomain } from "@/lib/shopify";
 import { type BookingData } from "./_edit";
 import { BookingsTable, type BookingRow } from "./_table";
 
@@ -46,25 +46,6 @@ function gcalUrl(
   const params = new URLSearchParams({ action: "TEMPLATE", text: title, dates, details });
   if (b.pickup_address) params.set("location", b.pickup_address);
   return "https://calendar.google.com/calendar/render?" + params.toString();
-}
-
-// 以 payment_ref 對回 Shopify 訂單，取客戶電郵（結帳時收集）
-async function emailByPaymentRef(): Promise<Record<string, string>> {
-  try {
-    const d = await shopifyGraphQL<{
-      orders: { edges: { node: { email: string | null; customAttributes: { key: string; value: string }[] } }[] };
-    }>(
-      `{ orders(first: 100, sortKey: CREATED_AT, reverse: true) { edges { node { email customAttributes { key value } } } } }`
-    );
-    const map: Record<string, string> = {};
-    for (const e of d.orders.edges) {
-      const ref = e.node.customAttributes.find((a) => a.key === "payment_ref")?.value;
-      if (ref && e.node.email) map[ref] = e.node.email;
-    }
-    return map;
-  } catch {
-    return {};
-  }
 }
 
 const STATUS_LABEL: Record<string, string> = {
@@ -165,11 +146,8 @@ export default async function BookingsPage() {
     notes?: string | null;
   })[];
 
-  const emailMap = paymentColumnsReady ? await emailByPaymentRef() : {};
-
   const tableRows: BookingRow[] = bookings.map((b) => {
     const invoiceNo = b.shopify_order_name || b.case_no || "";
-    const email = (b.payment_ref ? emailMap[b.payment_ref] : "") || "";
     const timePref = parseTimePref(b.notes);
     const serviceLine = [
       b.service_date || "",
@@ -183,7 +161,6 @@ export default async function BookingsPage() {
       invoiceNo,
       owner: b.owner_name || "",
       contact: b.contact || "",
-      email,
       address: b.pickup_address || "",
       petName: b.pet_name || "",
       petType: b.pet_type || "",
@@ -198,9 +175,9 @@ export default async function BookingsPage() {
       paymentClass: paymentBadgeClass(b.payment_status),
       serviceDate: b.service_date || "",
       serviceLine,
-      calUrl: gcalUrl(b, timePref, email),
+      calUrl: gcalUrl(b, timePref, ""),
       waText: `你好，我哋係 RESOUL 🐾。已收到${b.pet_name || "毛孩"}嘅${vet ? "查詢" : "火化預約"}${invoiceNo ? "（編號 " + invoiceNo + "）" : ""}。想同你確認接送時間同安排，請問方便嗎？`,
-      search: [b.owner_name, b.contact, email, b.pet_name, invoiceNo, b.plan, b.pickup_address].filter(Boolean).join(" ").toLowerCase(),
+      search: [b.owner_name, b.contact, b.pet_name, invoiceNo, b.plan, b.pickup_address].filter(Boolean).join(" ").toLowerCase(),
       shopifyOrderUrl: b.shopify_order_id
         ? `https://${shopDomain()}/admin/orders/${String(b.shopify_order_id).split("/").pop()}`
         : null,

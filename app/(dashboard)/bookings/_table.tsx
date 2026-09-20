@@ -10,7 +10,6 @@ export type BookingRow = {
   invoiceNo: string;
   owner: string;
   contact: string;
-  email: string;
   address: string;
   petName: string;
   petType: string;
@@ -75,9 +74,9 @@ export function BookingsTable({ rows, paymentReady }: { rows: BookingRow[]; paym
   const reset = () => setPage(1);
 
   function exportCsv() {
-    const header = ["收到", "發票編號", "主人", "電話", "電郵", "地點", "毛孩", "類型", "方案", "金額", "來源", "付款", "服務日期", "狀態"];
+    const header = ["收到", "發票編號", "主人", "電話", "地點", "毛孩", "類型", "方案", "金額", "來源", "付款", "服務日期", "狀態"];
     const lines = filtered.map((r) =>
-      [r.created, r.invoiceNo, r.owner, r.contact, r.email, r.address, r.petName, r.petType, r.plan, r.amountText, r.sourceLabel, r.paymentLabel, r.serviceDate, r.statusLabel]
+      [r.created, r.invoiceNo, r.owner, r.contact, r.address, r.petName, r.petType, r.plan, r.amountText, r.sourceLabel, r.paymentLabel, r.serviceDate, r.statusLabel]
         .map(csvCell).join(",")
     );
     const csv = "﻿" + [header.join(","), ...lines].join("\r\n");
@@ -113,16 +112,15 @@ export function BookingsTable({ rows, paymentReady }: { rows: BookingRow[]; paym
         <div className="rounded-2xl border border-[var(--line)] bg-[var(--card)] p-10 text-center text-[var(--soft)]">沒有符合的預約。</div>
       ) : (
         <div className="rounded-2xl border border-[var(--line)] bg-[var(--card)] overflow-x-auto">
-          <table className="w-full text-sm min-w-[1040px]">
+          <table className="w-full text-sm min-w-[860px]">
             <thead>
               <tr className="bg-[var(--head)] text-left text-[var(--soft)] whitespace-nowrap">
                 <th className="px-4 py-3 font-medium">收到</th>
                 <th className="px-4 py-3 font-medium">發票編號</th>
-                <th className="px-4 py-3 font-medium">主人 · 電話 · 電郵 · 地點</th>
+                <th className="px-4 py-3 font-medium">主人 · 電話</th>
                 <th className="px-4 py-3 font-medium">毛孩</th>
                 <th className="px-4 py-3 font-medium">方案</th>
                 <th className="px-4 py-3 font-medium text-right">價錢</th>
-                <th className="px-4 py-3 font-medium">來源</th>
                 <th className="px-4 py-3 font-medium">付款</th>
                 <th className="px-4 py-3 font-medium">服務日期 · 希望時段</th>
                 <th className="px-4 py-3 font-medium min-w-[88px]">狀態</th>
@@ -136,12 +134,11 @@ export function BookingsTable({ rows, paymentReady }: { rows: BookingRow[]; paym
                   <td className="px-4 py-3 whitespace-nowrap">{r.invoiceNo ? <span className="font-medium text-[var(--gold)]">{r.invoiceNo}</span> : <span className="text-[var(--faint)]">—</span>}</td>
                   <td className="px-4 py-3 whitespace-nowrap">
                     <div>{r.owner || "—"}</div>
-                    <div className="text-[var(--soft)] text-xs mt-0.5">{[r.contact ? "📞 " + r.contact : "", r.email ? "📧 " + r.email : "", r.address ? "📍 " + r.address : ""].filter(Boolean).join("　·　") || "—"}</div>
+                    <div className="text-[var(--soft)] text-xs mt-0.5">{r.contact ? "📞 " + r.contact : "—"}</div>
                   </td>
                   <td className="px-4 py-3"><div>{r.petName || "—"}</div><div className="text-[var(--soft)] text-xs">{r.petType}</div></td>
                   <td className="px-4 py-3 whitespace-nowrap">{r.plan || "—"}</td>
                   <td className="px-4 py-3 whitespace-nowrap text-right tabular-nums">{r.amountText}</td>
-                  <td className="px-4 py-3 whitespace-nowrap"><span className="inline-block px-2 py-0.5 rounded-full text-xs bg-[var(--cream)] text-[var(--soft)]">{r.sourceLabel}</span></td>
                   <td className="px-4 py-3 whitespace-nowrap">{paymentReady ? <span className={"inline-block px-2 py-0.5 rounded-full text-xs " + r.paymentClass}>{r.paymentLabel}</span> : <span className="text-[var(--faint)] text-xs">待 migration</span>}</td>
                   <td className="px-4 py-3 whitespace-nowrap">{r.serviceLine || "—"}</td>
                   <td className="px-4 py-3 whitespace-nowrap"><span className={"inline-block whitespace-nowrap px-2 py-0.5 rounded-full text-xs " + r.statusClass}>{r.statusLabel}</span></td>
