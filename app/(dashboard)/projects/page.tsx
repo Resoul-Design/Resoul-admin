@@ -1,9 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { getStaff } from "@/lib/auth";
 import { orderLabel } from "@/lib/order-label";
 import type { ProductOrderRow } from "@/lib/product-orders";
-import { DeleteProject } from "./_delete";
 
 export const dynamic = "force-dynamic";
 
@@ -49,14 +47,10 @@ type Row = {
   income: number;
   expense: number;
   date: string;
-  deleteId?: string;
-  deleteLabel?: string;
 };
 
 export default async function ProjectsPage() {
   const supabase = await createClient();
-  const me = await getStaff();
-  const isAdmin = me?.role === "admin";
 
   const [bkRes, peRes, poRes] = await Promise.all([
     supabase
@@ -100,8 +94,6 @@ export default async function ProjectsPage() {
       income,
       expense: a.expense,
       date: b.service_date || b.created_at?.slice(0, 10) || "",
-      deleteId: isAdmin ? b.id : undefined,
-      deleteLabel: `${b.pet_name || "—"}／${b.owner_name || "—"}`,
     });
   }
   for (const o of productOrders) {
@@ -121,7 +113,12 @@ export default async function ProjectsPage() {
       date: o.shopify_created_at?.slice(0, 10) || "",
     });
   }
-  rows.sort((x, y) => (y.date || "").localeCompare(x.date || ""));
+  // 按專案編號（Shopify 訂單號）由大至細排列；未有編號者排最後
+  const numKey = (s: string) => {
+    const m = s.match(/(\d+)/);
+    return m ? parseInt(m[1], 10) : -1;
+  };
+  rows.sort((x, y) => numKey(y.projectNo) - numKey(x.projectNo));
 
   return (
     <div>
@@ -144,7 +141,7 @@ export default async function ProjectsPage() {
                 <th className="px-4 py-3 font-medium text-right">收入</th>
                 <th className="px-4 py-3 font-medium text-right">支出</th>
                 <th className="px-4 py-3 font-medium text-right">淨額</th>
-                <th className="px-4 py-3 font-medium text-right">操作</th>
+                <th className="px-4 py-3 font-medium text-right">明細</th>
               </tr>
             </thead>
             <tbody>
@@ -163,10 +160,7 @@ export default async function ProjectsPage() {
                   <td className="px-4 py-3 text-right tabular-nums text-[var(--soft)]">{money(r.expense)}</td>
                   <td className="px-4 py-3 text-right tabular-nums font-medium">{money(r.income - r.expense)}</td>
                   <td className="px-4 py-3 text-right">
-                    <div className="flex items-center justify-end gap-3">
-                      <Link href={r.href} className="text-xs text-[var(--gold)] hover:underline">管理 →</Link>
-                      {r.deleteId && <DeleteProject id={r.deleteId} label={r.deleteLabel || r.projectNo} />}
-                    </div>
+                    <Link href={r.href} className="text-xs text-[var(--gold)] hover:underline">管理 →</Link>
                   </td>
                 </tr>
               ))}
