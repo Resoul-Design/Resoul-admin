@@ -3,6 +3,7 @@ export type ModuleDef = { key: string; label: string; href: string };
 // 功能模組（權限單位）。總覽不列入，所有員工可見。
 export const MODULES: ModuleDef[] = [
   { key: "bookings", label: "客戶預約火化記錄", href: "/bookings" },
+  { key: "deposits", label: "訂金訂單／安排預約接送", href: "/deposits" },
   { key: "schedule", label: "安排火化服務", href: "/schedule" },
   { key: "board_blog", label: "照顧誌留言", href: "/board/blog" },
   { key: "board_community", label: "同路人留言板", href: "/board/community" },

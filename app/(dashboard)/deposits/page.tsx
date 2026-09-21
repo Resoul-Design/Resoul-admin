@@ -1,0 +1,219 @@
+import { createAdminClient } from "@/lib/supabase/admin";
+
+export const dynamic = "force-dynamic";
+
+// 訂金訂單／安排預約接送。deposit_bookings 已啟用 RLS 且無 anon policy，
+// 故以 service_role（createAdminClient）繞過 RLS 讀取。
+
+type DepositRow = {
+  id: string;
+  created_at: string;
+  owner_name: string | null;
+  contact: string | null;
+  pet_name: string | null;
+  pet_type: string | null;
+  plan: string | null;
+  service_date: string | null;
+  service_time: string | null;
+  pickup_address: string | null;
+  notes: string | null;
+  status: string;
+  payment_ref: string | null;
+  payment_status: string | null;
+  payment_amount: number | null;
+  payment_currency: string | null;
+  shopify_order_name: string | null;
+  paid_at: string | null;
+};
+
+const STATUS_LABEL: Record<string, string> = {
+  new: "新收到",
+  contacted: "已聯絡",
+  scheduled: "已排期",
+  completed: "已完成",
+  cancelled: "已取消",
+};
+
+const PAYMENT_LABEL: Record<string, string> = {
+  pending: "待付款",
+  paid: "已付款",
+  failed: "付款失敗",
+  refunded: "已退款",
+};
+
+function statusBadgeClass(status: string) {
+  switch (status) {
+    case "new":
+      return "bg-amber-100 text-amber-800";
+    case "contacted":
+      return "bg-sky-100 text-sky-800";
+    case "scheduled":
+      return "bg-blue-100 text-blue-800";
+    case "completed":
+      return "bg-green-100 text-green-800";
+    case "cancelled":
+      return "bg-gray-200 text-gray-600";
+    default:
+      return "bg-gray-100 text-gray-700";
+  }
+}
+
+function paymentBadgeClass(status?: string | null) {
+  switch (status) {
+    case "paid":
+      return "bg-green-100 text-green-800";
+    case "failed":
+      return "bg-red-100 text-red-700";
+    case "refunded":
+      return "bg-gray-200 text-gray-700";
+    default:
+      return "bg-amber-100 text-amber-800";
+  }
+}
+
+function fmtCreated(iso?: string | null) {
+  if (!iso) return "—";
+  // ISO：2026-09-21T07:57:00+00:00 → 2026-09-21 07:57
+  const s = iso.slice(0, 16).replace("T", " ");
+  return s || "—";
+}
+
+function fmtAmount(row: DepositRow) {
+  if (row.payment_amount == null) return "—";
+  return (row.payment_currency || "HKD") + " " + Number(row.payment_amount).toLocaleString();
+}
+
+function serviceDateTime(row: DepositRow) {
+  return [row.service_date || "", row.service_time ? row.service_time.slice(0, 5) : ""]
+    .filter(Boolean)
+    .join(" ");
+}
+
+export default async function DepositsPage() {
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("deposit_bookings")
+    .select(
+      "id, created_at, owner_name, contact, pet_name, pet_type, plan, service_date, service_time, pickup_address, notes, status, payment_ref, payment_status, payment_amount, payment_currency, shopify_order_name, paid_at"
+    )
+    .order("created_at", { ascending: false });
+
+  const rows = (data ?? []) as DepositRow[];
+  const tableMissing = !!error && /deposit_bookings|does not exist|relation/i.test(error.message);
+
+  return (
+    <div>
+      <h1 className="text-2xl font-semibold mb-6">訂金訂單／安排預約接送</h1>
+
+      {error && (
+        <div className="mb-4 text-sm text-red-600">
+          讀取失敗：{error.message}
+          {tableMissing && (
+            <div className="text-[var(--soft)] mt-1">
+              若提示資料表不存在，請先於 Supabase（diyxcx）執行
+              <code className="mx-1">supabase/deposit_bookings.sql</code>
+              建立 <code className="mx-1">deposit_bookings</code> 表。
+            </div>
+          )}
+        </div>
+      )}
+
+      <div className="mb-2 text-xs text-[var(--soft)]">共 {rows.length} 筆</div>
+
+      {rows.length === 0 ? (
+        <div className="rounded-2xl border border-[var(--line)] bg-[var(--card)] p-10 text-center text-[var(--soft)]">
+          {error ? "暫時無法顯示訂金訂單。" : "暫無訂金訂單記錄。"}
+        </div>
+      ) : (
+        <>
+          {/* 桌面：表格 */}
+          <div className="hidden md:block rounded-2xl border border-[var(--line)] bg-[var(--card)] overflow-x-auto">
+            <table className="w-full text-sm min-w-[860px]">
+              <thead>
+                <tr className="bg-[var(--head)] text-left text-[var(--soft)] whitespace-nowrap">
+                  <th className="px-4 py-3 font-medium">建立時間</th>
+                  <th className="px-4 py-3 font-medium">單據編號</th>
+                  <th className="px-4 py-3 font-medium">主人 · 電話</th>
+                  <th className="px-4 py-3 font-medium">寵物</th>
+                  <th className="px-4 py-3 font-medium">希望日期 · 時段</th>
+                  <th className="px-4 py-3 font-medium text-right">金額</th>
+                  <th className="px-4 py-3 font-medium">付款</th>
+                  <th className="px-4 py-3 font-medium min-w-[88px]">狀態</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((r) => {
+                  const invoiceNo = r.shopify_order_name || r.payment_ref || "";
+                  return (
+                    <tr key={r.id} className="border-t border-[var(--line)] align-top">
+                      <td className="px-4 py-3 text-[var(--soft)] whitespace-nowrap">{fmtCreated(r.created_at)}</td>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        {invoiceNo ? (
+                          <span className="font-medium text-[var(--gold)]">{invoiceNo}</span>
+                        ) : (
+                          <span className="text-[var(--faint)]">—</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <div>{r.owner_name || "—"}</div>
+                        <div className="text-[var(--soft)] text-xs mt-0.5">{r.contact ? "📞 " + r.contact : "—"}</div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div>{r.pet_name || "—"}</div>
+                        <div className="text-[var(--soft)] text-xs">{r.pet_type || ""}</div>
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap">{serviceDateTime(r) || "—"}</td>
+                      <td className="px-4 py-3 whitespace-nowrap text-right tabular-nums">{fmtAmount(r)}</td>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <span className={"inline-block px-2 py-0.5 rounded-full text-xs " + paymentBadgeClass(r.payment_status)}>
+                          {PAYMENT_LABEL[r.payment_status || "pending"] || r.payment_status || "待付款"}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <span className={"inline-block whitespace-nowrap px-2 py-0.5 rounded-full text-xs " + statusBadgeClass(r.status)}>
+                          {STATUS_LABEL[r.status] || r.status}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          {/* 手機：卡片 */}
+          <div className="space-y-3 md:hidden">
+            {rows.map((r) => {
+              const invoiceNo = r.shopify_order_name || r.payment_ref || "";
+              return (
+                <div key={r.id} className="rounded-2xl border border-[var(--line)] bg-[var(--card)] p-4">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-medium text-[var(--gold)]">{invoiceNo || "（未有編號）"}</span>
+                    <span className={"px-2 py-0.5 rounded-full text-xs " + statusBadgeClass(r.status)}>
+                      {STATUS_LABEL[r.status] || r.status}
+                    </span>
+                  </div>
+                  <div className="mt-1 text-sm">
+                    {r.owner_name || "—"}　·　{r.pet_name || "—"}
+                    {r.pet_type ? `（${r.pet_type}）` : ""}
+                  </div>
+                  <div className="mt-0.5 text-xs text-[var(--soft)]">
+                    {r.contact ? "📞 " + r.contact : "—"}
+                  </div>
+                  <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+                    <span>{serviceDateTime(r) || "—"}</span>
+                    <span className={"px-2 py-0.5 rounded-full " + paymentBadgeClass(r.payment_status)}>
+                      {PAYMENT_LABEL[r.payment_status || "pending"] || r.payment_status || "待付款"}
+                    </span>
+                    <span className="ml-auto font-medium tabular-nums">{fmtAmount(r)}</span>
+                  </div>
+                  <div className="mt-2 text-xs text-[var(--soft)]">建立時間：{fmtCreated(r.created_at)}</div>
+                </div>
+              );
+            })}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
