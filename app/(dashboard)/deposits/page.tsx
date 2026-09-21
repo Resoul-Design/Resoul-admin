@@ -1,4 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import { shopDomain } from "@/lib/shopify";
+import { EditDepositButton } from "./_edit";
 
 export const dynamic = "force-dynamic";
 
@@ -23,6 +25,7 @@ type DepositRow = {
   payment_amount: number | null;
   payment_currency: string | null;
   shopify_order_name: string | null;
+  shopify_order_id: string | null;
   paid_at: string | null;
 };
 
@@ -89,12 +92,30 @@ function serviceDateTime(row: DepositRow) {
     .join(" ");
 }
 
+function calendarUrl(row: DepositRow) {
+  if (!row.service_date) return null;
+  const day = row.service_date.replace(/-/g, "");
+  const hm = row.service_time?.slice(0, 5).replace(":", "") || "1000";
+  const endHour = String(Math.min(Number(hm.slice(0, 2)) + 2, 23)).padStart(2, "0");
+  const details = [`主人：${row.owner_name || "—"}`, `電話：${row.contact || "—"}`, `專案編號：${row.shopify_order_name || row.payment_ref || "—"}`].join("\n");
+  return "https://calendar.google.com/calendar/render?" + new URLSearchParams({ action: "TEMPLATE", text: `Resoul 接送服務 · ${row.pet_name || "毛孩"}`, dates: `${day}T${hm}00/${day}T${endHour}${hm.slice(2)}00`, details, location: row.pickup_address || "" }).toString();
+}
+
+function whatsappUrl(row: DepositRow) {
+  const phone = (row.contact || "").replace(/\D/g, "");
+  if (!phone) return null;
+  const number = phone.startsWith("852") ? phone : `852${phone}`;
+  const project = row.shopify_order_name || row.payment_ref || "";
+  const text = `你好，我哋係 RESOUL 🐾。已收到${row.pet_name || "毛孩"}嘅接送服務預約${project ? `（專案編號 ${project}）` : ""}。想同你確認接送時間同安排，請問方便嗎？`;
+  return `https://wa.me/${number}?text=${encodeURIComponent(text)}`;
+}
+
 export default async function DepositsPage() {
   const supabase = createAdminClient();
   const { data, error } = await supabase
     .from("deposit_bookings")
     .select(
-      "id, created_at, owner_name, contact, pet_name, pet_type, plan, service_date, service_time, pickup_address, notes, status, payment_ref, payment_status, payment_amount, payment_currency, shopify_order_name, paid_at"
+      "id, created_at, owner_name, contact, pet_name, pet_type, plan, service_date, service_time, pickup_address, notes, status, payment_ref, payment_status, payment_amount, payment_currency, shopify_order_name, shopify_order_id, paid_at"
     )
     .order("created_at", { ascending: false });
 
@@ -103,7 +124,11 @@ export default async function DepositsPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-semibold mb-6">訂金訂單／安排預約接送</h1>
+      <h1 className="text-2xl font-semibold mb-6">接送服務</h1>
+
+      <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+        測試期間：「💬 WhatsApp 客人」只會開啟預填訊息草稿，<b>請勿按下傳送鍵，或向客人發送任何訊息</b>。
+      </div>
 
       {error && (
         <div className="mb-4 text-sm text-red-600">
@@ -122,7 +147,7 @@ export default async function DepositsPage() {
 
       {rows.length === 0 ? (
         <div className="rounded-2xl border border-[var(--line)] bg-[var(--card)] p-10 text-center text-[var(--soft)]">
-          {error ? "暫時無法顯示訂金訂單。" : "暫無訂金訂單記錄。"}
+          {error ? "暫時無法顯示接送服務。" : "暫無接送服務記錄。"}
         </div>
       ) : (
         <>
@@ -132,18 +157,22 @@ export default async function DepositsPage() {
               <thead>
                 <tr className="bg-[var(--head)] text-left text-[var(--soft)] whitespace-nowrap">
                   <th className="px-4 py-3 font-medium">建立時間</th>
-                  <th className="px-4 py-3 font-medium">單據編號</th>
+                  <th className="px-4 py-3 font-medium">專案編號</th>
                   <th className="px-4 py-3 font-medium">主人 · 電話</th>
                   <th className="px-4 py-3 font-medium">寵物</th>
                   <th className="px-4 py-3 font-medium">希望日期 · 時段</th>
                   <th className="px-4 py-3 font-medium text-right">金額</th>
                   <th className="px-4 py-3 font-medium">付款</th>
                   <th className="px-4 py-3 font-medium min-w-[88px]">狀態</th>
+                  <th className="px-4 py-3 font-medium text-right">操作</th>
                 </tr>
               </thead>
               <tbody>
                 {rows.map((r) => {
                   const invoiceNo = r.shopify_order_name || r.payment_ref || "";
+                  const cal = calendarUrl(r);
+                  const wa = whatsappUrl(r);
+                  const invoice = r.shopify_order_id ? `https://${shopDomain()}/admin/orders/${String(r.shopify_order_id).split("/").pop()}` : null;
                   return (
                     <tr key={r.id} className="border-t border-[var(--line)] align-top">
                       <td className="px-4 py-3 text-[var(--soft)] whitespace-nowrap">{fmtCreated(r.created_at)}</td>
@@ -174,6 +203,12 @@ export default async function DepositsPage() {
                           {STATUS_LABEL[r.status] || r.status}
                         </span>
                       </td>
+                      <td className="px-4 py-3"><div className="flex items-center justify-end gap-2 whitespace-nowrap">
+                        {cal && <a href={cal} target="_blank" rel="noopener noreferrer" className="text-xs text-[var(--gold)] hover:underline">📅 加入日曆</a>}
+                        {invoice && <a href={invoice} target="_blank" rel="noopener noreferrer" className="text-xs text-[var(--gold)] hover:underline">發票</a>}
+                        {wa && <a href={wa} target="_blank" rel="noopener noreferrer" className="text-xs text-green-700 hover:underline">💬 WhatsApp 客人</a>}
+                        <EditDepositButton booking={r}/>
+                      </div></td>
                     </tr>
                   );
                 })}
@@ -185,6 +220,9 @@ export default async function DepositsPage() {
           <div className="space-y-3 md:hidden">
             {rows.map((r) => {
               const invoiceNo = r.shopify_order_name || r.payment_ref || "";
+              const cal = calendarUrl(r);
+              const wa = whatsappUrl(r);
+              const invoice = r.shopify_order_id ? `https://${shopDomain()}/admin/orders/${String(r.shopify_order_id).split("/").pop()}` : null;
               return (
                 <div key={r.id} className="rounded-2xl border border-[var(--line)] bg-[var(--card)] p-4">
                   <div className="flex items-center justify-between gap-2">
@@ -208,6 +246,12 @@ export default async function DepositsPage() {
                     <span className="ml-auto font-medium tabular-nums">{fmtAmount(r)}</span>
                   </div>
                   <div className="mt-2 text-xs text-[var(--soft)]">建立時間：{fmtCreated(r.created_at)}</div>
+                  <div className="mt-3 flex flex-wrap items-center gap-3 border-t border-[var(--line)] pt-3">
+                    {cal && <a href={cal} target="_blank" rel="noopener noreferrer" className="text-xs text-[var(--gold)]">📅 加入日曆</a>}
+                    {invoice && <a href={invoice} target="_blank" rel="noopener noreferrer" className="text-xs text-[var(--gold)]">發票</a>}
+                    {wa && <a href={wa} target="_blank" rel="noopener noreferrer" className="text-xs text-green-700">💬 WhatsApp 客人</a>}
+                    <EditDepositButton booking={r}/>
+                  </div>
                 </div>
               );
             })}

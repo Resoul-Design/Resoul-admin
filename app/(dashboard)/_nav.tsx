@@ -22,7 +22,7 @@ export const GROUPS: Group[] = [
     children: [
       { label: "火化預約", href: "/bookings" },
       { label: "獸醫評估", href: "/vet-assessments" },
-      { label: "訂金訂單／接送", href: "/deposits" },
+      { label: "接送服務", href: "/deposits" },
       { label: "紀念品訂單", href: "/orders" },
       { label: "倉存 · 出貨", href: "/inventory" },
     ],
