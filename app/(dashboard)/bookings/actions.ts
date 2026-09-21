@@ -16,7 +16,7 @@ const VALID = [
 
 function revalidate() {
   revalidatePath("/bookings");
-  revalidatePath("/schedule");
+  revalidatePath("/vet-assessments");
   revalidatePath("/");
 }
 

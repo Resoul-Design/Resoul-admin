@@ -53,7 +53,15 @@ function csvCell(v: string | number) {
   return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }
 
-export function BookingsTable({ rows, paymentReady }: { rows: BookingRow[]; paymentReady: boolean }) {
+export function BookingsTable({
+  rows,
+  paymentReady,
+  sourceMode,
+}: {
+  rows: BookingRow[];
+  paymentReady: boolean;
+  sourceMode?: "cremation" | "vet";
+}) {
   const [q, setQ] = useState("");
   const [status, setStatus] = useState("all");
   const [source, setSource] = useState("all");
@@ -63,11 +71,12 @@ export function BookingsTable({ rows, paymentReady }: { rows: BookingRow[]; paym
     const kw = q.trim().toLowerCase();
     return rows.filter((r) => {
       if (status !== "all" && r.statusKey !== status) return false;
-      if (source !== "all" && r.sourceKey !== source) return false;
+      if (sourceMode && r.sourceKey !== sourceMode) return false;
+      if (!sourceMode && source !== "all" && r.sourceKey !== source) return false;
       if (kw && !r.search.includes(kw)) return false;
       return true;
     });
-  }, [rows, q, status, source]);
+  }, [rows, q, status, source, sourceMode]);
 
   const pages = Math.max(1, Math.ceil(filtered.length / PAGE));
   const cur = Math.min(page, pages);
@@ -98,16 +107,18 @@ export function BookingsTable({ rows, paymentReady }: { rows: BookingRow[]; paym
           placeholder="搜尋 主人 / 電話 / 毛孩 / 發票編號…"
           className="min-w-[200px] flex-1 rounded-lg border border-[var(--line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--gold)]"
         />
-        <select value={source} onChange={(e) => { setSource(e.target.value); reset(); }} className="rounded-lg border border-[var(--line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--gold)]">
-          {SOURCE_FILTER.map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}
-        </select>
+        {!sourceMode && (
+          <select value={source} onChange={(e) => { setSource(e.target.value); reset(); }} className="rounded-lg border border-[var(--line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--gold)]">
+            {SOURCE_FILTER.map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}
+          </select>
+        )}
         <select value={status} onChange={(e) => { setStatus(e.target.value); reset(); }} className="rounded-lg border border-[var(--line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--gold)]">
           {STATUS_FILTER.map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}
         </select>
         <button onClick={exportCsv} className="rounded-lg border border-[var(--line)] px-3 py-2 text-sm hover:bg-[var(--cream)]">匯出 CSV</button>
       </div>
 
-      <div className="mb-2 text-xs text-[var(--soft)]">共 {filtered.length} 筆{q || status !== "all" || source !== "all" ? "（已篩選）" : ""}</div>
+      <div className="mb-2 text-xs text-[var(--soft)]">共 {filtered.length} 筆{q || status !== "all" || (!sourceMode && source !== "all") ? "（已篩選）" : ""}</div>
 
       {shown.length === 0 ? (
         <div className="rounded-2xl border border-[var(--line)] bg-[var(--card)] p-10 text-center text-[var(--soft)]">沒有符合的預約。</div>

@@ -4,10 +4,9 @@ export type ModuleDef = { key: string; label: string; href: string };
 export const MODULES: ModuleDef[] = [
   { key: "bookings", label: "客戶預約火化記錄", href: "/bookings" },
   { key: "deposits", label: "訂金訂單／安排預約接送", href: "/deposits" },
-  { key: "schedule", label: "安排火化服務", href: "/schedule" },
   { key: "board_blog", label: "照顧誌留言", href: "/board/blog" },
   { key: "board_community", label: "同路人留言板", href: "/board/community" },
-  { key: "orders", label: "客戶訂單", href: "/orders" },
+  { key: "orders", label: "紀念品訂單", href: "/orders" },
   { key: "inventory", label: "倉存 · 出貨", href: "/inventory" },
   { key: "articles", label: "文章記錄", href: "/articles" },
   { key: "roster", label: "排更表", href: "/staff/roster" },
@@ -21,18 +20,21 @@ export const MODULES: ModuleDef[] = [
   { key: "sync", label: "同步狀態", href: "/sync" },
 ];
 
-const BY_HREF = [...MODULES].sort((a, b) => b.href.length - a.href.length);
+const MODULE_ALIASES: ModuleDef[] = [
+  { key: "bookings", label: "獸醫評估", href: "/vet-assessments" },
+];
+const ROUTES = [...MODULES, ...MODULE_ALIASES].sort((a, b) => b.href.length - a.href.length);
 
 // 由路徑找對應模組 key（最長前綴優先）；非模組路徑回傳 null
 export function moduleForPath(path: string): string | null {
-  for (const m of BY_HREF) {
+  for (const m of ROUTES) {
     if (path === m.href || path.startsWith(m.href + "/")) return m.key;
   }
   return null;
 }
 
 export function keyForHref(href: string): string | null {
-  const m = MODULES.find((x) => x.href === href);
+  const m = ROUTES.find((x) => x.href === href);
   return m ? m.key : null;
 }
 

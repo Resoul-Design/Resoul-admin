@@ -71,7 +71,7 @@ export default async function SyncStatusPage() {
     // 產品訂單最近同步
     const { data: poLatest } = await sb.from("product_orders").select("synced_at").order("synced_at", { ascending: false }).limit(1);
     const lastSync = poLatest?.[0]?.synced_at ? String(poLatest[0].synced_at).slice(0, 16).replace("T", " ") : "";
-    checks.push({ label: "產品訂單最近同步時間", state: lastSync ? "ok" : "warn", detail: lastSync ? lastSync : "未有同步記錄（按「客戶訂單 → 同步 Shopify 訂單」）" });
+    checks.push({ label: "產品訂單最近同步時間", state: lastSync ? "ok" : "warn", detail: lastSync ? lastSync : "未有同步記錄（按「紀念品訂單 → 同步 Shopify 訂單」）" });
 
     // 火化 orders/paid webhook 運作跡象：有已付款預約被寫入訂單編號
     const total = await sb.from("cremation_bookings").select("id", { count: "exact", head: true });

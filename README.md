@@ -13,7 +13,7 @@ Resoul 內部使用的後台，集中管理訂單、出貨倉存、預約火化�
 ## 資料來源（不重複造資料）
 | 模組 | 來源 | 說明 |
 |---|---|---|
-| 客戶訂單 | Supabase `product_orders` | Shopify webhook / 手動同步寫入，後台直接查閱 |
+| 紀念品訂單 | Supabase `product_orders` | Shopify webhook / 手動同步寫入，後台直接查閱 |
 | 倉存 · 出貨記錄 | Shopify Admin API | 庫存量、履行（fulfillment）狀態；額外備註存 Supabase |
 | 預約火化記錄 | Supabase `cremation_bookings` | 由 Google Sheet 搬入；狀態流程管理 |
 | 留言板記錄 | Supabase `posts` | 審核台：held→visible/hidden、危機留言優先 |
@@ -31,7 +31,7 @@ resoul-admin/
       layout.tsx             # 側邊欄 + 權限守衛
       page.tsx               # 總覽（今日預約、待審留言、新訂單）
       bookings/page.tsx      # 預約火化記錄
-      orders/page.tsx        # 客戶訂單
+      orders/page.tsx        # 紀念品訂單
       inventory/page.tsx     # 倉存 · 出貨
       board/page.tsx         # 留言板審核
       articles/page.tsx      # 文章記錄
@@ -56,7 +56,7 @@ SHOPIFY_WEBHOOK_SECRET=              # 可選；留空時使用 SHOPIFY_API_SECR
 ```
 
 ## 建置階段
-- **MVP（本次）**：預約火化記錄、客戶訂單 + 出貨倉存、留言板 + 文章管理、登入/權限、總覽
+- **MVP（本次）**：預約火化記錄、紀念品訂單 + 出貨倉存、留言板 + 文章管理、登入/權限、總覽
 - **Phase 2**：員工上班安排、佣金/夥伴（同行計劃）對賬、報表匯出
 
 ## 你需要準備（讓後台可實際運行）
@@ -88,6 +88,6 @@ SHOPIFY_WEBHOOK_SECRET=              # 可選；留空時使用 SHOPIFY_API_SECR
    - `orders/updated`
    - `orders/cancelled`
 3. 原有 `orders/paid` webhook 保留；產品付款時亦會同步到 `product_orders`。
-4. 部署後到「客戶訂單」按一次「同步 Shopify 訂單」，補回現有歷史訂單。
+4. 部署後到「紀念品訂單」按一次「同步 Shopify 訂單」，補回現有歷史訂單。
 
 火化付款單帶有 `payment_ref`，同步時會自動排除，避免同一筆收入同時計入火化及產品銷售。

@@ -52,7 +52,7 @@ export default async function OrdersPage({ searchParams }: {
     <div>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold">客戶訂單</h1>
+          <h1 className="text-2xl font-semibold">紀念品訂單</h1>
           <p className="mt-1 text-sm text-[var(--soft)]">產品訂單由 Shopify 同步並儲存於 Supabase。</p>
         </div>
         <form action={syncProductOrders}>

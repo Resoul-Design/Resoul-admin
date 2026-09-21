@@ -21,9 +21,9 @@ export const GROUPS: Group[] = [
     icon: "✦",
     children: [
       { label: "火化預約", href: "/bookings" },
+      { label: "獸醫評估", href: "/vet-assessments" },
       { label: "訂金訂單／接送", href: "/deposits" },
-      { label: "安排火化服務", href: "/schedule" },
-      { label: "客戶訂單", href: "/orders" },
+      { label: "紀念品訂單", href: "/orders" },
       { label: "倉存 · 出貨", href: "/inventory" },
     ],
   },
