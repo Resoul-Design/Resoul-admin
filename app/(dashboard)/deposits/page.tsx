@@ -92,12 +92,18 @@ function serviceDateTime(row: DepositRow) {
     .join(" ");
 }
 
+function projectNo(row: DepositRow) {
+  const match = (row.notes || "").match(/(?:專案編號|Project no\.)[：:]\s*([^｜|]+)/i);
+  const value = match?.[1]?.trim() || "";
+  return value && !/^(新專案|New project)$/i.test(value) ? value : "";
+}
+
 function calendarUrl(row: DepositRow) {
   if (!row.service_date) return null;
   const day = row.service_date.replace(/-/g, "");
   const hm = row.service_time?.slice(0, 5).replace(":", "") || "1000";
   const endHour = String(Math.min(Number(hm.slice(0, 2)) + 2, 23)).padStart(2, "0");
-  const details = [`主人：${row.owner_name || "—"}`, `電話：${row.contact || "—"}`, `專案編號：${row.shopify_order_name || row.payment_ref || "—"}`].join("\n");
+  const details = [`主人：${row.owner_name || "—"}`, `電話：${row.contact || "—"}`, `專案編號：${projectNo(row) || "—"}`, `發票編號：${row.shopify_order_name || "—"}`].join("\n");
   return "https://calendar.google.com/calendar/render?" + new URLSearchParams({ action: "TEMPLATE", text: `Resoul 接送服務 · ${row.pet_name || "毛孩"}`, dates: `${day}T${hm}00/${day}T${endHour}${hm.slice(2)}00`, details, location: row.pickup_address || "" }).toString();
 }
 
@@ -105,7 +111,7 @@ function whatsappUrl(row: DepositRow) {
   const phone = (row.contact || "").replace(/\D/g, "");
   if (!phone) return null;
   const number = phone.startsWith("852") ? phone : `852${phone}`;
-  const project = row.shopify_order_name || row.payment_ref || "";
+  const project = projectNo(row);
   const text = `你好，我哋係 RESOUL 🐾。已收到${row.pet_name || "毛孩"}嘅接送服務預約${project ? `（專案編號 ${project}）` : ""}。想同你確認接送時間同安排，請問方便嗎？`;
   return `https://wa.me/${number}?text=${encodeURIComponent(text)}`;
 }
@@ -169,7 +175,7 @@ export default async function DepositsPage() {
               </thead>
               <tbody>
                 {rows.map((r) => {
-                  const invoiceNo = r.shopify_order_name || r.payment_ref || "";
+                  const project = projectNo(r);
                   const cal = calendarUrl(r);
                   const wa = whatsappUrl(r);
                   const invoice = r.shopify_order_id ? `https://${shopDomain()}/admin/orders/${String(r.shopify_order_id).split("/").pop()}` : null;
@@ -177,8 +183,8 @@ export default async function DepositsPage() {
                     <tr key={r.id} className="border-t border-[var(--line)] align-top">
                       <td className="px-4 py-3 text-[var(--soft)] whitespace-nowrap">{fmtCreated(r.created_at)}</td>
                       <td className="px-4 py-3 whitespace-nowrap">
-                        {invoiceNo ? (
-                          <span className="font-medium text-[var(--gold)]">{invoiceNo}</span>
+                        {project ? (
+                          <div><span className="font-medium text-[var(--gold)]">{project}</span>{r.shopify_order_name && <div className="text-xs text-[var(--soft)]">發票 {r.shopify_order_name}</div>}</div>
                         ) : (
                           <span className="text-[var(--faint)]">—</span>
                         )}
@@ -219,14 +225,14 @@ export default async function DepositsPage() {
           {/* 手機：卡片 */}
           <div className="space-y-3 md:hidden">
             {rows.map((r) => {
-              const invoiceNo = r.shopify_order_name || r.payment_ref || "";
+              const project = projectNo(r);
               const cal = calendarUrl(r);
               const wa = whatsappUrl(r);
               const invoice = r.shopify_order_id ? `https://${shopDomain()}/admin/orders/${String(r.shopify_order_id).split("/").pop()}` : null;
               return (
                 <div key={r.id} className="rounded-2xl border border-[var(--line)] bg-[var(--card)] p-4">
                   <div className="flex items-center justify-between gap-2">
-                    <span className="font-medium text-[var(--gold)]">{invoiceNo || "（未有編號）"}</span>
+                    <span className="font-medium text-[var(--gold)]">{project || "（舊記錄未有專案編號）"}</span>
                     <span className={"px-2 py-0.5 rounded-full text-xs " + statusBadgeClass(r.status)}>
                       {STATUS_LABEL[r.status] || r.status}
                     </span>

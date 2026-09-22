@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { orderLabel } from "@/lib/order-label";
+import { projectNoFromItems, projectNoFromNotes } from "@/lib/order-label";
 import type { ProductOrderRow } from "@/lib/product-orders";
 import { ProjectsTable } from "./_table";
 
@@ -18,6 +18,7 @@ type Booking = {
   payment_amount: number | null;
   payment_status: string | null;
   shopify_order_name: string | null;
+  notes: string | null;
 };
 type Entry = { booking_id: string | null; order_ref: string | null; kind: string; amount: number };
 
@@ -54,7 +55,7 @@ export default async function ProjectsPage() {
   const [bkRes, peRes, poRes] = await Promise.all([
     supabase
       .from("cremation_bookings")
-      .select("id, case_no, pet_name, owner_name, plan, status, service_date, created_at, amount, payment_amount, payment_status, shopify_order_name")
+      .select("id, case_no, pet_name, owner_name, plan, status, service_date, created_at, amount, payment_amount, payment_status, shopify_order_name, notes")
       .order("created_at", { ascending: false })
       .limit(1000),
     // select("*") 以容忍 order_ref 欄位尚未建立（migration 未跑）時不報錯
@@ -88,7 +89,7 @@ export default async function ProjectsPage() {
     rows.push({
       key: "b:" + b.id,
       href: `/projects/${b.id}`,
-      projectNo: orderLabel(b.shopify_order_name || b.case_no, "cremation"),
+      projectNo: projectNoFromNotes(b.notes),
       primary: b.pet_name || "—",
       secondary: b.owner_name || "—",
       plan: b.plan || "火化服務",
@@ -110,7 +111,7 @@ export default async function ProjectsPage() {
     rows.push({
       key: "o:" + o.shopify_order_id,
       href: `/projects/order/${o.shopify_order_id.split("/").pop()}`,
-      projectNo: orderLabel(o.order_name, "product"),
+      projectNo: projectNoFromItems(o.line_items),
       primary: o.customer_name || "—",
       secondary: items || "產品訂單",
       plan: "紀念產品",
@@ -131,7 +132,7 @@ export default async function ProjectsPage() {
   return (
     <div>
       <h1 className="text-2xl font-semibold mb-1">專案管理</h1>
-      <p className="mb-6 text-sm text-[var(--soft)]">火化預約與紀念產品訂單都是專案。收入預設取已付款金額，可另加收支明細。</p>
+      <p className="mb-6 text-sm text-[var(--soft)]">相同 RSL 專案編號會連結接送、火化及紀念產品；每次付款仍保留獨立發票編號。</p>
 
       {rows.length === 0 ? (
         <div className="rounded-2xl border border-[var(--line)] bg-[var(--card)] p-10 text-center text-[var(--soft)]">

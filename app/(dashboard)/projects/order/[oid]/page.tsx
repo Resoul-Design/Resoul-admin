@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { addEntry, deleteEntry } from "../../actions";
-import { orderLabel } from "@/lib/order-label";
+import { projectNoFromItems } from "@/lib/order-label";
 import type { ProductOrderRow } from "@/lib/product-orders";
 
 export const dynamic = "force-dynamic";
@@ -64,13 +64,14 @@ export default async function ProductProjectPage({
   const income = manualIncome > 0 ? manualIncome : paidIncome;
   const net = income - expense;
   const items = (o.line_items || []).map((it) => `${it.title}×${it.quantity}`).join("、");
+  const projectNo = projectNoFromItems(o.line_items);
 
   return (
     <div>
       <div className="flex items-center gap-2 mb-1 text-sm text-[var(--soft)]">
         <Link href="/projects" className="hover:underline">專案管理</Link>
         <span>›</span>
-        <span>{orderLabel(o.order_name, "product")}</span>
+        <span>{projectNo}</span>
       </div>
       <div className="flex flex-wrap items-center gap-3 mb-3">
         <h1 className="text-2xl font-semibold">{o.customer_name || "產品訂單"}</h1>
@@ -78,7 +79,7 @@ export default async function ProductProjectPage({
       </div>
       <div className="mb-6 grid gap-x-8 gap-y-1.5 text-sm sm:grid-cols-2 lg:grid-cols-3">
         {[
-          { label: "專案編號", value: orderLabel(o.order_name, "product") },
+          { label: "專案編號", value: projectNo },
           { label: "單據編號", value: o.order_name || "—" },
           { label: "客人名稱", value: o.customer_name || "—" },
           { label: "聯絡電話", value: o.phone || "—" },

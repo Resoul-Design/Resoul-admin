@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { addEntry, deleteEntry } from "../actions";
-import { orderLabel } from "@/lib/order-label";
+import { projectNoFromNotes } from "@/lib/order-label";
 
 export const dynamic = "force-dynamic";
 
@@ -38,7 +38,7 @@ export default async function ProjectDetailPage({
   const [bkRes, peRes] = await Promise.all([
     supabase
       .from("cremation_bookings")
-      .select("id, case_no, pet_name, owner_name, contact, plan, status, service_date, amount, payment_amount, payment_status, payment_ref, shopify_order_name, paid_at")
+      .select("id, case_no, pet_name, owner_name, contact, plan, status, service_date, amount, payment_amount, payment_status, payment_ref, shopify_order_name, paid_at, notes")
       .eq("id", id)
       .maybeSingle(),
     supabase
@@ -73,8 +73,7 @@ export default async function ProjectDetailPage({
   const showAutoIncome = manualIncome === 0 && paidIncome > 0;
   const income = manualIncome > 0 ? manualIncome : paidIncome;
   const net = income - expense;
-  // 專案編號：火化以 C 開頭（C-####）；單據編號：真實 Shopify 訂單 #RS-####
-  const projectNo = orderLabel(b.shopify_order_name || b.case_no, "cremation");
+  const projectNo = projectNoFromNotes(b.notes);
   const receiptNo = b.shopify_order_name || b.payment_ref || "—";
   const autoIncomeDate = (b.paid_at || b.service_date || "").slice(0, 10);
 
