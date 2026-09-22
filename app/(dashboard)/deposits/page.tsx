@@ -238,14 +238,18 @@ export default async function DepositsPage() {
                       {STATUS_LABEL[r.status] || r.status}
                     </span>
                   </div>
-                  <div className="mt-1 text-sm">
-                    {r.owner_name || "—"}　·　{r.pet_name || "—"}
-                    {r.pet_type ? `（${r.pet_type}）` : ""}
-                  </div>
-                  <div className="mt-0.5 text-xs text-[var(--soft)]">
-                    {r.contact ? "📞 " + r.contact : "—"}
-                  </div>
-                  {r.payment_ref && <div className="mt-0.5 text-xs text-[var(--soft)]">付款參考 {r.payment_ref}</div>}
+                  <dl className="mt-3 grid grid-cols-[76px_minmax(0,1fr)] gap-x-3 gap-y-1.5 text-sm">
+                    <dt className="text-[var(--soft)]">主人名稱</dt>
+                    <dd className="min-w-0">{r.owner_name || "—"}</dd>
+                    <dt className="text-[var(--soft)]">寵物名稱</dt>
+                    <dd className="min-w-0">{r.pet_name || "—"}{r.pet_type ? `（${r.pet_type}）` : ""}</dd>
+                    <dt className="text-[var(--soft)]">聯絡電話</dt>
+                    <dd className="min-w-0">{r.contact ? "📞 " + r.contact : "—"}</dd>
+                    {r.payment_ref && <>
+                      <dt className="text-[var(--soft)]">付款參考</dt>
+                      <dd className="min-w-0 break-all text-xs text-[var(--soft)]">{r.payment_ref}</dd>
+                    </>}
+                  </dl>
                   <div className="mt-3 grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 gap-y-2 rounded-xl bg-[var(--head)] px-3 py-2.5 text-xs">
                     <div className="col-span-2 min-w-0">
                       <div className="text-[var(--soft)]">預約日期及時間</div>
@@ -261,7 +265,10 @@ export default async function DepositsPage() {
                       <div className="mt-0.5 font-medium tabular-nums text-sm text-[var(--ink)]">{fmtAmount(r)}</div>
                     </div>
                   </div>
-                  <div className="mt-2 text-xs text-[var(--soft)]">建立時間：{fmtCreated(r.created_at)}</div>
+                  <dl className="mt-3 grid grid-cols-[76px_minmax(0,1fr)] gap-x-3 text-xs text-[var(--soft)]">
+                    <dt>建立時間</dt>
+                    <dd>{fmtCreated(r.created_at)}</dd>
+                  </dl>
                   <div className="mt-3 flex flex-wrap items-center gap-3 border-t border-[var(--line)] pt-3">
                     {cal && <a href={cal} target="_blank" rel="noopener noreferrer" className="text-xs text-[var(--gold)]">📅 加入日曆</a>}
                     {invoice && <a href={invoice} target="_blank" rel="noopener noreferrer" className="text-xs text-[var(--gold)]">發票</a>}
