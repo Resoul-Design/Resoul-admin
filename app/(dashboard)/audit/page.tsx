@@ -24,6 +24,37 @@ const ACTION_LABEL: Record<string, string> = {
   update_permissions: "更改權限",
 };
 
+const ENTITY_LABEL: Record<string, string> = {
+  cremation_bookings: "火化預約",
+  deposit_bookings: "接送服務",
+  staff: "員工資料",
+  project_entries: "專案收支",
+  memorial_posts: "分享頁貼文",
+};
+
+const STATUS_LABEL: Record<string, string> = {
+  new: "新收到",
+  contacted: "已聯絡",
+  scheduled: "已排期",
+  completed: "已完成",
+  cancelled: "已取消",
+};
+
+function formatTime(value?: string | null) {
+  return value?.slice(0, 16).replace("T", " ") || "—";
+}
+
+function formatDetail(detail?: string | null) {
+  if (!detail) return "未有補充資料";
+  const match = detail.match(/^狀態=(.+)$/);
+  if (match) return `狀態：${STATUS_LABEL[match[1]] || match[1]}`;
+  return detail;
+}
+
+function entityLabel(entity?: string | null) {
+  return ENTITY_LABEL[entity || ""] || entity || "系統資料";
+}
+
 export default async function AuditPage() {
   const supabase = await createClient();
   const { data, error } = await supabase
@@ -61,11 +92,11 @@ export default async function AuditPage() {
             <tbody>
               {logs.map((l) => (
                 <tr key={l.id} className="border-t border-[var(--line)] align-top">
-                  <td className="px-4 py-3 whitespace-nowrap text-[var(--soft)]">{l.created_at?.slice(0, 16).replace("T", " ")}</td>
+                  <td className="px-4 py-3 whitespace-nowrap text-[var(--soft)]">{formatTime(l.created_at)}</td>
                   <td className="px-4 py-3 whitespace-nowrap">{l.actor_email || "—"}</td>
                   <td className="px-4 py-3 whitespace-nowrap">{ACTION_LABEL[l.action] || l.action}</td>
-                  <td className="px-4 py-3 whitespace-nowrap text-[var(--soft)]">{l.entity || "—"}{l.entity_id ? ` · ${l.entity_id}` : ""}</td>
-                  <td className="px-4 py-3 break-words">{l.detail || "—"}</td>
+                  <td className="px-4 py-3 whitespace-nowrap text-[var(--soft)]">{entityLabel(l.entity)}</td>
+                  <td className="px-4 py-3 break-words">{formatDetail(l.detail)}</td>
                 </tr>
               ))}
             </tbody>
@@ -75,11 +106,11 @@ export default async function AuditPage() {
           {logs.map((l) => (
             <div key={l.id} className="rounded-2xl border border-[var(--line)] bg-[var(--card)] p-4">
               <div className="flex items-center justify-between gap-2">
-                <span className="text-sm font-medium">{ACTION_LABEL[l.action] || l.action}</span>
-                <span className="text-xs text-[var(--soft)]">{l.created_at?.slice(0, 16).replace("T", " ")}</span>
+                <span className="rounded-full bg-[var(--head)] px-2.5 py-1 text-sm font-medium">{ACTION_LABEL[l.action] || l.action}</span>
+                <span className="text-xs text-[var(--soft)]">{formatTime(l.created_at)}</span>
               </div>
-              <div className="mt-0.5 text-xs text-[var(--soft)]">{l.actor_email || "—"}　·　{l.entity || "—"}{l.entity_id ? ` · ${l.entity_id}` : ""}</div>
-              {l.detail && <div className="mt-1 text-sm break-words">{l.detail}</div>}
+              <div className="mt-2 text-xs text-[var(--soft)]">{entityLabel(l.entity)}　·　{l.actor_email || "—"}</div>
+              <div className="mt-1 text-sm break-words">{formatDetail(l.detail)}</div>
             </div>
           ))}
         </div>

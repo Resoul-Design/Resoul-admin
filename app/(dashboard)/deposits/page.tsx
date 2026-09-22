@@ -246,12 +246,20 @@ export default async function DepositsPage() {
                     {r.contact ? "📞 " + r.contact : "—"}
                   </div>
                   {r.payment_ref && <div className="mt-0.5 text-xs text-[var(--soft)]">付款參考 {r.payment_ref}</div>}
-                  <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
-                    <span>{serviceDateTime(r) || "—"}</span>
-                    <span className={"px-2 py-0.5 rounded-full " + paymentBadgeClass(r.payment_status)}>
-                      {PAYMENT_LABEL[r.payment_status || "pending"] || r.payment_status || "待付款"}
-                    </span>
-                    <span className="ml-auto font-medium tabular-nums">{fmtAmount(r)}</span>
+                  <div className="mt-3 grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 gap-y-2 rounded-xl bg-[var(--head)] px-3 py-2.5 text-xs">
+                    <div className="col-span-2 min-w-0">
+                      <div className="text-[var(--soft)]">預約日期及時間</div>
+                      <div className="mt-0.5 font-medium text-sm text-[var(--ink)]">{serviceDateTime(r) || "—"}</div>
+                    </div>
+                    <div className="self-end">
+                      <span className={"inline-block px-2 py-0.5 rounded-full " + paymentBadgeClass(r.payment_status)}>
+                        {PAYMENT_LABEL[r.payment_status || "pending"] || r.payment_status || "待付款"}
+                      </span>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-[var(--soft)]">接送訂金</div>
+                      <div className="mt-0.5 font-medium tabular-nums text-sm text-[var(--ink)]">{fmtAmount(r)}</div>
+                    </div>
                   </div>
                   <div className="mt-2 text-xs text-[var(--soft)]">建立時間：{fmtCreated(r.created_at)}</div>
                   <div className="mt-3 flex flex-wrap items-center gap-3 border-t border-[var(--line)] pt-3">
