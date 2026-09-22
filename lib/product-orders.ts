@@ -1,6 +1,7 @@
 export type ProductLineItem = {
   title: string;
   quantity: number;
+  attributes?: { key: string; value: string }[];
 };
 
 export type ProductOrderRow = {
@@ -77,7 +78,7 @@ export type ShopifyGraphQLOrder = {
   shippingAddress: { phone: string | null } | null;
   billingAddress: { phone: string | null } | null;
   totalPriceSet: { shopMoney: { amount: string; currencyCode: string } };
-  lineItems: { edges: { node: { title: string; quantity: number } }[] };
+  lineItems: { edges: { node: { title: string; quantity: number; customAttributes: { key: string; value: string }[] } }[] };
 };
 
 export const phoneKey = (value?: string | null) =>
@@ -130,6 +131,7 @@ export function productOrderFromWebhook(order: ShopifyWebhookOrder): ProductOrde
     line_items: (order.line_items || []).map((item) => ({
       title: item.title || item.name || "產品",
       quantity: Number(item.quantity || 0),
+      attributes: (item.properties || []).filter((a) => a.value).map((a) => ({ key: String(a.name || a.key || ""), value: String(a.value || "") })),
     })),
     cancelled_at: order.cancelled_at || null,
     synced_at: new Date().toISOString(),
@@ -165,6 +167,7 @@ export function productOrderFromGraphQL(order: ShopifyGraphQLOrder): ProductOrde
     line_items: order.lineItems.edges.map(({ node }) => ({
       title: node.title,
       quantity: node.quantity,
+      attributes: node.customAttributes || [],
     })),
     cancelled_at: order.cancelledAt,
     synced_at: new Date().toISOString(),

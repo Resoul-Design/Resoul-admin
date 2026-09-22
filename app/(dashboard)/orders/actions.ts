@@ -33,7 +33,7 @@ const SYNC_QUERY = `query ProductOrders($after: String) {
       shippingAddress { phone }
       billingAddress { phone }
       totalPriceSet { shopMoney { amount currencyCode } }
-      lineItems(first: 100) { edges { node { title quantity } } }
+      lineItems(first: 100) { edges { node { title quantity customAttributes { key value } } } }
     } }
     pageInfo { hasNextPage }
   }

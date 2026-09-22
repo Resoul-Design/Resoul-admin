@@ -28,10 +28,12 @@ export default async function OrdersPage({ searchParams }: {
   const orderId = (o: ProductOrderRow) => o.shopify_order_id.split("/").pop() || "";
   const rows: OrderRow[] = orders.map((o) => {
     const phone = (o.phone || "").replace(/\D/g, "");
+    const projectNo = (o.line_items || []).flatMap((item) => item.attributes || []).find((a) => /project|專案/i.test(a.key))?.value || "";
     const wa = phone ? `https://wa.me/${phone.startsWith("852") ? phone : `852${phone}`}?text=${encodeURIComponent(`你好 ${o.customer_name || ""}，關於你的 Resoul 訂單 ${o.order_name}：`)}` : null;
     return {
       id: o.shopify_order_id,
       orderName: o.order_name,
+      projectNo,
       date: o.shopify_created_at.slice(0, 10),
       customer: o.customer_name || "",
       phone: o.phone || "",
