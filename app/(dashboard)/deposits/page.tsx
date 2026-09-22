@@ -1,6 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { shopDomain } from "@/lib/shopify";
-import { canonicalProjectNo } from "@/lib/order-label";
 import { EditDepositButton } from "./_edit";
 
 export const dynamic = "force-dynamic";
@@ -88,27 +87,25 @@ function fmtAmount(row: DepositRow) {
 }
 
 function serviceDateTime(row: DepositRow) {
-  return [row.service_date || "", row.service_time ? row.service_time.slice(0, 5) : ""]
+  return [row.service_date || "", row.service_time || ""]
     .filter(Boolean)
     .join(" ");
 }
 
 function projectNo(row: DepositRow) {
-  // 對外唯一專案編號＝Shopify 訂單名（#RESOUL-####）；未付款時回退 notes 內專案號。
   const match = (row.notes || "").match(/(?:專案編號|Project no\.)[：:]\s*([^｜|]+)/i);
   const notesNo = match?.[1]?.trim() || "";
-  const fallback = notesNo && !/^(新專案|New project)$/i.test(notesNo) ? notesNo : "";
-  const value = canonicalProjectNo(row.shopify_order_name, fallback);
-  return value === "—" ? "" : value;
+  return notesNo && !/^(新專案|New project)$/i.test(notesNo) ? notesNo : "";
 }
 
 function calendarUrl(row: DepositRow) {
   if (!row.service_date) return null;
   const day = row.service_date.replace(/-/g, "");
-  const hm = row.service_time?.slice(0, 5).replace(":", "") || "1000";
-  const endHour = String(Math.min(Number(hm.slice(0, 2)) + 2, 23)).padStart(2, "0");
+  const times = Array.from((row.service_time || "").matchAll(/(\d{2}):(\d{2})/g));
+  const hm = times[0] ? times[0][1] + times[0][2] : "1000";
+  const endHm = times[1] ? times[1][1] + times[1][2] : String(Math.min(Number(hm.slice(0, 2)) + 2, 23)).padStart(2, "0") + hm.slice(2);
   const details = [`主人：${row.owner_name || "—"}`, `電話：${row.contact || "—"}`, `專案編號：${projectNo(row) || "—"}`, `付款參考：${row.payment_ref || "—"}`].join("\n");
-  return "https://calendar.google.com/calendar/render?" + new URLSearchParams({ action: "TEMPLATE", text: `Resoul 接送服務 · ${row.pet_name || "毛孩"}`, dates: `${day}T${hm}00/${day}T${endHour}${hm.slice(2)}00`, details, location: row.pickup_address || "" }).toString();
+  return "https://calendar.google.com/calendar/render?" + new URLSearchParams({ action: "TEMPLATE", text: `Resoul 接送服務 · ${row.pet_name || "毛孩"}`, dates: `${day}T${hm}00/${day}T${endHm}00`, details, location: row.pickup_address || "" }).toString();
 }
 
 function whatsappUrl(row: DepositRow) {
@@ -135,7 +132,7 @@ export default async function DepositsPage() {
   return (
     <div>
       <h1 className="text-2xl font-semibold mb-1">接送服務</h1>
-      <p className="mb-5 text-sm text-[var(--soft)]">專案編號＝Shopify 訂單號 <span className="font-medium text-[var(--ink)]">#RESOUL-####</span>（與火化、紀念品共用）。「付款參考」是每次付款的獨立編號，與專案編號不同。</p>
+      <p className="mb-5 text-sm text-[var(--soft)]"><span className="font-medium text-[var(--ink)]">RSL-xxxxxx-xxxx</span> 是整個服務旅程沿用的專案編號；Shopify <span className="font-medium text-[var(--ink)]">#RESOUL-####</span> 是每次付款獨立產生的發票編號。</p>
 
       <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
         測試期間：「💬 WhatsApp 客人」只會開啟預填訊息草稿，<b>請勿按下傳送鍵，或向客人發送任何訊息</b>。

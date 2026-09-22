@@ -1,25 +1,25 @@
-// 對外／跨系統唯一「專案編號」= Shopify 訂單名（#RESOUL-####）。
-// 接送訂金、火化預約、紀念產品同一客戶旅程，都應顯示同一個 #RESOUL-####。
-// 每次付款仍可有獨立 payment_ref／發票；UI 要分開標籤「專案編號」vs「付款參考／發票」。
+// RSL-xxxxxx-xxxx 是跨接送、火化及紀念產品沿用的專案編號。
+// Shopify #RESOUL-#### 是每次付款各自產生的發票編號，兩者不可互換。
 
 /**
  * 規範化並回傳對外唯一「專案編號」。
- * - 永遠優先 Shopify 訂單名（#RESOUL-####）：去空白、只留數字、補回 #RESOUL- 前綴。
- * - 無 Shopify 訂單名時，回退到 fallback（例如 notes 內專案號或 case_no）。
+ * - 優先使用表單／商品屬性內的 RSL 專案編號。
+ * - 舊資料未有 RSL 編號時才回退顯示 Shopify 發票，避免資料完全無法辨識。
  * - 兩者皆無則回 "—"。
  */
 export function canonicalProjectNo(
   shopifyOrderName?: string | null,
   fallback?: string | null
 ): string {
+  const fb = String(fallback ?? "").trim();
+  if (fb && fb !== "—") return fb;
   const raw = String(shopifyOrderName ?? "").trim();
   if (raw) {
     const digits = raw.replace(/\D/g, "");
     if (digits) return `#RESOUL-${digits}`;
     return raw.startsWith("#") ? raw : `#${raw}`;
   }
-  const fb = String(fallback ?? "").trim();
-  return fb || "—";
+  return "—";
 }
 
 /**
