@@ -1,5 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { shopDomain } from "@/lib/shopify";
+import { canonicalProjectNo } from "@/lib/order-label";
 import { EditDepositButton } from "./_edit";
 
 export const dynamic = "force-dynamic";
@@ -93,9 +94,12 @@ function serviceDateTime(row: DepositRow) {
 }
 
 function projectNo(row: DepositRow) {
+  // 對外唯一專案編號＝Shopify 訂單名（#RESOUL-####）；未付款時回退 notes 內專案號。
   const match = (row.notes || "").match(/(?:專案編號|Project no\.)[：:]\s*([^｜|]+)/i);
-  const value = match?.[1]?.trim() || "";
-  return value && !/^(新專案|New project)$/i.test(value) ? value : "";
+  const notesNo = match?.[1]?.trim() || "";
+  const fallback = notesNo && !/^(新專案|New project)$/i.test(notesNo) ? notesNo : "";
+  const value = canonicalProjectNo(row.shopify_order_name, fallback);
+  return value === "—" ? "" : value;
 }
 
 function calendarUrl(row: DepositRow) {
@@ -103,7 +107,7 @@ function calendarUrl(row: DepositRow) {
   const day = row.service_date.replace(/-/g, "");
   const hm = row.service_time?.slice(0, 5).replace(":", "") || "1000";
   const endHour = String(Math.min(Number(hm.slice(0, 2)) + 2, 23)).padStart(2, "0");
-  const details = [`主人：${row.owner_name || "—"}`, `電話：${row.contact || "—"}`, `專案編號：${projectNo(row) || "—"}`, `發票編號：${row.shopify_order_name || "—"}`].join("\n");
+  const details = [`主人：${row.owner_name || "—"}`, `電話：${row.contact || "—"}`, `專案編號：${projectNo(row) || "—"}`, `付款參考：${row.payment_ref || "—"}`].join("\n");
   return "https://calendar.google.com/calendar/render?" + new URLSearchParams({ action: "TEMPLATE", text: `Resoul 接送服務 · ${row.pet_name || "毛孩"}`, dates: `${day}T${hm}00/${day}T${endHour}${hm.slice(2)}00`, details, location: row.pickup_address || "" }).toString();
 }
 
@@ -130,7 +134,8 @@ export default async function DepositsPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-semibold mb-6">接送服務</h1>
+      <h1 className="text-2xl font-semibold mb-1">接送服務</h1>
+      <p className="mb-5 text-sm text-[var(--soft)]">專案編號＝Shopify 訂單號 <span className="font-medium text-[var(--ink)]">#RESOUL-####</span>（與火化、紀念品共用）。「付款參考」是每次付款的獨立編號，與專案編號不同。</p>
 
       <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
         測試期間：「💬 WhatsApp 客人」只會開啟預填訊息草稿，<b>請勿按下傳送鍵，或向客人發送任何訊息</b>。
@@ -184,7 +189,7 @@ export default async function DepositsPage() {
                       <td className="px-4 py-3 text-[var(--soft)] whitespace-nowrap">{fmtCreated(r.created_at)}</td>
                       <td className="px-4 py-3 whitespace-nowrap">
                         {project ? (
-                          <div><span className="font-medium text-[var(--gold)]">{project}</span>{r.shopify_order_name && <div className="text-xs text-[var(--soft)]">發票 {r.shopify_order_name}</div>}</div>
+                          <div><span className="font-medium text-[var(--gold)]">{project}</span>{r.payment_ref && <div className="text-xs text-[var(--soft)]">付款參考 {r.payment_ref}</div>}</div>
                         ) : (
                           <span className="text-[var(--faint)]">—</span>
                         )}
@@ -244,6 +249,7 @@ export default async function DepositsPage() {
                   <div className="mt-0.5 text-xs text-[var(--soft)]">
                     {r.contact ? "📞 " + r.contact : "—"}
                   </div>
+                  {r.payment_ref && <div className="mt-0.5 text-xs text-[var(--soft)]">付款參考 {r.payment_ref}</div>}
                   <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
                     <span>{serviceDateTime(r) || "—"}</span>
                     <span className={"px-2 py-0.5 rounded-full " + paymentBadgeClass(r.payment_status)}>

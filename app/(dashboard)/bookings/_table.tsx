@@ -84,7 +84,7 @@ export function BookingsTable({
   const reset = () => setPage(1);
 
   function exportCsv() {
-    const header = ["收到", "發票編號", "主人", "電話", "地點", "毛孩", "類型", "方案", "金額", "來源", "付款", "服務日期", "狀態"];
+    const header = ["收到", "專案編號", "主人", "電話", "地點", "毛孩", "類型", "方案", "金額", "來源", "付款", "服務日期", "狀態"];
     const lines = filtered.map((r) =>
       [r.created, r.invoiceNo, r.owner, r.contact, r.address, r.petName, r.petType, r.plan, r.amountText, r.sourceLabel, r.paymentLabel, r.serviceDate, r.statusLabel]
         .map(csvCell).join(",")
@@ -104,7 +104,7 @@ export function BookingsTable({
         <input
           value={q}
           onChange={(e) => { setQ(e.target.value); reset(); }}
-          placeholder="搜尋 主人 / 電話 / 毛孩 / 發票編號…"
+          placeholder="搜尋 主人 / 電話 / 毛孩 / 專案編號…"
           className="min-w-[200px] flex-1 rounded-lg border border-[var(--line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--gold)]"
         />
         {!sourceMode && (
@@ -128,7 +128,7 @@ export function BookingsTable({
             <thead>
               <tr className="bg-[var(--head)] text-left text-[var(--soft)] whitespace-nowrap">
                 <th className="px-4 py-3 font-medium">收到</th>
-                <th className="px-4 py-3 font-medium">發票編號</th>
+                <th className="px-4 py-3 font-medium">專案編號</th>
                 <th className="px-4 py-3 font-medium">主人 · 電話</th>
                 <th className="px-4 py-3 font-medium">毛孩</th>
                 <th className="px-4 py-3 font-medium">方案</th>

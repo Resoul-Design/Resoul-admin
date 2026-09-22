@@ -113,7 +113,7 @@ export function OrdersTable({ rows }: { rows: OrderRow[] }) {
           </tr></thead>
           <tbody>{shown.map((r) => (
             <tr key={r.id} className={"border-t border-[var(--line)] align-top " + (r.cancelled ? "opacity-60" : "")}>
-              <td className="px-4 py-3 font-medium"><div>{r.orderName}</div>{r.projectNo && <div className="mt-0.5 text-xs text-[var(--gold)]">{r.projectNo}</div>}</td>
+              <td className="px-4 py-3 font-medium"><div>{r.orderName}</div>{r.projectNo && r.projectNo !== "—" && r.projectNo !== r.orderName && <div className="mt-0.5 text-xs text-[var(--gold)]">專案 {r.projectNo}</div>}</td>
               <td className="px-4 py-3 whitespace-nowrap text-[var(--soft)]">{r.date}</td>
               <td className="break-words px-4 py-3">{r.customer || "—"}</td>
               <td className="break-words px-4 py-3 text-[var(--soft)]">{r.items}</td>
@@ -139,7 +139,7 @@ export function OrdersTable({ rows }: { rows: OrderRow[] }) {
       <div className="space-y-3 md:hidden">{shown.map((r) => (
         <div key={r.id} className={"rounded-lg border border-[var(--line)] bg-[var(--card)] p-4 " + (r.cancelled ? "opacity-60" : "")}>
           <div className="flex items-center justify-between gap-2"><span className="font-medium">{r.orderName}</span><span className="text-xs text-[var(--soft)]">{r.date}</span></div>
-          {r.projectNo && <div className="mt-1 text-xs font-medium text-[var(--gold)]">專案：{r.projectNo}</div>}
+          {r.projectNo && r.projectNo !== "—" && r.projectNo !== r.orderName && <div className="mt-1 text-xs font-medium text-[var(--gold)]">專案：{r.projectNo}</div>}
           <div className="mt-1 text-sm">{r.customer || "—"}</div><div className="mt-1 break-words text-sm text-[var(--soft)]">{r.items}</div>
           <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
             {r.cancelled

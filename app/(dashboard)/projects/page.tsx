@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { projectNoFromItems, projectNoFromNotes } from "@/lib/order-label";
+import { canonicalProjectNo, projectNoFromItems, projectNoFromNotes } from "@/lib/order-label";
 import type { ProductOrderRow } from "@/lib/product-orders";
 import { ProjectsTable } from "./_table";
 
@@ -89,7 +89,7 @@ export default async function ProjectsPage() {
     rows.push({
       key: "b:" + b.id,
       href: `/projects/${b.id}`,
-      projectNo: projectNoFromNotes(b.notes),
+      projectNo: canonicalProjectNo(b.shopify_order_name, projectNoFromNotes(b.notes)),
       primary: b.pet_name || "—",
       secondary: b.owner_name || "—",
       plan: b.plan || "火化服務",
@@ -111,7 +111,7 @@ export default async function ProjectsPage() {
     rows.push({
       key: "o:" + o.shopify_order_id,
       href: `/projects/order/${o.shopify_order_id.split("/").pop()}`,
-      projectNo: projectNoFromItems(o.line_items),
+      projectNo: canonicalProjectNo(o.order_name, projectNoFromItems(o.line_items)),
       primary: o.customer_name || "—",
       secondary: items || "產品訂單",
       plan: "紀念產品",
@@ -132,7 +132,7 @@ export default async function ProjectsPage() {
   return (
     <div>
       <h1 className="text-2xl font-semibold mb-1">專案管理</h1>
-      <p className="mb-6 text-sm text-[var(--soft)]">相同 RSL 專案編號會連結接送、火化及紀念產品；每次付款仍保留獨立發票編號。</p>
+      <p className="mb-6 text-sm text-[var(--soft)]">專案編號＝Shopify 訂單號 <span className="font-medium text-[var(--ink)]">#RESOUL-####</span>（接送、火化及紀念品共用同一個）。每次付款的付款參考／發票號可以不同，屬另一欄。</p>
 
       {rows.length === 0 ? (
         <div className="rounded-2xl border border-[var(--line)] bg-[var(--card)] p-10 text-center text-[var(--soft)]">

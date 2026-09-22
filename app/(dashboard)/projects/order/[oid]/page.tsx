@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { addEntry, deleteEntry } from "../../actions";
-import { projectNoFromItems } from "@/lib/order-label";
+import { canonicalProjectNo, projectNoFromItems } from "@/lib/order-label";
 import type { ProductOrderRow } from "@/lib/product-orders";
 
 export const dynamic = "force-dynamic";
@@ -64,7 +64,7 @@ export default async function ProductProjectPage({
   const income = manualIncome > 0 ? manualIncome : paidIncome;
   const net = income - expense;
   const items = (o.line_items || []).map((it) => `${it.title}×${it.quantity}`).join("、");
-  const projectNo = projectNoFromItems(o.line_items);
+  const projectNo = canonicalProjectNo(o.order_name, projectNoFromItems(o.line_items));
 
   return (
     <div>
@@ -80,7 +80,7 @@ export default async function ProductProjectPage({
       <div className="mb-6 grid gap-x-8 gap-y-1.5 text-sm sm:grid-cols-2 lg:grid-cols-3">
         {[
           { label: "專案編號", value: projectNo },
-          { label: "單據編號", value: o.order_name || "—" },
+          { label: "付款參考／發票", value: o.order_name || "—" },
           { label: "客人名稱", value: o.customer_name || "—" },
           { label: "聯絡電話", value: o.phone || "—" },
           { label: "內容", value: items || "—" },

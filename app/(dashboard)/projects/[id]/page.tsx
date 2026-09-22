@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { addEntry, deleteEntry } from "../actions";
-import { projectNoFromNotes } from "@/lib/order-label";
+import { canonicalProjectNo, projectNoFromNotes } from "@/lib/order-label";
 
 export const dynamic = "force-dynamic";
 
@@ -73,8 +73,8 @@ export default async function ProjectDetailPage({
   const showAutoIncome = manualIncome === 0 && paidIncome > 0;
   const income = manualIncome > 0 ? manualIncome : paidIncome;
   const net = income - expense;
-  const projectNo = projectNoFromNotes(b.notes);
-  const receiptNo = b.shopify_order_name || b.payment_ref || "—";
+  const projectNo = canonicalProjectNo(b.shopify_order_name, projectNoFromNotes(b.notes));
+  const paymentRef = b.payment_ref || "—";
   const autoIncomeDate = (b.paid_at || b.service_date || "").slice(0, 10);
 
   return (
@@ -93,7 +93,7 @@ export default async function ProjectDetailPage({
       <div className="mb-6 grid gap-x-8 gap-y-1.5 text-sm sm:grid-cols-2 lg:grid-cols-3">
         {[
           { label: "專案編號", value: projectNo },
-          { label: "單據編號", value: receiptNo },
+          { label: "付款參考／發票", value: paymentRef },
           { label: "客人名稱", value: b.owner_name || "—" },
           { label: "寵物名稱", value: b.pet_name || "—" },
           { label: "聯絡電話", value: b.contact || "—" },

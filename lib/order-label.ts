@@ -1,5 +1,30 @@
-// Shopify 的 #RS-#### 是跨接送、火化及紀念品共用的專案編號。
-// 不另造 C/P 前綴，避免同一客戶被拆成多個看似不同的專案。
+// 對外／跨系統唯一「專案編號」= Shopify 訂單名（#RESOUL-####）。
+// 接送訂金、火化預約、紀念產品同一客戶旅程，都應顯示同一個 #RESOUL-####。
+// 每次付款仍可有獨立 payment_ref／發票；UI 要分開標籤「專案編號」vs「付款參考／發票」。
+
+/**
+ * 規範化並回傳對外唯一「專案編號」。
+ * - 永遠優先 Shopify 訂單名（#RESOUL-####）：去空白、只留數字、補回 #RESOUL- 前綴。
+ * - 無 Shopify 訂單名時，回退到 fallback（例如 notes 內專案號或 case_no）。
+ * - 兩者皆無則回 "—"。
+ */
+export function canonicalProjectNo(
+  shopifyOrderName?: string | null,
+  fallback?: string | null
+): string {
+  const raw = String(shopifyOrderName ?? "").trim();
+  if (raw) {
+    const digits = raw.replace(/\D/g, "");
+    if (digits) return `#RESOUL-${digits}`;
+    return raw.startsWith("#") ? raw : `#${raw}`;
+  }
+  const fb = String(fallback ?? "").trim();
+  return fb || "—";
+}
+
+/**
+ * @deprecated 舊版 #RS-#### 標籤；請改用 canonicalProjectNo()。保留供尚未遷移的位置參考。
+ */
 export function orderLabel(
   name: string | null | undefined,
   kind: "cremation" | "product"

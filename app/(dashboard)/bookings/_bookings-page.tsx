@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { shopDomain } from "@/lib/shopify";
+import { canonicalProjectNo } from "@/lib/order-label";
 import { type BookingData } from "./_edit";
 import { BookingsTable, type BookingRow } from "./_table";
 
@@ -41,7 +42,7 @@ function gcalUrl(
     email ? `電郵：${email}` : "",
     `方案：${b.plan || "—"}`,
     timePref ? `希望時段：${timePref}` : "",
-    b.shopify_order_name ? `發票編號：${b.shopify_order_name}` : "",
+    b.shopify_order_name ? `專案編號：${canonicalProjectNo(b.shopify_order_name)}` : "",
   ].filter(Boolean).join("\n");
   const params = new URLSearchParams({ action: "TEMPLATE", text: title, dates, details });
   if (b.pickup_address) params.set("location", b.pickup_address);
@@ -150,7 +151,9 @@ export async function BookingsPage({ mode }: { mode: "cremation" | "vet" }) {
   );
 
   const tableRows: BookingRow[] = bookings.map((b) => {
-    const invoiceNo = b.shopify_order_name || b.case_no || "";
+    // 專案編號＝Shopify 訂單名（#RESOUL-####）；未有時回退 case_no（舊記錄）
+    const canon = canonicalProjectNo(b.shopify_order_name, b.case_no);
+    const invoiceNo = canon === "—" ? "" : canon;
     const timePref = parseTimePref(b.notes);
     const serviceDateTime = [
       b.service_date || "",

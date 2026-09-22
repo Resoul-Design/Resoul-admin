@@ -2,7 +2,6 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { nextCaseNo } from "@/lib/caseno";
 import { logAudit } from "@/lib/audit";
 
 const VALID = [
@@ -33,10 +32,8 @@ export async function updateBooking(formData: FormData) {
   const plan = g("plan");
 
   const supabase = await createClient();
-  const case_no = g("case_no") || (await nextCaseNo(supabase));
 
   const update: Record<string, unknown> = {
-    case_no,
     owner_name: g("owner_name"),
     contact: g("contact"),
     pet_name: g("pet_name"),
@@ -48,6 +45,10 @@ export async function updateBooking(formData: FormData) {
     status,
     notes: g("notes"),
   };
+  // 專案編號用 Shopify 訂單名（#RESOUL-####）為單一真相，不再自動產生 RS-YYYYMM。
+  // 只有管理員手動填寫內部 case_no 時才寫入；留空不覆蓋原值。
+  const providedCaseNo = g("case_no");
+  if (providedCaseNo) update.case_no = providedCaseNo;
 
   // 完成火化時，若未手動填收入/成本，按方案定價自動填入
   if (status === "completed" && plan) {
