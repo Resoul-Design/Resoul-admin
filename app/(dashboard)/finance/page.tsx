@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { getOrdersSinceCached } from "@/lib/revenue";
 
 export const dynamic = "force-dynamic";
@@ -36,6 +37,14 @@ type Booking = {
   created_at: string;
   shopify_order_name: string | null;
 };
+type Deposit = {
+  payment_amount: number | null;
+  payment_status: string | null;
+  status: string;
+  service_date: string | null;
+  paid_at: string | null;
+  created_at: string;
+};
 const money = (n: number) => "$" + Math.round(n).toLocaleString();
 
 export default async function FinancePage({
@@ -45,12 +54,13 @@ export default async function FinancePage({
 }) {
   const sp = await searchParams;
   const supabase = await createClient();
+  const admin = createAdminClient();
   const months = lastSixMonths();
   const curKey = months[5].key;
   const since = shiftYm(curKey, -11) + "-01"; // 抓近 12 個月訂單，供月份選擇
   const selMonth = sp.fm && /^\d{4}-\d{2}$/.test(sp.fm) ? sp.fm : curKey;
 
-  const [bkRes, ordersRes, ppRes, peRes] = await Promise.all([
+  const [bkRes, ordersRes, ppRes, peRes, depRes] = await Promise.all([
     supabase
       .from("cremation_bookings")
       .select("id, case_no, pet_name, owner_name, plan, status, service_date, amount, cost, payment_amount, payment_status, paid_at, created_at, shopify_order_name")
@@ -59,6 +69,7 @@ export default async function FinancePage({
     getOrdersSinceCached(since),
     supabase.from("plan_prices").select("plan, price, cost"),
     supabase.from("project_entries").select("booking_id, kind, amount, entry_date"),
+    admin.from("deposit_bookings").select("payment_amount, payment_status, status, service_date, paid_at, created_at").limit(1000),
   ]);
   const planPrices = (ppRes.data ?? []) as { plan: string; price: number; cost: number }[];
   const PLAN_ORDER = ["風之旅", "雲之旅", "星之旅"];
@@ -67,6 +78,7 @@ export default async function FinancePage({
   );
 
   const bookings = (bkRes.data ?? []) as Booking[];
+  const deposits = (depRes.data ?? []) as Deposit[];
   const shopErr = ordersRes.ok ? "" : ordersRes.error || "error";
   const orders = ordersRes.rows;
 
@@ -103,7 +115,10 @@ export default async function FinancePage({
   const inMonth = bookings.filter(
     (b) => (b.service_date || "").startsWith(selMonth) && b.status !== "cancelled"
   );
-  const projIncome = inMonth.reduce((n, b) => n + effAmt(b), 0);
+  const pickupProjected = deposits
+    .filter((d) => (d.service_date || d.created_at).startsWith(selMonth) && d.status !== "cancelled")
+    .reduce((n, d) => n + Number(d.payment_amount || 0), 0);
+  const projIncome = inMonth.reduce((n, b) => n + effAmt(b), 0) + pickupProjected;
   const projCost = inMonth.reduce((n, b) => n + effCost(b), 0);
 
   // 火化收入（實際）：已付款預約，依 paid_at（無則 service_date / created_at）月份加總
@@ -115,8 +130,16 @@ export default async function FinancePage({
     cremRevByMonth[d] = (cremRevByMonth[d] || 0) + (b.amount ?? b.payment_amount ?? effAmt(b));
   }
 
+  const pickupRevByMonth: Record<string, number> = {};
+  for (const d of deposits) {
+    if (d.payment_status !== "paid" || d.status === "cancelled") continue;
+    const mk = (d.paid_at || d.service_date || d.created_at || "").slice(0, 7);
+    if (mk) pickupRevByMonth[mk] = (pickupRevByMonth[mk] || 0) + Number(d.payment_amount || 0);
+  }
+
   // 實際：火化收入（已付款預約）+ 產品銷售（非火化訂單）+ 火化成本（專案明細支出）
   const actIncome = cremRevByMonth[selMonth] || 0;
+  const pickupIncome = pickupRevByMonth[selMonth] || 0;
   const actCost = expByMonth[selMonth] || 0;
   const prodMonth = shopErr ? 0 : productByMonth[selMonth] || 0;
   const [selY, selM] = selMonth.split("-").map(Number);
@@ -124,7 +147,7 @@ export default async function FinancePage({
   return (
     <div>
       <h1 className="text-2xl font-semibold mb-1">財務管理</h1>
-      <p className="mb-6 text-xs text-[var(--soft)]">產品銷售取自 Shopify 訂單（近 12 個月，游標分頁抓取；數據每 5 分鐘更新）。火化收入取自已付款預約／專案明細。{shopErr ? "　⚠️ 暫時未能讀取 Shopify 訂單。" : ""}</p>
+      <p className="mb-6 text-xs text-[var(--soft)]">接送收入取自已付款接送服務；產品銷售取自 Shopify 訂單（近 12 個月，數據每 5 分鐘更新）；火化收入取自已付款預約／專案明細。{shopErr ? "　⚠️ 暫時未能讀取 Shopify 訂單。" : ""}</p>
 
       {/* 月份選擇 */}
       <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
@@ -154,13 +177,14 @@ export default async function FinancePage({
       </div>
 
       {/* 實際（已完成 + 產品銷售） */}
-      <div className="text-xs text-[var(--soft)] mb-1.5">實際（已完成火化 + 產品銷售）</div>
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
+      <div className="text-xs text-[var(--soft)] mb-1.5">實際（已付款接送及火化 + 產品銷售）</div>
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4 mb-6">
         {[
+          { label: "接送收入", value: money(pickupIncome) },
           { label: "實際火化收入", value: money(actIncome) },
           { label: "產品銷售", value: shopErr ? "—" : money(prodMonth) },
           { label: "實際成本", value: money(actCost) },
-          { label: "實際毛利", value: money(actIncome - actCost + prodMonth) },
+          { label: "實際毛利", value: money(pickupIncome + actIncome - actCost + prodMonth) },
         ].map((c) => (
           <div key={c.label} className="rounded-2xl border border-[var(--line)] bg-[var(--card)] p-4">
             <div className="text-xs text-[var(--soft)] mb-1">{c.label}</div>
@@ -177,6 +201,7 @@ export default async function FinancePage({
             <tr className="text-left text-[var(--soft)] border-b border-[var(--line)]">
               <th className="py-2 pr-3 font-medium">月份</th>
               <th className="py-2 pr-3 font-medium text-right">火化收入</th>
+              <th className="py-2 pr-3 font-medium text-right">接送收入</th>
               <th className="py-2 pr-3 font-medium text-right">火化成本</th>
               <th className="py-2 pr-3 font-medium text-right">產品銷售</th>
               <th className="py-2 font-medium text-right">毛利（估算）</th>
@@ -185,13 +210,15 @@ export default async function FinancePage({
           <tbody>
             {months.map((m) => {
               const inc = cremRevByMonth[m.key] || 0;
+              const pickup = pickupRevByMonth[m.key] || 0;
               const cost = expByMonth[m.key] || 0;
               const prod = productByMonth[m.key] || 0;
-              const profit = inc - cost + prod;
+              const profit = pickup + inc - cost + prod;
               return (
                 <tr key={m.key} className="border-b border-[var(--line)] last:border-0">
                   <td className="py-2 pr-3">{m.label}</td>
                   <td className="py-2 pr-3 text-right tabular-nums">{money(inc)}</td>
+                  <td className="py-2 pr-3 text-right tabular-nums">{money(pickup)}</td>
                   <td className="py-2 pr-3 text-right tabular-nums text-[var(--soft)]">{money(cost)}</td>
                   <td className="py-2 pr-3 text-right tabular-nums">{shopErr ? "—" : money(prod)}</td>
                   <td className="py-2 text-right tabular-nums font-medium">{money(profit)}</td>
@@ -204,9 +231,10 @@ export default async function FinancePage({
         <div className="space-y-2 md:hidden">
           {months.map((m) => {
             const inc = cremRevByMonth[m.key] || 0;
+            const pickup = pickupRevByMonth[m.key] || 0;
             const cost = expByMonth[m.key] || 0;
             const prod = productByMonth[m.key] || 0;
-            const profit = inc - cost + prod;
+            const profit = pickup + inc - cost + prod;
             return (
               <div key={m.key} className="rounded-xl border border-[var(--line)] p-3">
                 <div className="flex items-center justify-between">
@@ -215,6 +243,7 @@ export default async function FinancePage({
                 </div>
                 <div className="mt-1 flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-[var(--soft)]">
                   <span>火化收入 <span className="tabular-nums text-[var(--ink)]">{money(inc)}</span></span>
+                  <span>接送收入 <span className="tabular-nums text-[var(--ink)]">{money(pickup)}</span></span>
                   <span>成本 <span className="tabular-nums">{money(cost)}</span></span>
                   <span>產品 <span className="tabular-nums text-[var(--ink)]">{shopErr ? "—" : money(prod)}</span></span>
                 </div>

@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { canonicalProjectNo, projectNoFromItems, projectNoFromNotes } from "@/lib/order-label";
 import type { ProductOrderRow } from "@/lib/product-orders";
 import { ProjectsTable } from "./_table";
@@ -56,6 +57,7 @@ type Row = {
 
 export default async function ProjectsPage() {
   const supabase = await createClient();
+  const admin = createAdminClient();
 
   const [bkRes, peRes, poRes, depRes] = await Promise.all([
     supabase
@@ -66,7 +68,7 @@ export default async function ProjectsPage() {
     // select("*") 以容忍 order_ref 欄位尚未建立（migration 未跑）時不報錯
     supabase.from("project_entries").select("*"),
     supabase.from("product_orders").select("*").order("shopify_created_at", { ascending: false }).limit(500),
-    supabase.from("deposit_bookings").select("id, owner_name, pet_name, status, service_date, created_at, payment_amount, payment_status, shopify_order_name, notes").order("created_at", { ascending: false }).limit(1000),
+    admin.from("deposit_bookings").select("id, owner_name, pet_name, status, service_date, created_at, payment_amount, payment_status, shopify_order_name, notes").order("created_at", { ascending: false }).limit(1000),
   ]);
   const bookings = (bkRes.data ?? []) as Booking[];
   const entries = (peRes.data ?? []) as Entry[];

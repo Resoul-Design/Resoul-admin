@@ -132,9 +132,8 @@ export default async function DepositsPage() {
   return (
     <div>
       <h1 className="text-2xl font-semibold mb-1">接送服務</h1>
-      <p className="mb-5 text-sm text-[var(--soft)]"><span className="font-medium text-[var(--ink)]">RSL-xxxxxx-xxxx</span> 是整個服務旅程沿用的專案編號；Shopify <span className="font-medium text-[var(--ink)]">#RESOUL-####</span> 是每次付款獨立產生的發票編號。</p>
 
-      <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+      <div className="mt-5 mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
         測試期間：「💬 WhatsApp 客人」只會開啟預填訊息草稿，<b>請勿按下傳送鍵，或向客人發送任何訊息</b>。
       </div>
 

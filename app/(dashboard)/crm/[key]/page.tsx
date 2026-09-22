@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { phoneKey, type ProductOrderRow } from "@/lib/product-orders";
 
 export const dynamic = "force-dynamic";
@@ -37,6 +38,25 @@ type Booking = {
   notes: string | null;
   created_at: string;
 };
+type Deposit = {
+  id: string;
+  owner_name: string | null;
+  contact: string | null;
+  pet_name: string | null;
+  status: string;
+  service_date: string | null;
+  service_time: string | null;
+  payment_amount: number | null;
+  payment_status: string | null;
+  shopify_order_name: string | null;
+  notes: string | null;
+  created_at: string;
+};
+
+function pickupProjectNo(row: Deposit) {
+  const match = (row.notes || "").match(/(?:專案編號|Project no\.)[：:]\s*([^｜|]+)/i);
+  return match?.[1]?.trim() || "—";
+}
 
 // 單據編號：優先 Shopify 訂單號，其次付款參考碼，最後由備註抽取 Ref
 function receiptNo(b: Booking): string {
@@ -64,28 +84,32 @@ export default async function CustomerPage({
   const key = decodeURIComponent(rawKey);
 
   const supabase = await createClient();
-  const { data } = await supabase
-    .from("cremation_bookings")
-    .select(
-      "id, owner_name, contact, pet_name, pet_type, plan, status, service_date, service_time, amount, payment_amount, payment_status, payment_ref, shopify_order_name, notes, created_at"
-    )
-    .order("created_at", { ascending: false })
-    .limit(1000);
+  const admin = createAdminClient();
+  const [{ data }, { data: pickupData }] = await Promise.all([
+    supabase.from("cremation_bookings").select("id, owner_name, contact, pet_name, pet_type, plan, status, service_date, service_time, amount, payment_amount, payment_status, payment_ref, shopify_order_name, notes, created_at").order("created_at", { ascending: false }).limit(1000),
+    admin.from("deposit_bookings").select("id, owner_name, contact, pet_name, status, service_date, service_time, payment_amount, payment_status, shopify_order_name, notes, created_at").order("created_at", { ascending: false }).limit(1000),
+  ]);
 
   // 以「聯絡 || 主人名」為客戶識別鍵，與客戶檔案列表一致
   const bookings = ((data ?? []) as Booking[]).filter(
     (b) => (b.contact || b.owner_name || "未知").trim() === key
   );
+  const pickups = ((pickupData ?? []) as Deposit[]).filter(
+    (b) => (b.contact || b.owner_name || "未知").trim() === key
+  );
 
-  const name = bookings.find((b) => b.owner_name)?.owner_name || key || "客戶";
-  const contact = bookings.find((b) => b.contact)?.contact || key;
-  const pets = [...new Set(bookings.map((b) => b.pet_name).filter(Boolean))];
+  const name = bookings.find((b) => b.owner_name)?.owner_name || pickups.find((b) => b.owner_name)?.owner_name || key || "客戶";
+  const contact = bookings.find((b) => b.contact)?.contact || pickups.find((b) => b.contact)?.contact || key;
+  const pets = [...new Set([...bookings, ...pickups].map((b) => b.pet_name).filter(Boolean))];
   const eff = (b: Booking) => b.amount ?? b.payment_amount ?? 0;
 
   // 火化：已付款預約金額
   const cremPaid = bookings
     .filter((b) => b.payment_status === "paid")
     .reduce((s, b) => s + eff(b), 0);
+  const pickupPaid = pickups
+    .filter((b) => b.payment_status === "paid" && b.status !== "cancelled")
+    .reduce((s, b) => s + Number(b.payment_amount || 0), 0);
 
   // 產品銷售：直接從 Supabase 同步表按電話尾 8 位配對。
   const custPhone = phoneKey(contact);
@@ -121,12 +145,36 @@ export default async function CustomerPage({
         </div>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-6">
+        {stat("接送服務", `${pickups.length} 次`)}
+        {stat("接送消費（已付）", "$" + Math.round(pickupPaid).toLocaleString())}
         {stat("火化預約", `${bookings.length} 次`)}
         {stat("火化消費（已付）", "$" + Math.round(cremPaid).toLocaleString())}
-        {stat("產品銷售", `${productOrders.length} 張`)}
-        {stat("產品消費", "$" + Math.round(productSpend).toLocaleString())}
+        {stat("產品消費", `${productOrders.length} 張 · $${Math.round(productSpend).toLocaleString()}`)}
       </div>
+
+      <h2 className="text-base font-semibold mb-3 flex items-center gap-2">
+        <span className="text-[var(--gold)]">◆</span> 接送服務記錄
+      </h2>
+      {pickups.length === 0 ? (
+        <div className="rounded-2xl border border-[var(--line)] bg-[var(--card)] p-8 text-center text-[var(--soft)] mb-8">未有接送服務記錄。</div>
+      ) : (
+        <div className="rounded-2xl border border-[var(--line)] bg-[var(--card)] overflow-x-auto mb-8">
+          <table className="w-full text-sm min-w-[640px]">
+            <thead><tr className="bg-[var(--head)] text-left text-[var(--soft)] whitespace-nowrap">
+              <th className="px-4 py-3 font-medium">日期及時間</th><th className="px-4 py-3 font-medium">專案編號</th><th className="px-4 py-3 font-medium">毛孩</th><th className="px-4 py-3 font-medium">狀態</th><th className="px-4 py-3 font-medium">付款</th><th className="px-4 py-3 font-medium text-right">金額</th>
+            </tr></thead>
+            <tbody>{pickups.map((b) => <tr key={b.id} className="border-t border-[var(--line)] whitespace-nowrap">
+              <td className="px-4 py-3">{[b.service_date || b.created_at.slice(0, 10), b.service_time].filter(Boolean).join(" ")}</td>
+              <td className="px-4 py-3 font-medium text-[var(--gold)]">{pickupProjectNo(b)}</td>
+              <td className="px-4 py-3">{b.pet_name || "—"}</td>
+              <td className="px-4 py-3">{STATUS_LABEL[b.status] || b.status}</td>
+              <td className="px-4 py-3">{PAY_LABEL[b.payment_status || ""] || b.payment_status || "—"}</td>
+              <td className="px-4 py-3 text-right tabular-nums">{b.payment_amount ? "$" + Number(b.payment_amount).toLocaleString() : "—"}</td>
+            </tr>)}</tbody>
+          </table>
+        </div>
+      )}
 
       {/* 火化預約記錄 */}
       <h2 className="text-base font-semibold mb-3 flex items-center gap-2">

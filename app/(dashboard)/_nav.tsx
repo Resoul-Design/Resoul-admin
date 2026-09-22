@@ -20,9 +20,9 @@ export const GROUPS: Group[] = [
     label: "日常營運",
     icon: "✦",
     children: [
+      { label: "接送服務", href: "/deposits" },
       { label: "火化預約", href: "/bookings" },
       { label: "獸醫評估", href: "/vet-assessments" },
-      { label: "接送服務", href: "/deposits" },
       { label: "紀念品訂單", href: "/orders" },
       { label: "倉存 · 出貨", href: "/inventory" },
     ],
