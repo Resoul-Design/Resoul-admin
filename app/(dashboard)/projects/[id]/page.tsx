@@ -38,7 +38,7 @@ export default async function ProjectDetailPage({
   const [bkRes, peRes] = await Promise.all([
     supabase
       .from("cremation_bookings")
-      .select("id, case_no, pet_name, owner_name, contact, plan, status, service_date, amount, payment_amount, payment_status, payment_ref, shopify_order_name, paid_at, notes")
+      .select("id, case_no, pet_name, owner_name, contact, plan, status, service_date, amount, payment_amount, payment_status, payment_ref, shopify_order_name, paid_at, notes, source")
       .eq("id", id)
       .maybeSingle(),
     supabase
@@ -73,7 +73,9 @@ export default async function ProjectDetailPage({
   const showAutoIncome = manualIncome === 0 && paidIncome > 0;
   const income = manualIncome > 0 ? manualIncome : paidIncome;
   const net = income - expense;
-  const projectNo = canonicalProjectNo(b.shopify_order_name, projectNoFromNotes(b.notes));
+  const notesProject = projectNoFromNotes(b.notes);
+  const projectNo = canonicalProjectNo(b.shopify_order_name, b.case_no || (notesProject === "—" ? null : notesProject));
+  const isVet = (b.source || "").includes("euthanasia");
   const paymentRef = b.payment_ref || "—";
   const autoIncomeDate = (b.paid_at || b.service_date || "").slice(0, 10);
 
@@ -97,6 +99,7 @@ export default async function ProjectDetailPage({
           { label: "客人名稱", value: b.owner_name || "—" },
           { label: "寵物名稱", value: b.pet_name || "—" },
           { label: "聯絡電話", value: b.contact || "—" },
+          { label: "類別", value: isVet ? "獸醫評估" : "火化服務" },
           { label: "方案", value: b.plan || "—" },
           { label: "服務日期", value: b.service_date || "—" },
         ].map((f) => (

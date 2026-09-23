@@ -22,6 +22,7 @@ const PAY_LABEL: Record<string, string> = {
 
 type Booking = {
   id: string;
+  case_no: string | null;
   owner_name: string | null;
   contact: string | null;
   pet_name: string | null;
@@ -36,6 +37,7 @@ type Booking = {
   payment_ref: string | null;
   shopify_order_name: string | null;
   notes: string | null;
+  source: string | null;
   created_at: string;
 };
 type Deposit = {
@@ -60,6 +62,7 @@ function pickupProjectNo(row: Deposit) {
 
 // 單據編號：優先 Shopify 訂單號，其次付款參考碼，最後由備註抽取 Ref
 function receiptNo(b: Booking): string {
+  if (b.case_no) return b.case_no;
   if (b.shopify_order_name) return b.shopify_order_name;
   if (b.payment_ref) return b.payment_ref;
   const m = (b.notes || "").match(/Ref[:：]\s*(RS-[A-Za-z0-9-]+)/i);
@@ -86,21 +89,23 @@ export default async function CustomerPage({
   const supabase = await createClient();
   const admin = createAdminClient();
   const [{ data }, { data: pickupData }] = await Promise.all([
-    supabase.from("cremation_bookings").select("id, owner_name, contact, pet_name, pet_type, plan, status, service_date, service_time, amount, payment_amount, payment_status, payment_ref, shopify_order_name, notes, created_at").order("created_at", { ascending: false }).limit(1000),
+    supabase.from("cremation_bookings").select("id, case_no, owner_name, contact, pet_name, pet_type, plan, status, service_date, service_time, amount, payment_amount, payment_status, payment_ref, shopify_order_name, notes, source, created_at").order("created_at", { ascending: false }).limit(1000),
     admin.from("deposit_bookings").select("id, owner_name, contact, pet_name, status, service_date, service_time, payment_amount, payment_status, shopify_order_name, notes, created_at").order("created_at", { ascending: false }).limit(1000),
   ]);
 
   // 以「聯絡 || 主人名」為客戶識別鍵，與客戶檔案列表一致
-  const bookings = ((data ?? []) as Booking[]).filter(
+  const allBookings = ((data ?? []) as Booking[]).filter(
     (b) => (b.contact || b.owner_name || "未知").trim() === key
   );
+  const vetBookings = allBookings.filter((b) => (b.source || "").includes("euthanasia"));
+  const bookings = allBookings.filter((b) => !(b.source || "").includes("euthanasia"));
   const pickups = ((pickupData ?? []) as Deposit[]).filter(
     (b) => (b.contact || b.owner_name || "未知").trim() === key
   );
 
-  const name = bookings.find((b) => b.owner_name)?.owner_name || pickups.find((b) => b.owner_name)?.owner_name || key || "客戶";
-  const contact = bookings.find((b) => b.contact)?.contact || pickups.find((b) => b.contact)?.contact || key;
-  const pets = [...new Set([...bookings, ...pickups].map((b) => b.pet_name).filter(Boolean))];
+  const name = allBookings.find((b) => b.owner_name)?.owner_name || pickups.find((b) => b.owner_name)?.owner_name || key || "客戶";
+  const contact = allBookings.find((b) => b.contact)?.contact || pickups.find((b) => b.contact)?.contact || key;
+  const pets = [...new Set([...allBookings, ...pickups].map((b) => b.pet_name).filter(Boolean))];
   const eff = (b: Booking) => b.amount ?? b.payment_amount ?? 0;
 
   // 火化：已付款預約金額
@@ -145,11 +150,12 @@ export default async function CustomerPage({
         </div>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-6">
+      <div className="grid grid-cols-2 lg:grid-cols-6 gap-3 mb-6">
         {stat("接送服務", `${pickups.length} 次`)}
         {stat("接送消費（已付）", "$" + Math.round(pickupPaid).toLocaleString())}
         {stat("火化預約", `${bookings.length} 次`)}
         {stat("火化消費（已付）", "$" + Math.round(cremPaid).toLocaleString())}
+        {stat("獸醫評估", `${vetBookings.length} 次`)}
         {stat("產品消費", `${productOrders.length} 張 · $${Math.round(productSpend).toLocaleString()}`)}
       </div>
 
@@ -173,6 +179,25 @@ export default async function CustomerPage({
               <td className="px-4 py-3 text-right tabular-nums">{b.payment_amount ? "$" + Number(b.payment_amount).toLocaleString() : "—"}</td>
             </tr>)}</tbody>
           </table>
+        </div>
+      )}
+
+      {/* 獸醫評估記錄 */}
+      <h2 className="text-base font-semibold mb-3 flex items-center gap-2">
+        <span className="text-[var(--gold)]">✚</span> 獸醫評估記錄
+      </h2>
+      {vetBookings.length === 0 ? (
+        <div className="rounded-2xl border border-[var(--line)] bg-[var(--card)] p-8 text-center text-[var(--soft)] mb-8">未有獸醫評估記錄。</div>
+      ) : (
+        <div className="space-y-3 mb-8">
+          {vetBookings.map((b) => (
+            <div key={b.id} className="grid gap-2 rounded-2xl border border-[var(--line)] bg-[var(--card)] p-4 md:grid-cols-[minmax(180px,1.2fr)_1fr_1fr_auto] md:items-center">
+              <div><div className="text-xs text-[var(--soft)]">專案編號</div><div className="font-medium text-[var(--gold)]">{receiptNo(b)}</div></div>
+              <div><div className="text-xs text-[var(--soft)]">毛孩</div><div>{b.pet_name || "—"}{b.pet_type ? `（${b.pet_type}）` : ""}</div></div>
+              <div><div className="text-xs text-[var(--soft)]">希望日期 · 時段</div><div>{[b.service_date || b.created_at.slice(0, 10), b.service_time?.slice(0, 5)].filter(Boolean).join(" ")}</div></div>
+              <span className="w-fit rounded-full bg-[var(--cream)] px-2 py-0.5 text-xs text-[var(--soft)]">{STATUS_LABEL[b.status] || b.status}</span>
+            </div>
+          ))}
         </div>
       )}
 

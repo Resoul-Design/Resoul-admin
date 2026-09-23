@@ -20,6 +20,7 @@ type Booking = {
   payment_status: string | null;
   shopify_order_name: string | null;
   notes: string | null;
+  source: string | null;
 };
 type Entry = { booking_id: string | null; order_ref: string | null; kind: string; amount: number };
 type Deposit = {
@@ -49,7 +50,7 @@ type Row = {
   secondary: string;
   plan: string;
   status: string;
-  kind: "pickup" | "cremation" | "product";
+  kind: "pickup" | "vet" | "cremation" | "product";
   income: number;
   expense: number;
   date: string;
@@ -62,7 +63,7 @@ export default async function ProjectsPage() {
   const [bkRes, peRes, poRes, depRes] = await Promise.all([
     supabase
       .from("cremation_bookings")
-      .select("id, case_no, pet_name, owner_name, plan, status, service_date, created_at, amount, payment_amount, payment_status, shopify_order_name, notes")
+      .select("id, case_no, pet_name, owner_name, plan, status, service_date, created_at, amount, payment_amount, payment_status, shopify_order_name, notes, source")
       .order("created_at", { ascending: false })
       .limit(1000),
     // select("*") 以容忍 order_ref 欄位尚未建立（migration 未跑）時不報錯
@@ -104,6 +105,7 @@ export default async function ProjectsPage() {
     });
   }
   for (const b of bookings) {
+    const vet = (b.source || "").includes("euthanasia");
     const a = byBooking[b.id] || { income: 0, expense: 0 };
     const cancelled = b.status === "cancelled";
     const refunded = b.payment_status === "refunded";
@@ -116,9 +118,9 @@ export default async function ProjectsPage() {
       projectNo: canonicalProjectNo(b.shopify_order_name, projectNoFromNotes(b.notes)),
       primary: b.pet_name || "—",
       secondary: b.owner_name || "—",
-      plan: b.plan || "火化服務",
+      plan: vet ? "獸醫評估" : b.plan || "火化服務",
       status: cancelled ? "已取消" : refunded ? "已退款" : STATUS_LABEL[b.status] || b.status,
-      kind: "cremation",
+      kind: vet ? "vet" : "cremation",
       income,
       expense: a.expense,
       date: b.service_date || b.created_at?.slice(0, 10) || "",

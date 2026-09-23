@@ -11,7 +11,7 @@ export type ProjectRow = {
   secondary: string;
   plan: string;
   status: string;
-  kind: "pickup" | "cremation" | "product";
+  kind: "pickup" | "vet" | "cremation" | "product";
   income: number;
   expense: number;
   date: string;
@@ -79,6 +79,7 @@ export function ProjectsTable({ rows }: { rows: ProjectRow[] }) {
         <select value={kind} onChange={(e) => { setKind(e.target.value); reset(); }} className="rounded-lg border border-[var(--line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--gold)]">
           <option value="all">全部類別</option>
           <option value="pickup">接送服務</option>
+          <option value="vet">獸醫評估</option>
           <option value="cremation">火化</option>
           <option value="product">紀念產品</option>
         </select>
