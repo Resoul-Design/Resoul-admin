@@ -159,8 +159,9 @@ export default async function DepositsPage() {
       ) : (
         <>
           {/* 桌面：表格 */}
-          <div className="hidden md:block rounded-2xl border border-[var(--line)] bg-[var(--card)] overflow-x-auto">
-            <table className="w-full text-sm min-w-[860px]">
+          <div className="hidden lg:block rounded-2xl border border-[var(--line)] bg-[var(--card)] overflow-hidden">
+            <table className="w-full table-fixed text-sm">
+              <colgroup><col className="w-[9%]"/><col className="w-[14%]"/><col className="w-[12%]"/><col className="w-[7%]"/><col className="w-[15%]"/><col className="w-[8%]"/><col className="w-[7%]"/><col className="w-[7%]"/><col className="w-[21%]"/></colgroup>
               <thead>
                 <tr className="bg-[var(--head)] text-left text-[var(--soft)] whitespace-nowrap">
                   <th className="px-4 py-3 font-medium">建立時間</th>
@@ -210,7 +211,7 @@ export default async function DepositsPage() {
                           {STATUS_LABEL[r.status] || r.status}
                         </span>
                       </td>
-                      <td className="px-4 py-3"><div className="flex items-center justify-end gap-2 whitespace-nowrap">
+                      <td className="px-3 py-3"><div className="flex flex-wrap items-center justify-end gap-x-2 gap-y-1">
                         {cal && <a href={cal} target="_blank" rel="noopener noreferrer" className="text-xs text-[var(--gold)] hover:underline">📅 加入日曆</a>}
                         {invoice && <a href={invoice} target="_blank" rel="noopener noreferrer" className="text-xs text-[var(--gold)] hover:underline">發票</a>}
                         {wa && <a href={wa} target="_blank" rel="noopener noreferrer" className="text-xs text-green-700 hover:underline">💬 WhatsApp 客人</a>}
@@ -224,7 +225,7 @@ export default async function DepositsPage() {
           </div>
 
           {/* 手機：卡片 */}
-          <div className="space-y-3 md:hidden">
+          <div className="space-y-3 lg:hidden">
             {rows.map((r) => {
               const project = projectNo(r);
               const cal = calendarUrl(r);
@@ -232,19 +233,17 @@ export default async function DepositsPage() {
               const invoice = r.shopify_order_id ? `https://${shopDomain()}/admin/orders/${String(r.shopify_order_id).split("/").pop()}` : null;
               return (
                 <div key={r.id} className="rounded-2xl border border-[var(--line)] bg-[var(--card)] p-4">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="font-medium text-[var(--gold)]">{project || "（舊記錄未有專案編號）"}</span>
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0"><div className="text-xs text-[var(--soft)]">專案編號</div><div className="break-words font-medium text-[var(--gold)]">{project || "（舊記錄未有專案編號）"}</div></div>
                     <span className={"px-2 py-0.5 rounded-full text-xs " + statusBadgeClass(r.status)}>
                       {STATUS_LABEL[r.status] || r.status}
                     </span>
                   </div>
                   <dl className="mt-3 grid grid-cols-[76px_minmax(0,1fr)] gap-x-3 gap-y-1.5 text-sm">
-                    <dt className="text-[var(--soft)]">主人名稱</dt>
-                    <dd className="min-w-0">{r.owner_name || "—"}</dd>
-                    <dt className="text-[var(--soft)]">寵物名稱</dt>
+                    <dt className="text-[var(--soft)]">主人 · 電話</dt>
+                    <dd className="min-w-0">{r.owner_name || "—"}<div className="text-xs text-[var(--soft)]">{r.contact ? "📞 " + r.contact : "—"}</div></dd>
+                    <dt className="text-[var(--soft)]">寵物</dt>
                     <dd className="min-w-0">{r.pet_name || "—"}{r.pet_type ? `（${r.pet_type}）` : ""}</dd>
-                    <dt className="text-[var(--soft)]">聯絡電話</dt>
-                    <dd className="min-w-0">{r.contact ? "📞 " + r.contact : "—"}</dd>
                     {r.payment_ref && <>
                       <dt className="text-[var(--soft)]">付款參考</dt>
                       <dd className="min-w-0 break-all text-xs text-[var(--soft)]">{r.payment_ref}</dd>
@@ -252,7 +251,7 @@ export default async function DepositsPage() {
                   </dl>
                   <div className="mt-3 grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 gap-y-2 rounded-xl bg-[var(--head)] px-3 py-2.5 text-xs">
                     <div className="col-span-2 min-w-0">
-                      <div className="text-[var(--soft)]">預約日期及時間</div>
+                      <div className="text-[var(--soft)]">希望日期 · 時段</div>
                       <div className="mt-0.5 font-medium text-sm text-[var(--ink)]">{serviceDateTime(r) || "—"}</div>
                     </div>
                     <div className="self-end">
@@ -270,7 +269,7 @@ export default async function DepositsPage() {
                     <dd>{fmtCreated(r.created_at)}</dd>
                   </dl>
                   <div className="mt-3 flex flex-wrap items-center gap-3 border-t border-[var(--line)] pt-3">
-                    {cal && <a href={cal} target="_blank" rel="noopener noreferrer" className="text-xs text-[var(--gold)]">📅 加入日曆</a>}
+                    {cal && <a href={cal} className="text-xs text-[var(--gold)]">📅 加入日曆</a>}
                     {invoice && <a href={invoice} target="_blank" rel="noopener noreferrer" className="text-xs text-[var(--gold)]">發票</a>}
                     {wa && <a href={wa} target="_blank" rel="noopener noreferrer" className="text-xs text-green-700">💬 WhatsApp 客人</a>}
                     <EditDepositButton booking={r}/>

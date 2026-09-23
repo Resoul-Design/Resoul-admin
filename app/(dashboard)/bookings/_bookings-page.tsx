@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { shopDomain } from "@/lib/shopify";
-import { canonicalProjectNo } from "@/lib/order-label";
+import { canonicalProjectNo, projectNoFromNotes } from "@/lib/order-label";
 import { type BookingData } from "./_edit";
 import { BookingsTable, type BookingRow } from "./_table";
 
@@ -16,7 +16,7 @@ function parseTimePref(notes?: string | null): string {
 
 // 產生「加入 Google Calendar」連結（預填日期、標題、客戶資料）
 function gcalUrl(
-  b: { service_date?: string | null; service_time?: string | null; pet_name?: string | null; owner_name?: string | null; contact?: string | null; plan?: string | null; pickup_address?: string | null; shopify_order_name?: string | null; source?: string | null },
+  b: { service_date?: string | null; service_time?: string | null; pet_name?: string | null; owner_name?: string | null; contact?: string | null; plan?: string | null; pickup_address?: string | null; shopify_order_name?: string | null; case_no?: string | null; notes?: string | null; source?: string | null },
   timePref: string,
   email: string
 ): string | null {
@@ -36,13 +36,15 @@ function gcalUrl(
   }
   const kind = (b.source || "").includes("euthanasia") ? "獸醫評估／安辭查詢" : "火化預約";
   const title = `Resoul ${kind} · ${b.pet_name || "毛孩"}`;
+  const noteProject = projectNoFromNotes(b.notes);
+  const project = canonicalProjectNo(b.shopify_order_name, b.case_no || (noteProject === "—" ? null : noteProject));
   const details = [
     `主人：${b.owner_name || "—"}`,
     `電話：${b.contact || "—"}`,
     email ? `電郵：${email}` : "",
     `方案：${b.plan || "—"}`,
     timePref ? `希望時段：${timePref}` : "",
-    b.shopify_order_name ? `專案編號：${canonicalProjectNo(b.shopify_order_name)}` : "",
+    project !== "—" ? `專案編號：${project}` : "",
   ].filter(Boolean).join("\n");
   const params = new URLSearchParams({ action: "TEMPLATE", text: title, dates, details });
   if (b.pickup_address) params.set("location", b.pickup_address);
@@ -152,7 +154,8 @@ export async function BookingsPage({ mode }: { mode: "cremation" | "vet" }) {
 
   const tableRows: BookingRow[] = bookings.map((b) => {
     // 專案編號＝Shopify 訂單名（#RESOUL-####）；未有時回退 case_no（舊記錄）
-    const canon = canonicalProjectNo(b.shopify_order_name, b.case_no);
+    const notesProject = projectNoFromNotes(b.notes);
+    const canon = canonicalProjectNo(b.shopify_order_name, b.case_no || (notesProject === "—" ? null : notesProject));
     const invoiceNo = canon === "—" ? "" : canon;
     const timePref = parseTimePref(b.notes);
     const serviceDateTime = [

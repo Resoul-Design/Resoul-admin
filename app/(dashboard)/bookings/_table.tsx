@@ -123,8 +123,9 @@ export function BookingsTable({
       {shown.length === 0 ? (
         <div className="rounded-2xl border border-[var(--line)] bg-[var(--card)] p-10 text-center text-[var(--soft)]">沒有符合的預約。</div>
       ) : (
-        <><div className="hidden md:block rounded-2xl border border-[var(--line)] bg-[var(--card)] overflow-x-auto">
-          <table className="w-full text-sm min-w-[860px]">
+        <><div className="hidden lg:block rounded-2xl border border-[var(--line)] bg-[var(--card)] overflow-hidden">
+          <table className="w-full table-fixed text-sm">
+            <colgroup><col className="w-[7%]"/><col className="w-[11%]"/><col className="w-[11%]"/><col className="w-[7%]"/><col className="w-[8%]"/><col className="w-[7%]"/><col className="w-[7%]"/><col className="w-[14%]"/><col className="w-[7%]"/><col className="w-[21%]"/></colgroup>
             <thead>
               <tr className="bg-[var(--head)] text-left text-[var(--soft)] whitespace-nowrap">
                 <th className="px-4 py-3 font-medium">收到</th>
@@ -158,7 +159,7 @@ export function BookingsTable({
                   </td>
                   <td className="px-4 py-3 whitespace-nowrap"><span className={"inline-block whitespace-nowrap px-2 py-0.5 rounded-full text-xs " + r.statusClass}>{r.statusLabel}</span></td>
                   <td className="px-4 py-3">
-                    <div className="flex items-center gap-2 justify-end whitespace-nowrap">
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 justify-end">
                       {r.calUrl && <a href={r.calUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-[var(--gold)] hover:underline">📅 加入日曆</a>}
                       {r.shopifyOrderUrl && <a href={r.shopifyOrderUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-[var(--gold)] hover:underline">發票</a>}
                       <WhatsAppButton phone={r.contact} text={r.waText} />
@@ -171,22 +172,22 @@ export function BookingsTable({
           </table>
         </div>
 
-        <div className="space-y-3 md:hidden">
+        <div className="space-y-3 lg:hidden">
           {shown.map((r) => (
             <div key={r.id} className="rounded-2xl border border-[var(--line)] bg-[var(--card)] p-4">
-              <div className="flex items-center justify-between gap-2">
-                <span className="font-medium text-[var(--gold)]">{r.invoiceNo || "（未有編號）"}</span>
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0"><div className="text-xs text-[var(--soft)]">專案編號</div><div className="break-words font-medium text-[var(--gold)]">{r.invoiceNo || "（未有編號）"}</div></div>
                 <span className={"px-2 py-0.5 rounded-full text-xs " + r.statusClass}>{r.statusLabel}</span>
               </div>
-              <div className="mt-1 text-sm">{r.owner || "—"}　·　{r.petName || "—"}{r.petType ? `（${r.petType}）` : ""}</div>
-              <div className="mt-0.5 text-xs text-[var(--soft)]">{r.plan || "—"}{r.contact ? "　·　📞 " + r.contact : ""}</div>
-              <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
-                <span>{r.serviceDateTime || "—"}{r.timePref ? "　·　" + r.timePref : ""}</span>
-                {paymentReady && <span className={"px-2 py-0.5 rounded-full " + r.paymentClass}>{r.paymentLabel}</span>}
-                <span className="ml-auto font-medium tabular-nums">{r.amountText}</span>
-              </div>
+              <dl className="mt-3 grid grid-cols-[88px_minmax(0,1fr)] gap-x-3 gap-y-2 text-sm">
+                <dt className="text-[var(--soft)]">主人 · 電話</dt><dd className="min-w-0">{r.owner || "—"}<div className="text-xs text-[var(--soft)]">{r.contact ? "📞 " + r.contact : "—"}</div></dd>
+                <dt className="text-[var(--soft)]">寵物</dt><dd className="min-w-0">{r.petName || "—"}{r.petType ? `（${r.petType}）` : ""}</dd>
+                <dt className="text-[var(--soft)]">方案</dt><dd className="min-w-0">{r.plan || "—"}</dd>
+                <dt className="text-[var(--soft)]">希望日期 · 時段</dt><dd className="min-w-0">{r.serviceDateTime || "—"}{r.timePref ? <div className="text-xs text-[var(--soft)]">{r.timePref}</div> : null}</dd>
+                <dt className="text-[var(--soft)]">價錢 · 付款</dt><dd className="flex flex-wrap items-center gap-2"><span className="font-medium tabular-nums">{r.amountText}</span>{paymentReady && <span className={"px-2 py-0.5 rounded-full text-xs " + r.paymentClass}>{r.paymentLabel}</span>}</dd>
+              </dl>
               <div className="mt-3 flex flex-wrap items-center gap-3 border-t border-[var(--line)] pt-3">
-                {r.calUrl && <a href={r.calUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-[var(--gold)] hover:underline">📅 加入日曆</a>}
+                {r.calUrl && <a href={r.calUrl} className="text-xs text-[var(--gold)] hover:underline">📅 加入日曆</a>}
                 {r.shopifyOrderUrl && <a href={r.shopifyOrderUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-[var(--gold)] hover:underline">發票</a>}
                 <WhatsAppButton phone={r.contact} text={r.waText} />
                 <EditBookingButton booking={r.booking} />
