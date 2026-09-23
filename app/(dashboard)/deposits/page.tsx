@@ -161,7 +161,7 @@ export default async function DepositsPage() {
           {/* 桌面：表格 */}
           <div className="hidden lg:block rounded-2xl border border-[var(--line)] bg-[var(--card)] overflow-hidden">
             <table className="w-full table-fixed text-sm">
-              <colgroup><col className="w-[9%]"/><col className="w-[14%]"/><col className="w-[12%]"/><col className="w-[7%]"/><col className="w-[15%]"/><col className="w-[8%]"/><col className="w-[7%]"/><col className="w-[7%]"/><col className="w-[21%]"/></colgroup>
+              <colgroup><col className="w-[8%]"/><col className="w-[14%]"/><col className="w-[11%]"/><col className="w-[6%]"/><col className="w-[17%]"/><col className="w-[8%]"/><col className="w-[7%]"/><col className="w-[7%]"/><col className="w-[22%]"/></colgroup>
               <thead>
                 <tr className="bg-[var(--head)] text-left text-[var(--soft)] whitespace-nowrap">
                   <th className="px-4 py-3 font-medium">建立時間</th>
@@ -199,7 +199,10 @@ export default async function DepositsPage() {
                         <div>{r.pet_name || "—"}</div>
                         <div className="text-[var(--soft)] text-xs">{r.pet_type || ""}</div>
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap">{serviceDateTime(r) || "—"}</td>
+                      <td className="px-3 py-3">
+                        <div className="whitespace-nowrap">{r.service_date || "—"}</div>
+                        {r.service_time && <div className="mt-0.5 text-xs leading-5 text-[var(--soft)]">{r.service_time}</div>}
+                      </td>
                       <td className="px-4 py-3 whitespace-nowrap text-right tabular-nums">{fmtAmount(r)}</td>
                       <td className="px-4 py-3 whitespace-nowrap">
                         <span className={"inline-block px-2 py-0.5 rounded-full text-xs " + paymentBadgeClass(r.payment_status)}>
