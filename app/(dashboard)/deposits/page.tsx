@@ -159,9 +159,9 @@ export default async function DepositsPage() {
       ) : (
         <>
           {/* 桌面：表格 */}
-          <div className="hidden lg:block rounded-2xl border border-[var(--line)] bg-[var(--card)] overflow-hidden">
-            <table className="w-full table-fixed text-sm">
-              <colgroup><col className="w-[8%]"/><col className="w-[14%]"/><col className="w-[11%]"/><col className="w-[6%]"/><col className="w-[17%]"/><col className="w-[8%]"/><col className="w-[7%]"/><col className="w-[7%]"/><col className="w-[22%]"/></colgroup>
+          <div className="hidden lg:block rounded-2xl border border-[var(--line)] bg-[var(--card)] overflow-x-auto">
+            <table className="w-full min-w-[1650px] table-fixed text-sm">
+              <colgroup><col className="w-[10%]"/><col className="w-[16%]"/><col className="w-[12%]"/><col className="w-[7%]"/><col className="w-[16%]"/><col className="w-[7%]"/><col className="w-[7%]"/><col className="w-[7%]"/><col className="w-[18%]"/></colgroup>
               <thead>
                 <tr className="bg-[var(--head)] text-left text-[var(--soft)] whitespace-nowrap">
                   <th className="px-4 py-3 font-medium">建立時間</th>
@@ -184,9 +184,9 @@ export default async function DepositsPage() {
                   return (
                     <tr key={r.id} className="border-t border-[var(--line)] align-top">
                       <td className="px-4 py-3 text-[var(--soft)] whitespace-nowrap">{fmtCreated(r.created_at)}</td>
-                      <td className="px-4 py-3 whitespace-nowrap">
+                      <td className="px-4 py-3">
                         {project ? (
-                          <div><span className="font-medium text-[var(--gold)]">{project}</span>{r.payment_ref && <div className="text-xs text-[var(--soft)]">付款參考 {r.payment_ref}</div>}</div>
+                          <div className="min-w-0"><span className="font-medium text-[var(--gold)]">{project}</span>{r.payment_ref && <div className="break-all text-xs text-[var(--soft)]">付款參考 {r.payment_ref}</div>}</div>
                         ) : (
                           <span className="text-[var(--faint)]">—</span>
                         )}

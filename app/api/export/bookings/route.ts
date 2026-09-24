@@ -26,7 +26,7 @@ export async function GET(request: Request) {
   ];
   const rows = filtered.map((b) => [
     (b.source || "").includes("euthanasia") ? "獸醫評估" : "火化預約",
-    canonicalProjectNo(b.shopify_order_name, b.case_no || projectNoFromNotes(b.notes)), b.case_no, b.created_at?.slice(0, 10), b.owner_name, b.contact, b.pet_name,
+    canonicalProjectNo(b.case_no, projectNoFromNotes(b.notes)), b.case_no, b.created_at?.slice(0, 10), b.owner_name, b.contact, b.pet_name,
     b.pet_type, b.plan, b.service_date, b.service_time, b.pickup_address,
     b.status, b.source, b.amount, b.cost, b.payment_status, b.payment_amount,
     b.payment_currency, b.shopify_order_name, b.shopify_order_id,

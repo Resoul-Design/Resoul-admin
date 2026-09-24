@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { logAudit } from "@/lib/audit";
+import { isRslProjectNo } from "@/lib/order-label";
 
 const VALID = [
   "new",
@@ -45,10 +46,11 @@ export async function updateBooking(formData: FormData) {
     status,
     notes: g("notes"),
   };
-  // 專案編號用 Shopify 訂單名（#RESOUL-####）為單一真相，不再自動產生 RS-YYYYMM。
-  // 只有管理員手動填寫內部 case_no 時才寫入；留空不覆蓋原值。
+  // 只有跨服務沿用的 RSL 編號可以寫入 case_no。
   const providedCaseNo = g("case_no");
-  if (providedCaseNo) update.case_no = providedCaseNo;
+  if (providedCaseNo && isRslProjectNo(providedCaseNo)) {
+    update.case_no = providedCaseNo.toUpperCase();
+  }
 
   // 完成火化時，若未手動填收入/成本，按方案定價自動填入
   if (status === "completed" && plan) {

@@ -37,7 +37,7 @@ function gcalUrl(
   const kind = (b.source || "").includes("euthanasia") ? "獸醫評估／安辭查詢" : "火化預約";
   const title = `Resoul ${kind} · ${b.pet_name || "毛孩"}`;
   const noteProject = projectNoFromNotes(b.notes);
-  const project = canonicalProjectNo(b.shopify_order_name, b.case_no || (noteProject === "—" ? null : noteProject));
+  const project = canonicalProjectNo(b.case_no, noteProject);
   const details = [
     `主人：${b.owner_name || "—"}`,
     `電話：${b.contact || "—"}`,
@@ -153,9 +153,9 @@ export async function BookingsPage({ mode }: { mode: "cremation" | "vet" }) {
   );
 
   const tableRows: BookingRow[] = bookings.map((b) => {
-    // 專案編號＝Shopify 訂單名（#RESOUL-####）；未有時回退 case_no（舊記錄）
+    // 專案編號僅限跨服務沿用的 RSL 編號；Shopify 訂單號屬付款發票。
     const notesProject = projectNoFromNotes(b.notes);
-    const canon = canonicalProjectNo(b.shopify_order_name, b.case_no || (notesProject === "—" ? null : notesProject));
+    const canon = canonicalProjectNo(b.case_no, notesProject);
     const invoiceNo = canon === "—" ? "" : canon;
     const timePref = parseTimePref(b.notes);
     const serviceDateTime = [

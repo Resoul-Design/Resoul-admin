@@ -2,6 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { phoneKey, type ProductOrderRow } from "@/lib/product-orders";
+import { canonicalProjectNo, projectNoFromNotes } from "@/lib/order-label";
 
 export const dynamic = "force-dynamic";
 
@@ -60,13 +61,8 @@ function pickupProjectNo(row: Deposit) {
   return match?.[1]?.trim() || "—";
 }
 
-// 單據編號：優先 Shopify 訂單號，其次付款參考碼，最後由備註抽取 Ref
-function receiptNo(b: Booking): string {
-  if (b.case_no) return b.case_no;
-  if (b.shopify_order_name) return b.shopify_order_name;
-  if (b.payment_ref) return b.payment_ref;
-  const m = (b.notes || "").match(/Ref[:：]\s*(RS-[A-Za-z0-9-]+)/i);
-  return m ? m[1] : "—";
+function projectNo(b: Booking): string {
+  return canonicalProjectNo(b.case_no, projectNoFromNotes(b.notes));
 }
 
 const FIN: Record<string, string> = {
@@ -192,7 +188,7 @@ export default async function CustomerPage({
         <div className="space-y-3 mb-8">
           {vetBookings.map((b) => (
             <div key={b.id} className="grid gap-2 rounded-2xl border border-[var(--line)] bg-[var(--card)] p-4 md:grid-cols-[minmax(180px,1.2fr)_1fr_1fr_auto] md:items-center">
-              <div><div className="text-xs text-[var(--soft)]">專案編號</div><div className="font-medium text-[var(--gold)]">{receiptNo(b)}</div></div>
+              <div><div className="text-xs text-[var(--soft)]">專案編號</div><div className="font-medium text-[var(--gold)]">{projectNo(b)}</div></div>
               <div><div className="text-xs text-[var(--soft)]">毛孩</div><div>{b.pet_name || "—"}{b.pet_type ? `（${b.pet_type}）` : ""}</div></div>
               <div><div className="text-xs text-[var(--soft)]">希望日期 · 時段</div><div>{[b.service_date || b.created_at.slice(0, 10), b.service_time?.slice(0, 5)].filter(Boolean).join(" ")}</div></div>
               <span className="w-fit rounded-full bg-[var(--cream)] px-2 py-0.5 text-xs text-[var(--soft)]">{STATUS_LABEL[b.status] || b.status}</span>
@@ -227,7 +223,7 @@ export default async function CustomerPage({
               {bookings.map((b) => (
                 <tr key={b.id} className="border-t border-[var(--line)] whitespace-nowrap">
                   <td className="px-4 py-3">{b.service_date || b.created_at.slice(0, 10)}</td>
-                  <td className="px-4 py-3 font-medium tabular-nums">{receiptNo(b)}</td>
+                  <td className="px-4 py-3 font-medium tabular-nums">{projectNo(b)}</td>
                   <td className="px-4 py-3">{b.pet_name || "—"}</td>
                   <td className="px-4 py-3">{b.plan || "—"}</td>
                   <td className="px-4 py-3">
@@ -250,7 +246,7 @@ export default async function CustomerPage({
           {bookings.map((b) => (
             <div key={b.id} className="rounded-2xl border border-[var(--line)] bg-[var(--card)] p-4">
               <div className="flex items-center justify-between gap-2">
-                <span className="font-medium tabular-nums text-[var(--gold)]">{receiptNo(b)}</span>
+                <span className="font-medium tabular-nums text-[var(--gold)]">{projectNo(b)}</span>
                 <span className="text-xs px-2 py-0.5 rounded-full bg-[var(--cream)] text-[var(--soft)]">{STATUS_LABEL[b.status] || b.status}</span>
               </div>
               <div className="mt-1 text-sm">{b.pet_name || "—"}　·　{b.plan || "—"}</div>

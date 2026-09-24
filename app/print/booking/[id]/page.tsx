@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getStaff } from "@/lib/auth";
 import { COMPANY, PLAN_CODES } from "@/lib/company";
 import { PrintButton } from "../../_print-button";
+import { canonicalProjectNo, projectNoFromNotes } from "@/lib/order-label";
 
 export const dynamic = "force-dynamic";
 
@@ -107,7 +108,7 @@ export default async function BookingDocPage({
   const isReceipt = type === "receipt";
   const titleEn = type === "invoice" ? "INVOICE" : isReceipt ? "RECEIPT" : "QUOTATION";
   const noLabel = type === "invoice" ? "Invoice No.:" : isReceipt ? "Receipt No.:" : "Quotation No.:";
-  const docNo = b.shopify_order_name || b.case_no || b.id.slice(0, 8);
+  const docNo = b.shopify_order_name || canonicalProjectNo(b.case_no, projectNoFromNotes(b.notes));
   const today = new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
 
   return (

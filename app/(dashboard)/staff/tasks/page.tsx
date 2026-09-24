@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { createTask, updateTaskStatus, deleteTask } from "../actions";
+import { canonicalProjectNo } from "@/lib/order-label";
 
 export const dynamic = "force-dynamic";
 
@@ -55,7 +56,8 @@ export default async function TasksPage({
   const bookingOf = (id: string | null) => {
     if (!id) return null;
     const b = bookings.find((x) => x.id === id);
-    return b ? `${b.case_no ? b.case_no + " · " : ""}${b.pet_name || b.owner_name || "預約"}` : null;
+    const project = b ? canonicalProjectNo(b.case_no) : "—";
+    return b ? `${project !== "—" ? project + " · " : ""}${b.pet_name || b.owner_name || "預約"}` : null;
   };
 
   const tabs = [
@@ -94,7 +96,7 @@ export default async function TasksPage({
               <option value="">無</option>
               {bookings.map((b) => (
                 <option key={b.id} value={b.id}>
-                  {(b.case_no ? b.case_no + " · " : "") + (b.pet_name || b.owner_name || "預約")}
+                  {(canonicalProjectNo(b.case_no) !== "—" ? canonicalProjectNo(b.case_no) + " · " : "") + (b.pet_name || b.owner_name || "預約")}
                 </option>
               ))}
             </select>

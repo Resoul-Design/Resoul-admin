@@ -74,7 +74,7 @@ export default async function ProjectDetailPage({
   const income = manualIncome > 0 ? manualIncome : paidIncome;
   const net = income - expense;
   const notesProject = projectNoFromNotes(b.notes);
-  const projectNo = canonicalProjectNo(b.shopify_order_name, b.case_no || (notesProject === "—" ? null : notesProject));
+  const projectNo = canonicalProjectNo(b.case_no, notesProject);
   const isVet = (b.source || "").includes("euthanasia");
   const paymentRef = b.payment_ref || "—";
   const autoIncomeDate = (b.paid_at || b.service_date || "").slice(0, 10);
