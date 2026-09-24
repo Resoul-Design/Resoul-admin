@@ -15,6 +15,7 @@ export type ProjectRow = {
   income: number;
   expense: number;
   date: string;
+  records?: { label: string; date: string; status: string; amount: number; href: string }[];
 };
 
 const money = (n: number) => "$" + Math.round(n).toLocaleString();
@@ -36,8 +37,8 @@ export function ProjectsTable({ rows }: { rows: ProjectRow[] }) {
   const filtered = useMemo(() => {
     const kw = q.trim().toLowerCase();
     return rows.filter((r) => {
-      if (kind !== "all" && r.kind !== kind) return false;
-      if (status !== "all" && r.status !== status) return false;
+      if (kind !== "all" && r.kind !== kind && !r.records?.some((record) => record.label.startsWith(({ pickup: "接送服務", vet: "獸醫評估", cremation: "火化", product: "紀念產品" } as Record<string, string>)[kind] || ""))) return false;
+      if (status !== "all" && r.status !== status && !r.records?.some((record) => record.status === status)) return false;
       if (!kw) return true;
       return (
         r.projectNo.toLowerCase().includes(kw) ||
@@ -124,7 +125,7 @@ export function ProjectsTable({ rows }: { rows: ProjectRow[] }) {
                   <td className="px-4 py-3 text-right tabular-nums text-[var(--soft)]">{money(r.expense)}</td>
                   <td className="px-4 py-3 text-right tabular-nums font-medium">{money(r.income - r.expense)}</td>
                   <td className="px-4 py-3 text-right">
-                    <Link href={r.href} className="text-xs text-[var(--gold)] hover:underline">管理 →</Link>
+                    <Link href={r.href} className="text-xs text-[var(--gold)] hover:underline">{r.records ? `查看 ${r.records.length} 筆 →` : "管理 →"}</Link>
                   </td>
                 </tr>
               ))}
@@ -134,7 +135,7 @@ export function ProjectsTable({ rows }: { rows: ProjectRow[] }) {
 
         <div className="space-y-3 md:hidden">
           {shown.map((r) => (
-            <Link key={r.key} href={r.href} className="block rounded-2xl border border-[var(--line)] bg-[var(--card)] p-4">
+            <div key={r.key} className="rounded-2xl border border-[var(--line)] bg-[var(--card)] p-4">
               <div className="flex items-center justify-between gap-2">
                 <span className="font-medium text-[var(--gold)]">{r.projectNo}</span>
                 <span className="text-xs px-2 py-0.5 rounded-full bg-[var(--cream)] text-[var(--soft)]">{r.status}</span>
@@ -146,7 +147,8 @@ export function ProjectsTable({ rows }: { rows: ProjectRow[] }) {
                 <span className="text-[var(--soft)]">支出 <span className="tabular-nums">{money(r.expense)}</span></span>
                 <span className="ml-auto font-medium">淨額 <span className="tabular-nums">{money(r.income - r.expense)}</span></span>
               </div>
-            </Link>
+              <Link href={r.href} className="mt-3 inline-block text-xs text-[var(--gold)]">{r.records ? `查看 ${r.records.length} 筆明細 →` : "管理 →"}</Link>
+            </div>
           ))}
         </div>
         </>

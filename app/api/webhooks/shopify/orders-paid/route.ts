@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
   isCremationWebhookOrder,
@@ -47,6 +48,7 @@ export async function POST(request: Request) {
   const paymentRef = findPaymentRef(order);
   if (!paymentRef) {
     if (isCremationWebhookOrder(order)) {
+      revalidateTag("shopify-orders");
       return NextResponse.json({ ok: true, matched: false }, { status: 202 });
     }
     const supabase = createAdminClient();
@@ -57,6 +59,7 @@ export async function POST(request: Request) {
       console.error("[Resoul] Paid product order sync failed", error);
       return NextResponse.json({ error: "Supabase upsert failed" }, { status: 500 });
     }
+    revalidateTag("shopify-orders");
     return NextResponse.json({ ok: true, matched: false, productOrder: true });
   }
 
@@ -79,5 +82,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Supabase update failed" }, { status: 500 });
   }
 
+  revalidateTag("shopify-orders");
   return NextResponse.json({ ok: true, matched: (data || []).length > 0 });
 }

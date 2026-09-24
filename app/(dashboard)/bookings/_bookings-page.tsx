@@ -168,7 +168,7 @@ export async function BookingsPage({ mode }: { mode: "cremation" | "vet" }) {
     const vet = isVet(b.source);
     return {
       id: b.id,
-      created: b.created_at?.slice(0, 10) || "",
+      created: b.created_at?.slice(0, 16).replace("T", " ") || "",
       invoiceNo,
       owner: b.owner_name || "",
       contact: b.contact || "",

@@ -54,6 +54,7 @@ type Row = {
   income: number;
   expense: number;
   date: string;
+  records?: { label: string; date: string; status: string; amount: number; href: string }[];
 };
 
 export default async function ProjectsPage() {
@@ -148,7 +149,46 @@ export default async function ProjectsPage() {
       date: o.shopify_created_at?.slice(0, 10) || "",
     });
   }
-  // 按專案編號（Shopify 訂單號）由大至細排列；未有編號者排最後
+  // 將跨服務的 RSL 編號合併為一個專案列；沒有 RSL 的舊資料仍獨立保留。
+  const grouped = new Map<string, Row[]>();
+  const combined: Row[] = [];
+  for (const row of rows) {
+    if (row.projectNo === "—") {
+      combined.push(row);
+      continue;
+    }
+    grouped.set(row.projectNo, [...(grouped.get(row.projectNo) || []), row]);
+  }
+  for (const [projectNo, items] of grouped) {
+    const first = items[0];
+    const unique = (values: string[]) => Array.from(new Set(values.filter(Boolean)));
+    const names = unique(items.map((item) => item.primary));
+    const secondary = unique(items.map((item) => item.secondary));
+    const plans = unique(items.map((item) => item.plan));
+    const statuses = unique(items.map((item) => item.status));
+    combined.push({
+      ...first,
+      key: `project:${projectNo}`,
+      href: `/projects/group/${encodeURIComponent(projectNo)}`,
+      primary: names.join("、"),
+      secondary: secondary.join("、"),
+      plan: plans.join("、"),
+      status: statuses.join("、"),
+      income: items.reduce((sum, item) => sum + item.income, 0),
+      expense: items.reduce((sum, item) => sum + item.expense, 0),
+      date: items.map((item) => item.date).filter(Boolean).sort().at(-1) || "",
+      records: items.map((item) => ({
+        label: `${item.plan} · ${item.status}`,
+        date: item.date,
+        status: item.status,
+        amount: item.income,
+        href: item.href,
+      })),
+    });
+  }
+  rows.splice(0, rows.length, ...combined);
+
+  // 按專案編號由大至細排列；未有編號者排最後
   const numKey = (s: string) => {
     const m = s.match(/(\d+)/);
     return m ? parseInt(m[1], 10) : -1;

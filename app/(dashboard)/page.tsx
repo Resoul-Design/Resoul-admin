@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getOrdersSinceCached, getProductsCountCached } from "@/lib/revenue";
 import { getStaff } from "@/lib/auth";
 import { Clock } from "./_clock";
+import { DashboardAutoRefresh } from "./_auto-refresh";
 
 export const dynamic = "force-dynamic";
 
@@ -192,6 +193,7 @@ export default async function OverviewPage() {
 
   return (
     <div>
+      <DashboardAutoRefresh />
       {/* 標題橫幅 */}
       <div className="rounded-2xl bg-gradient-to-r from-[var(--gold)] to-[var(--gold-soft)] text-white px-6 py-5 mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
         <div>

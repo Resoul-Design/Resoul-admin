@@ -84,7 +84,7 @@ export function BookingsTable({
   const reset = () => setPage(1);
 
   function exportCsv() {
-    const header = ["收到", "專案編號", "主人", "電話", "地點", "毛孩", "類型", "方案", "金額", "來源", "付款", "服務日期", "狀態"];
+    const header = ["建立時間", "專案編號", "主人", "電話", "地點", "毛孩", "類型", "方案", "金額", "來源", "付款", "服務日期", "狀態"];
     const lines = filtered.map((r) =>
       [r.created, r.invoiceNo, r.owner, r.contact, r.address, r.petName, r.petType, r.plan, r.amountText, r.sourceLabel, r.paymentLabel, r.serviceDate, r.statusLabel]
         .map(csvCell).join(",")
@@ -123,12 +123,12 @@ export function BookingsTable({
       {shown.length === 0 ? (
         <div className="rounded-2xl border border-[var(--line)] bg-[var(--card)] p-10 text-center text-[var(--soft)]">沒有符合的預約。</div>
       ) : (
-        <><div className="hidden lg:block rounded-2xl border border-[var(--line)] bg-[var(--card)] overflow-hidden">
-          <table className="w-full table-fixed text-sm">
-            <colgroup><col className="w-[7%]"/><col className="w-[11%]"/><col className="w-[11%]"/><col className="w-[7%]"/><col className="w-[8%]"/><col className="w-[7%]"/><col className="w-[7%]"/><col className="w-[14%]"/><col className="w-[7%]"/><col className="w-[21%]"/></colgroup>
+        <><div className="hidden lg:block rounded-2xl border border-[var(--line)] bg-[var(--card)] overflow-x-auto">
+          <table className="w-full min-w-[1650px] table-fixed text-sm">
+            <colgroup><col className="w-[8%]"/><col className="w-[13%]"/><col className="w-[13%]"/><col className="w-[7%]"/><col className="w-[8%]"/><col className="w-[6%]"/><col className="w-[7%]"/><col className="w-[16%]"/><col className="w-[7%]"/><col className="w-[15%]"/></colgroup>
             <thead>
               <tr className="bg-[var(--head)] text-left text-[var(--soft)] whitespace-nowrap">
-                <th className="px-4 py-3 font-medium">收到</th>
+                <th className="px-4 py-3 font-medium">建立時間</th>
                 <th className="px-4 py-3 font-medium">專案編號</th>
                 <th className="px-4 py-3 font-medium">主人 · 電話</th>
                 <th className="px-4 py-3 font-medium">毛孩</th>
@@ -180,7 +180,7 @@ export function BookingsTable({
                 <span className={"px-2 py-0.5 rounded-full text-xs " + r.statusClass}>{r.statusLabel}</span>
               </div>
               <dl className="mt-3 grid grid-cols-[88px_minmax(0,1fr)] gap-x-3 gap-y-2 text-sm">
-                <dt className="text-[var(--soft)]">主人 · 電話</dt><dd className="min-w-0">{r.owner || "—"}<div className="text-xs text-[var(--soft)]">{r.contact ? "📞 " + r.contact : "—"}</div></dd>
+                <dt className="text-[var(--soft)]">主人 · 電話</dt><dd className="flex min-w-0 items-center justify-between gap-2"><span className="min-w-0 truncate">{r.owner || "—"}</span><span className="shrink-0 whitespace-nowrap text-xs text-[var(--soft)]">{r.contact ? "📞 " + r.contact : "—"}</span></dd>
                 <dt className="text-[var(--soft)]">寵物</dt><dd className="min-w-0">{r.petName || "—"}{r.petType ? `（${r.petType}）` : ""}</dd>
                 <dt className="text-[var(--soft)]">方案</dt><dd className="min-w-0">{r.plan || "—"}</dd>
                 <dt className="text-[var(--soft)]">希望日期 · 時段</dt><dd className="min-w-0">{r.serviceDateTime || "—"}{r.timePref ? <div className="text-xs text-[var(--soft)]">{r.timePref}</div> : null}</dd>

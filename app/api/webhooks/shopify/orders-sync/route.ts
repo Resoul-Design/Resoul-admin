@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
   isCremationWebhookOrder,
@@ -30,6 +31,7 @@ export async function POST(request: Request) {
   if (isCremationWebhookOrder(order)) {
     const { error } = await supabase.from("product_orders").delete().eq("shopify_order_id", orderId);
     if (error) return NextResponse.json({ error: "Supabase delete failed" }, { status: 500 });
+    revalidateTag("shopify-orders");
     return NextResponse.json({ ok: true, productOrder: false });
   }
 
@@ -41,6 +43,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Supabase upsert failed" }, { status: 500 });
   }
 
+  revalidateTag("shopify-orders");
   return NextResponse.json({ ok: true, productOrder: true });
 }
-

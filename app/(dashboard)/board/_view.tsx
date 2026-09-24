@@ -17,7 +17,7 @@ type Post = {
 };
 
 const VIS_LABEL: Record<string, string> = {
-  public: "公開",
+  public: "公開（審核後顯示）",
   link: "只限連結",
   private: "私人保存",
 };
@@ -110,11 +110,14 @@ export async function BoardView({
                 (p.crisis_flag ? "border-red-300" : "border-[var(--line)]")
               }
             >
-              <div className="flex items-center gap-2 mb-2 text-xs text-[var(--soft)] flex-wrap">
+              <div className="flex items-center gap-2 mb-3 text-xs text-[var(--soft)] flex-wrap">
                 {contextType === "blog" && (
                   <span>{p.context.startsWith("blog:") ? p.context.slice(5) : p.context}</span>
                 )}
-                <span>{p.created_at?.slice(0, 16).replace("T", " ")}</span>
+                <span>
+                  {contextType === "community" ? "提交時間：" : ""}
+                  {p.created_at?.slice(0, 16).replace("T", " ")}
+                </span>
                 <span
                   className={
                     "ml-1 px-2 py-0.5 rounded-full " +
@@ -128,30 +131,57 @@ export async function BoardView({
                   {STATUS_LABEL[p.status] || p.status}
                 </span>
                 {p.crisis_flag && (
-                  <span className="px-2 py-0.5 rounded-full bg-red-100 text-red-700 font-medium">
-                    ⚠ 危機字眼
+                  <span
+                    className="px-2 py-0.5 rounded-full bg-red-100 text-red-700 font-medium"
+                    title="系統審核提示，並不代表已確認危機。請閱讀留言內容後再判斷。"
+                  >
+                    ⚠ 優先查看
                   </span>
                 )}
               </div>
 
-              {(p.pet_name || p.years) && (
-                <div className="text-sm font-semibold mb-0.5">
-                  {p.pet_name || "毛孩"}
-                  {p.years ? <span className="font-normal text-[var(--soft)]">　{p.years}</span> : null}
-                </div>
+              {contextType === "community" && (p.pet_name || p.years) && (
+                <dl className="mb-2 flex flex-wrap gap-x-6 gap-y-1 text-sm">
+                  {p.pet_name && (
+                    <div className="flex gap-2">
+                      <dt className="text-[var(--soft)]">毛孩名字</dt>
+                      <dd className="font-medium">{p.pet_name}</dd>
+                    </div>
+                  )}
+                  {p.years && (
+                    <div className="flex gap-2">
+                      <dt className="text-[var(--soft)]">相伴年份／時間</dt>
+                      <dd>{p.years}</dd>
+                    </div>
+                  )}
+                </dl>
+              )}
+              {contextType === "blog" && p.years && (
+                <div className="mb-2 text-sm text-[var(--soft)]">相伴年份／時間：{p.years}</div>
               )}
               {p.one_line && (
-                <div className="text-sm italic text-[var(--soft)] mb-1">「{p.one_line}」</div>
+                <div className="mb-2 text-sm">
+                  <div className="text-xs text-[var(--soft)]">最像牠的一句話</div>
+                  <div className="italic">「{p.one_line}」</div>
+                </div>
               )}
 
               <div className="text-sm mb-1">
-                <span className="text-[var(--soft)]">{p.name || "匿名"}：</span>
-                <span className="whitespace-pre-wrap">{p.body}</span>
+                {contextType === "community" && (
+                  <div className="text-xs text-[var(--soft)] mb-0.5">故事內容</div>
+                )}
+                <div className="whitespace-pre-wrap">{p.body}</div>
+                {contextType === "community" ? (
+                  <div className="mt-1 text-xs text-[var(--soft)]">署名：{p.name || "一位主人"}</div>
+                ) : (
+                  <div className="mt-1 text-xs text-[var(--soft)]">{p.name || "匿名"}</div>
+                )}
               </div>
 
               {p.visibility && (
                 <div className="text-xs text-[var(--soft)] mt-1">
-                  私隱：{VIS_LABEL[p.visibility] || p.visibility}
+                  {contextType === "community" ? "分享設定：" : "私隱："}
+                  {VIS_LABEL[p.visibility] || p.visibility}
                 </div>
               )}
 
@@ -172,7 +202,7 @@ export async function BoardView({
                     <input type="hidden" name="id" value={p.id} />
                     <input type="hidden" name="status" value="visible" />
                     <button className="text-xs px-3 py-1.5 rounded-md bg-green-600 text-white hover:opacity-90">
-                      核准顯示
+                      {p.status === "hidden" ? "重新公開" : "核准並公開"}
                     </button>
                   </form>
                 )}
@@ -181,7 +211,7 @@ export async function BoardView({
                     <input type="hidden" name="id" value={p.id} />
                     <input type="hidden" name="status" value="hidden" />
                     <button className="text-xs px-3 py-1.5 rounded-md bg-gray-200 text-gray-700 hover:bg-gray-300">
-                      隱藏
+                      暫不公開
                     </button>
                   </form>
                 )}

@@ -244,7 +244,7 @@ export default async function DepositsPage() {
                   </div>
                   <dl className="mt-3 grid grid-cols-[76px_minmax(0,1fr)] gap-x-3 gap-y-1.5 text-sm">
                     <dt className="text-[var(--soft)]">主人 · 電話</dt>
-                    <dd className="min-w-0">{r.owner_name || "—"}<div className="text-xs text-[var(--soft)]">{r.contact ? "📞 " + r.contact : "—"}</div></dd>
+                    <dd className="flex min-w-0 items-center justify-between gap-2"><span className="min-w-0 truncate">{r.owner_name || "—"}</span><span className="shrink-0 whitespace-nowrap text-xs text-[var(--soft)]">{r.contact ? "📞 " + r.contact : "—"}</span></dd>
                     <dt className="text-[var(--soft)]">寵物</dt>
                     <dd className="min-w-0">{r.pet_name || "—"}{r.pet_type ? `（${r.pet_type}）` : ""}</dd>
                     {r.payment_ref && <>

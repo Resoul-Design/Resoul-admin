@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
   isCremationWebhookOrder,
@@ -71,11 +72,13 @@ export async function POST(request: Request) {
       console.error("[Resoul] orders/updated product sync failed", error);
       return NextResponse.json({ error: "Supabase upsert failed" }, { status: 500 });
     }
+    revalidateTag("shopify-orders");
     return NextResponse.json({ ok: true, matched: false, productOrder: true });
   }
 
   // 火化訂單：只在取消／退款時更新，其餘變動不動（保留員工手動狀態）
   if (!isCancelled && !isRefunded) {
+    revalidateTag("shopify-orders");
     return NextResponse.json({ ok: true, matched: true, changed: false });
   }
 
@@ -94,5 +97,6 @@ export async function POST(request: Request) {
     console.error("[Resoul] orders/updated cremation sync failed", error);
     return NextResponse.json({ error: "Supabase update failed" }, { status: 500 });
   }
+  revalidateTag("shopify-orders");
   return NextResponse.json({ ok: true, matched: (data || []).length > 0, patch });
 }
