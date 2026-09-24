@@ -179,12 +179,33 @@ export function BookingsTable({
                 <div className="min-w-0"><div className="text-xs text-[var(--soft)]">專案編號</div><div className="break-words font-medium text-[var(--gold)]">{r.invoiceNo || "（未有編號）"}</div></div>
                 <span className={"px-2 py-0.5 rounded-full text-xs " + r.statusClass}>{r.statusLabel}</span>
               </div>
-              <dl className="mt-3 grid grid-cols-[88px_minmax(0,1fr)] gap-x-3 gap-y-2 text-sm">
-                <dt className="text-[var(--soft)]">主人 · 電話</dt><dd className="flex min-w-0 items-center justify-between gap-2"><span className="min-w-0 truncate">{r.owner || "—"}</span><span className="shrink-0 whitespace-nowrap text-xs text-[var(--soft)]">{r.contact ? "📞 " + r.contact : "—"}</span></dd>
-                <dt className="text-[var(--soft)]">寵物</dt><dd className="min-w-0">{r.petName || "—"}{r.petType ? `（${r.petType}）` : ""}</dd>
-                <dt className="text-[var(--soft)]">方案</dt><dd className="min-w-0">{r.plan || "—"}</dd>
-                <dt className="text-[var(--soft)]">希望日期 · 時段</dt><dd className="min-w-0">{r.serviceDateTime || "—"}{r.timePref ? <div className="text-xs text-[var(--soft)]">{r.timePref}</div> : null}</dd>
-                <dt className="text-[var(--soft)]">價錢 · 付款</dt><dd className="flex flex-wrap items-center gap-2"><span className="font-medium tabular-nums">{r.amountText}</span>{paymentReady && <span className={"px-2 py-0.5 rounded-full text-xs " + r.paymentClass}>{r.paymentLabel}</span>}</dd>
+              {/* 卡片格式與「接送服務」一致：基本資料 → 日期／付款／金額灰底區 → 建立時間 → 操作 */}
+              <dl className="mt-3 grid grid-cols-[76px_minmax(0,1fr)] gap-x-3 gap-y-1.5 text-sm">
+                <dt className="text-[var(--soft)]">主人 · 電話</dt>
+                <dd className="min-w-0"><div className="truncate">{r.owner || "—"}</div><div className="text-xs text-[var(--soft)]">{r.contact ? "📞 " + r.contact : "—"}</div></dd>
+                <dt className="text-[var(--soft)]">寵物</dt>
+                <dd className="min-w-0">{r.petName || "—"}{r.petType ? `（${r.petType}）` : ""}</dd>
+                {r.plan && <>
+                  <dt className="text-[var(--soft)]">方案</dt>
+                  <dd className="min-w-0">{r.plan}</dd>
+                </>}
+              </dl>
+              <div className="mt-3 grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 gap-y-2 rounded-xl bg-[var(--head)] px-3 py-2.5 text-xs">
+                <div className="col-span-2 min-w-0">
+                  <div className="text-[var(--soft)]">希望日期 · 時段</div>
+                  <div className="mt-0.5 font-medium text-sm text-[var(--ink)]">{[r.serviceDateTime, r.timePref].filter(Boolean).join(" ") || "—"}</div>
+                </div>
+                <div className="self-end">
+                  {paymentReady && <span className={"inline-block px-2 py-0.5 rounded-full " + r.paymentClass}>{r.paymentLabel}</span>}
+                </div>
+                <div className="text-right">
+                  <div className="text-[var(--soft)]">價錢</div>
+                  <div className="mt-0.5 font-medium tabular-nums text-sm text-[var(--ink)]">{r.amountText || "—"}</div>
+                </div>
+              </div>
+              <dl className="mt-3 grid grid-cols-[76px_minmax(0,1fr)] gap-x-3 text-xs text-[var(--soft)]">
+                <dt>建立時間</dt>
+                <dd>{r.created || "—"}</dd>
               </dl>
               <div className="mt-3 flex flex-wrap items-center gap-3 border-t border-[var(--line)] pt-3">
                 {r.calUrl && <a href={r.calUrl} className="text-xs text-[var(--gold)] hover:underline">📅 加入日曆</a>}

@@ -123,6 +123,18 @@ const SEND_DRAFT_INVOICE_MUTATION = `mutation SendSouvenirDraftInvoice($id: ID!)
   }
 }`;
 
+// Shopify 草稿訂單的 phone 欄只接受 E.164 國際格式（例如 +85291234567）。
+// 香港 8 位數字自動補 +852；無法轉換的號碼不傳入 phone 欄，只保留在備註及屬性。
+function toE164Phone(raw: string): string | null {
+  const trimmed = raw.trim();
+  const digits = trimmed.replace(/\D/g, "");
+  if (!digits) return null;
+  if (digits.length === 8) return `+852${digits}`;
+  if (digits.length === 11 && digits.startsWith("852")) return `+${digits}`;
+  if (trimmed.startsWith("+") && digits.length >= 8 && digits.length <= 15) return `+${digits}`;
+  return null;
+}
+
 export async function createSouvenirDraftOrder(
   _previous: SouvenirDraftState,
   formData: FormData
@@ -182,9 +194,10 @@ export async function createSouvenirDraftOrder(
     ...(projectNo ? [{ key: "Project No", value: projectNo }] : []),
   ];
   const projectAttributes = projectNo ? [{ key: "Project No", value: projectNo }] : [];
+  const shopifyPhone = phone ? toE164Phone(phone) : null;
   const input = {
     email,
-    ...(phone ? { phone } : {}),
+    ...(shopifyPhone ? { phone: shopifyPhone } : {}),
     note,
     tags: ["Resoul Admin", "Memorial Product"],
     customAttributes: attributes,
@@ -198,7 +211,13 @@ export async function createSouvenirDraftOrder(
   try {
     const result = await shopifyGraphQL<CreateDraftResponse>(CREATE_DRAFT_MUTATION, { input });
     const payload = result.draftOrderCreate;
-    if (payload.userErrors.length) return { error: payload.userErrors.map((e) => e.message).join("；") };
+    if (payload.userErrors.length) {
+      return {
+        error: payload.userErrors
+          .map((e) => (/phone/i.test(e.message) ? "電話格式無效，請輸入 8 位香港電話或 +國家碼 號碼。" : e.message))
+          .join("；"),
+      };
+    }
     if (!payload.draftOrder) return { error: "Shopify 沒有回傳草稿訂單，請稍後再試。" };
 
     const draft = payload.draftOrder;

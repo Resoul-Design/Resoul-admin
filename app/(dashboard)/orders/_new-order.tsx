@@ -238,9 +238,13 @@ function DraftOrderForm({
                 const unitPrice = Number(variant?.price || 0);
                 return (
                   <div key={line.variantId} className="flex flex-wrap items-center gap-x-3 gap-y-1 py-2 text-sm">
-                    <span className="min-w-0 flex-1">{variant?.productTitle} · {variant?.title}</span>
+                    {/* 產品名獨佔一行，避免擠喺窄欄逐字斷行 */}
+                    <span className="basis-full min-w-0 break-words font-medium">
+                      {variant?.productTitle}
+                      {variant?.title && variant.title !== "Default Title" ? <span className="font-normal text-[var(--soft)]"> · {variant.title}</span> : null}
+                    </span>
                     <span className="text-[var(--soft)]">{line.quantity} × {money(unitPrice, currency)}</span>
-                    <span className="min-w-24 text-right">{money(unitPrice * line.quantity, currency)}</span>
+                    <span className="ml-auto text-right">{money(unitPrice * line.quantity, currency)}</span>
                     <button type="button" onClick={() => setLines((current) => current.filter((item) => item.variantId !== line.variantId))} aria-label={`移除${variant?.productTitle || "商品"}`} className="px-2 py-1 text-sm text-red-700 hover:bg-red-50">移除</button>
                   </div>
                 );
