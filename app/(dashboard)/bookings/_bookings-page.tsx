@@ -1,4 +1,6 @@
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { getStaff } from "@/lib/auth";
+import { redirect } from "next/navigation";
 import { shopDomain } from "@/lib/shopify";
 import { canonicalProjectNo, projectNoFromNotes } from "@/lib/order-label";
 import { type BookingData } from "./_edit";
@@ -125,7 +127,8 @@ function isVet(source?: string | null) {
 }
 
 export async function BookingsPage({ mode }: { mode: "cremation" | "vet" }) {
-  const supabase = await createClient();
+  if (!(await getStaff())) redirect("/login");
+  const supabase = createAdminClient();
   let paymentColumnsReady = true;
   const primary = await supabase
     .from("cremation_bookings")
@@ -207,9 +210,9 @@ export async function BookingsPage({ mode }: { mode: "cremation" | "vet" }) {
       {error && (
         <div className="mb-4 text-sm text-red-600">
           讀取失敗：{error.message}
-          <div className="text-[var(--soft)] mt-1">
+          {/column .* does not exist|could not find the .*column/i.test(error.message) && <div className="text-[var(--soft)] mt-1">
             若提示欄位不存在，請先於 Supabase 執行 db/migration_booking_fields.sql 及 db/migration_payment_tracking.sql。
-          </div>
+          </div>}
         </div>
       )}
 

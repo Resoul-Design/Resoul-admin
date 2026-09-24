@@ -1,7 +1,9 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/lib/supabase/server";
+import { redirect } from "next/navigation";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { getStaff } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import { isRslProjectNo } from "@/lib/order-label";
 
@@ -21,6 +23,7 @@ function revalidate() {
 }
 
 export async function updateBooking(formData: FormData) {
+  if (!(await getStaff())) redirect("/login");
   const id = String(formData.get("id") || "");
   if (!id) return;
 
@@ -32,7 +35,7 @@ export async function updateBooking(formData: FormData) {
   const status = VALID.includes(rawStatus) ? rawStatus : "new";
   const plan = g("plan");
 
-  const supabase = await createClient();
+  const supabase = createAdminClient();
 
   const update: Record<string, unknown> = {
     owner_name: g("owner_name"),
