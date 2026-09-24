@@ -2,8 +2,11 @@ import { createClient } from "@/lib/supabase/server";
 import type { ProductOrderRow } from "@/lib/product-orders";
 import { shopDomain } from "@/lib/shopify";
 import { canonicalProjectNo } from "@/lib/order-label";
+import { getStaff } from "@/lib/auth";
+import { shopifyGraphQL } from "@/lib/shopify";
 import { syncProductOrders } from "./actions";
 import { OrdersTable, type OrderRow } from "./_table";
+import { NewSouvenirOrder, type DraftCatalogProduct } from "./_new-order";
 
 export const dynamic = "force-dynamic";
 
@@ -16,15 +19,58 @@ const FUL: Record<string, string> = {
   PARTIALLY_FULFILLED: "部分出貨", RESTOCKED: "已退貨入庫",
 };
 
+type CatalogResponse = {
+  products: {
+    edges: {
+      node: {
+        id: string;
+        title: string;
+        variants: {
+          edges: {
+            node: { id: string; title: string; sku: string | null; price: string | null };
+          }[];
+        };
+      };
+    }[];
+  };
+};
+
+const CATALOG_QUERY = `query SouvenirCatalog {
+  products(first: 50, sortKey: TITLE, query: "status:active") {
+    edges { node {
+      id title
+      variants(first: 20) { edges { node { id title sku price } } }
+    } }
+  }
+}`;
+
 export default async function OrdersPage({ searchParams }: {
   searchParams: Promise<{ synced?: string; sync_error?: string }>;
 }) {
   const params = await searchParams;
   const supabase = await createClient();
+  const staff = await getStaff();
   const { data, error } = await supabase
     .from("product_orders").select("*")
     .order("shopify_created_at", { ascending: false }).limit(2000);
   const orders = (data || []) as ProductOrderRow[];
+
+  let products: DraftCatalogProduct[] = [];
+  let catalogError = "";
+  if (staff?.role === "admin") {
+    try {
+      const catalog = await shopifyGraphQL<CatalogResponse>(CATALOG_QUERY);
+      products = catalog.products.edges.map(({ node }) => ({
+        id: node.id,
+        title: node.title,
+        variants: node.variants.edges.map(({ node: variant }) => variant),
+      })).filter((product) => product.variants.length > 0);
+      if (!products.length) catalogError = "Shopify 暫無可加入的上架產品。";
+    } catch (catalogFailure) {
+      console.error("[souvenir_catalog]", catalogFailure instanceof Error ? catalogFailure.message : "unknown error");
+      catalogError = "未能讀取 Shopify 產品。請確認 Shopify 連線和 read_products 權限。";
+    }
+  }
 
   const orderId = (o: ProductOrderRow) => o.shopify_order_id.split("/").pop() || "";
   const rows: OrderRow[] = orders.map((o) => {
@@ -60,11 +106,14 @@ export default async function OrdersPage({ searchParams }: {
           <h1 className="text-2xl font-semibold">紀念品訂單</h1>
           <p className="mt-1 text-sm text-[var(--soft)]">產品訂單由 Shopify 同步並儲存於 Supabase。</p>
         </div>
-        <form action={syncProductOrders}>
-          <button className="rounded-lg bg-[var(--gold)] px-4 py-2 text-sm font-medium text-white hover:opacity-90">
-            同步 Shopify 訂單
-          </button>
-        </form>
+        <div className="flex flex-wrap items-center gap-2">
+          {staff?.role === "admin" && <NewSouvenirOrder products={products} catalogError={catalogError} />}
+          <form action={syncProductOrders}>
+            <button className="rounded-lg border border-[var(--line)] px-4 py-2 text-sm hover:bg-[var(--cream)]">
+              同步 Shopify 訂單
+            </button>
+          </form>
+        </div>
       </div>
 
       {params.synced && <div className="mb-4 rounded-lg border border-green-300 bg-green-50 px-4 py-3 text-sm text-green-800">已同步 {params.synced} 張產品訂單到 Supabase。</div>}

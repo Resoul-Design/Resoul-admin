@@ -95,6 +95,14 @@ function hasPaymentRef(attributes: Attribute[] = []) {
   });
 }
 
+function ownerFromAttributes(attributes: Attribute[] = []) {
+  const owner = attributes.find((attribute) => {
+    const key = String(attribute.key || attribute.name || "").trim().toLowerCase();
+    return key === "owner" || key === "主人" || key === "主人名稱";
+  });
+  return String(owner?.value || "").trim() || null;
+}
+
 export function isCremationWebhookOrder(order: ShopifyWebhookOrder) {
   return hasPaymentRef([
     ...(order.note_attributes || []),
@@ -113,7 +121,7 @@ export function productOrderFromWebhook(order: ShopifyWebhookOrder): ProductOrde
   ]);
   const customerName = [order.customer?.first_name, order.customer?.last_name]
     .filter(Boolean)
-    .join(" ") || null;
+    .join(" ") || ownerFromAttributes(order.note_attributes || []);
 
   return {
     shopify_order_id: id,
@@ -156,7 +164,7 @@ export function productOrderFromGraphQL(order: ShopifyGraphQLOrder): ProductOrde
     order_name: order.name,
     shopify_created_at: order.createdAt,
     shopify_updated_at: order.updatedAt,
-    customer_name: order.customer?.displayName || null,
+    customer_name: order.customer?.displayName || ownerFromAttributes(order.customAttributes || []),
     email: order.email || order.customer?.defaultEmailAddress?.emailAddress || null,
     phone,
     phone_key: phoneKey(phone) || null,
