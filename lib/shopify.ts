@@ -24,17 +24,34 @@ export function buildAuthorizeUrl(redirectUri: string, state: string): string {
 export async function exchangeToken(
   code: string
 ): Promise<{ access_token: string; scope: string }> {
+  const clientId = process.env.SHOPIFY_API_KEY;
+  const clientSecret = process.env.SHOPIFY_API_SECRET;
+  if (!clientId || !clientSecret || !shopDomain()) {
+    throw new Error("Missing Shopify OAuth server configuration");
+  }
+
   const res = await fetch(`https://${shopDomain()}/admin/oauth/access_token`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      client_id: process.env.SHOPIFY_API_KEY,
-      client_secret: process.env.SHOPIFY_API_SECRET,
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+      Accept: "application/json",
+    },
+    body: new URLSearchParams({
+      client_id: clientId,
+      client_secret: clientSecret,
       code,
     }),
   });
   if (!res.ok) {
-    throw new Error(`Token 交換失敗 (${res.status})：${await res.text()}`);
+    let reason = "Shopify rejected the authorization code";
+    try {
+      const body = await res.json();
+      if (typeof body?.error === "string") reason = body.error;
+      if (typeof body?.error_description === "string") reason = body.error_description;
+    } catch {
+      // Keep the status useful without logging arbitrary response content.
+    }
+    throw new Error(`Shopify token exchange failed (${res.status}): ${reason}`);
   }
   return res.json();
 }

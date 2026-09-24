@@ -24,17 +24,25 @@ export async function GET(request: Request) {
   if (!code || !state || state !== savedState) return page("授權失敗", "授權狀態無效或已逾時。", 400);
   if (!verifyHmac(params)) return page("授權失敗", "Shopify 簽章驗證失敗。", 401);
 
+  let token: Awaited<ReturnType<typeof exchangeToken>>;
   try {
-    const { access_token, scope } = await exchangeToken(code);
+    token = await exchangeToken(code);
+  } catch (error) {
+    console.error("[shopify_oauth_callback] token exchange failed", error instanceof Error ? error.message : "unknown error");
+    return page("授權失敗", "Shopify 未能發出 Access token。請確認 App 權限與 API credentials，並查看伺服器日誌。", 502);
+  }
+
+  try {
     const { error } = await createAdminClient().from("shopify_credentials").upsert({
       id: "primary",
-      access_token,
-      scopes: scope,
+      access_token: token.access_token,
+      scopes: token.scope,
       updated_at: new Date().toISOString(),
     });
     if (error) throw error;
     return page("Shopify 授權成功", "Access token 已安全儲存，頁面不會顯示憑證。可以關閉此頁。 ");
-  } catch {
-    return page("授權失敗", "請檢查伺服器設定及 shopify_credentials migration。", 500);
+  } catch (error) {
+    console.error("[shopify_oauth_callback] Supabase credential save failed", error instanceof Error ? error.message : "unknown error");
+    return page("授權失敗", "Shopify 已授權，但 token 未能保存至 Supabase。請確認 SUPABASE_SERVICE_ROLE_KEY、shopify_credentials 資料表及其權限。", 500);
   }
 }

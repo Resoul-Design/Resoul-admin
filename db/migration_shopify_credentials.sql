@@ -7,3 +7,5 @@ create table if not exists public.shopify_credentials (
 );
 alter table public.shopify_credentials enable row level security;
 revoke all on public.shopify_credentials from anon, authenticated;
+grant all on public.shopify_credentials to service_role;
+notify pgrst, 'reload schema';
