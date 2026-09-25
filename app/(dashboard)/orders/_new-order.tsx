@@ -11,6 +11,7 @@ import {
 export type DraftCatalogProduct = {
   id: string;
   title: string;
+  productType: string;
   variants: { id: string; title: string; sku: string | null; price: string | null }[];
 };
 
@@ -86,7 +87,30 @@ function DraftOrderForm({
   catalogError: string;
   onCreateAnother: () => void;
 }) {
+  // 三步揀選：產品類型 → 產品 → 款式
+  const productTypes = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const product of products) counts.set(product.productType, (counts.get(product.productType) || 0) + 1);
+    return [...counts.entries()].sort(([a], [b]) => (a === "未分類" ? 1 : b === "未分類" ? -1 : a.localeCompare(b, "zh-Hant")));
+  }, [products]);
+  const [selectedType, setSelectedType] = useState("all");
+  const filteredProducts = useMemo(
+    () => (selectedType === "all" ? products : products.filter((product) => product.productType === selectedType)),
+    [products, selectedType]
+  );
+  const [selectedProductId, setSelectedProductId] = useState(products[0]?.id || "");
+  const selectedProduct = filteredProducts.find((product) => product.id === selectedProductId) || filteredProducts[0];
   const [selectedVariantId, setSelectedVariantId] = useState(products[0]?.variants[0]?.id || "");
+  function chooseType(type: string) {
+    setSelectedType(type);
+    const first = type === "all" ? products[0] : products.find((product) => product.productType === type);
+    setSelectedProductId(first?.id || "");
+    setSelectedVariantId(first?.variants[0]?.id || "");
+  }
+  function chooseProduct(productId: string) {
+    setSelectedProductId(productId);
+    setSelectedVariantId(products.find((product) => product.id === productId)?.variants[0]?.id || "");
+  }
   const [quantity, setQuantity] = useState(1);
   const [lines, setLines] = useState<SelectedLine[]>([]);
   const [copyDone, setCopyDone] = useState(false);
@@ -210,18 +234,29 @@ function DraftOrderForm({
         <div>
           <h3 className="text-sm font-medium">商品</h3>
           <div className="mt-2 flex flex-wrap items-end gap-2">
-            <label className="min-w-[240px] flex-1 text-sm">產品款式
-              <select value={selectedVariantId} onChange={(event) => setSelectedVariantId(event.target.value)} disabled={!variants.length} className="mt-1 w-full rounded-lg border border-[var(--line)] bg-white px-3 py-2 outline-none focus:border-[var(--gold)]">
-                {products.map((product) => (
-                  <optgroup key={product.id} label={product.title}>
-                    {product.variants.map((variant) => (
-                      <option key={variant.id} value={variant.id}>
-                        {variant.title === "Default Title" ? product.title : variant.title}
-                        {variant.sku ? ` · ${variant.sku}` : ""}
-                        {variant.price ? ` · HK$${Number(variant.price).toLocaleString("en-HK", { minimumFractionDigits: 2 })}` : ""}
-                      </option>
-                    ))}
-                  </optgroup>
+            <label className="w-full text-sm sm:w-44">產品類型
+              <select value={selectedType} onChange={(event) => chooseType(event.target.value)} disabled={!products.length} className="mt-1 w-full rounded-lg border border-[var(--line)] bg-white px-3 py-2 outline-none focus:border-[var(--gold)]">
+                <option value="all">全部類型（{products.length}）</option>
+                {productTypes.map(([type, count]) => (
+                  <option key={type} value={type}>{type}（{count}）</option>
+                ))}
+              </select>
+            </label>
+            <label className="min-w-[200px] flex-1 text-sm">產品
+              <select value={selectedProduct?.id || ""} onChange={(event) => chooseProduct(event.target.value)} disabled={!filteredProducts.length} className="mt-1 w-full rounded-lg border border-[var(--line)] bg-white px-3 py-2 outline-none focus:border-[var(--gold)]">
+                {filteredProducts.map((product) => (
+                  <option key={product.id} value={product.id}>{product.title}</option>
+                ))}
+              </select>
+            </label>
+            <label className="min-w-[200px] flex-1 text-sm">款式
+              <select value={selectedVariantId} onChange={(event) => setSelectedVariantId(event.target.value)} disabled={!selectedProduct} className="mt-1 w-full rounded-lg border border-[var(--line)] bg-white px-3 py-2 outline-none focus:border-[var(--gold)]">
+                {(selectedProduct?.variants || []).map((variant) => (
+                  <option key={variant.id} value={variant.id}>
+                    {variant.title === "Default Title" ? "標準款" : variant.title}
+                    {variant.sku ? ` · ${variant.sku}` : ""}
+                    {variant.price ? ` · HK$${Number(variant.price).toLocaleString("en-HK", { minimumFractionDigits: 2 })}` : ""}
+                  </option>
                 ))}
               </select>
             </label>

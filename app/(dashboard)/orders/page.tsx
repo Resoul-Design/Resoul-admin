@@ -21,10 +21,12 @@ const FUL: Record<string, string> = {
 
 type CatalogResponse = {
   products: {
+    pageInfo: { hasNextPage: boolean; endCursor: string | null };
     edges: {
       node: {
         id: string;
         title: string;
+        productType: string | null;
         variants: {
           edges: {
             node: { id: string; title: string; sku: string | null; price: string | null };
@@ -35,14 +37,17 @@ type CatalogResponse = {
   };
 };
 
-const CATALOG_QUERY = `query SouvenirCatalog {
-  products(first: 50, sortKey: TITLE, query: "status:active") {
+// 分頁讀取全部上架產品（每頁 50 件；上限 10 頁），並帶產品類型供草稿訂單篩選。
+const CATALOG_QUERY = `query SouvenirCatalog($after: String) {
+  products(first: 50, after: $after, sortKey: TITLE, query: "status:active") {
+    pageInfo { hasNextPage endCursor }
     edges { node {
-      id title
+      id title productType
       variants(first: 20) { edges { node { id title sku price } } }
     } }
   }
 }`;
+const CATALOG_MAX_PAGES = 10;
 
 export default async function OrdersPage({ searchParams }: {
   searchParams: Promise<{ synced?: string; sync_error?: string }>;
@@ -55,16 +60,21 @@ export default async function OrdersPage({ searchParams }: {
     .order("shopify_created_at", { ascending: false }).limit(2000);
   const orders = (data || []) as ProductOrderRow[];
 
-  let products: DraftCatalogProduct[] = [];
+  const products: DraftCatalogProduct[] = [];
   let catalogError = "";
   if (staff?.role === "admin") {
     try {
-      const catalog = await shopifyGraphQL<CatalogResponse>(CATALOG_QUERY);
-      products = catalog.products.edges.map(({ node }) => ({
-        id: node.id,
-        title: node.title,
-        variants: node.variants.edges.map(({ node: variant }) => variant),
-      })).filter((product) => product.variants.length > 0);
+      let after: string | null = null;
+      for (let page = 0; page < CATALOG_MAX_PAGES; page++) {
+        const catalog: CatalogResponse = await shopifyGraphQL<CatalogResponse>(CATALOG_QUERY, { after });
+        for (const { node } of catalog.products.edges) {
+          const variants = node.variants.edges.map(({ node: variant }) => variant);
+          if (!variants.length) continue;
+          products.push({ id: node.id, title: node.title, productType: (node.productType || "").trim() || "未分類", variants });
+        }
+        if (!catalog.products.pageInfo.hasNextPage) break;
+        after = catalog.products.pageInfo.endCursor;
+      }
       if (!products.length) catalogError = "Shopify 暫無可加入的上架產品。";
     } catch (catalogFailure) {
       console.error("[souvenir_catalog]", catalogFailure instanceof Error ? catalogFailure.message : "unknown error");
@@ -75,7 +85,7 @@ export default async function OrdersPage({ searchParams }: {
   const orderId = (o: ProductOrderRow) => o.shopify_order_id.split("/").pop() || "";
   const rows: OrderRow[] = orders.map((o) => {
     const phone = (o.phone || "").replace(/\D/g, "");
-    // 專案編號＝Shopify 訂單名（#RESOUL-####）；產品訂單的訂單號本身就是專案編號。
+    // 專案編號只取 RSL- 編號（來自訂單屬性）；Shopify 訂單號 #RS-#### 屬發票編號，不作專案編號。
     const attrProject = (o.line_items || []).flatMap((item) => item.attributes || []).find((a) => /project|專案/i.test(a.key))?.value || "";
     const projectNo = canonicalProjectNo(o.order_name, attrProject);
     const wa = phone ? `https://wa.me/${phone.startsWith("852") ? phone : `852${phone}`}?text=${encodeURIComponent(`你好 ${o.customer_name || ""}，關於你的 Resoul 訂單 ${o.order_name}：`)}` : null;
