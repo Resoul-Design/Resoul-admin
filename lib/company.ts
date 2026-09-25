@@ -9,6 +9,9 @@ export const COMPANY = {
   footer: "May the story of your beloved companion continue to bring warmth to your days.",
 };
 
+// 客戶網站（landing）網址：用於砌「只限連結」分享連結等。將來轉網域時設 NEXT_PUBLIC_LANDING_URL 即可。
+export const LANDING_URL = (process.env.NEXT_PUBLIC_LANDING_URL || "https://resoul-landing-beta.vercel.app").replace(/\/+$/, "");
+
 // 火化方案 → 產品代碼 + 英文名（與收據一致）
 export const PLAN_CODES: Record<string, { code: string; en: string }> = {
   風之旅: { code: "BJ1", en: "Breeze Journey" },

@@ -1,5 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { setPostStatus, deletePost } from "./actions";
+import { LANDING_URL } from "@/lib/company";
+import { CopyShareLink } from "./_copy-link";
 
 type Post = {
   id: string;
@@ -14,6 +16,7 @@ type Post = {
   years: string | null;
   one_line: string | null;
   visibility: string | null;
+  slug: string | null;
 };
 
 const VIS_LABEL: Record<string, string> = {
@@ -183,6 +186,10 @@ export async function BoardView({
                   {contextType === "community" ? "分享設定：" : "私隱："}
                   {VIS_LABEL[p.visibility] || p.visibility}
                 </div>
+              )}
+
+              {p.visibility === "link" && p.slug && (
+                <CopyShareLink url={`${LANDING_URL}/board?s=${p.slug}`} active={p.status === "visible"} />
               )}
 
               {p.image_path && (
