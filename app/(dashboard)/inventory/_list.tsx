@@ -24,7 +24,9 @@ export function InventoryList({ groups }: { groups: Group[] }) {
         <select
           value={type}
           onChange={(e) => setType(e.target.value)}
-          className="px-3 py-2 rounded-lg border border-[var(--line)] bg-white text-sm outline-none focus:border-[var(--gold)]"
+          // 類型名稱可以好長（例如「客製化手繪寵物飾物Hand – Painted Pet Portrait Accessories」），
+          // 原生 select 會按最長選項撐闊；限制闊度避免手機出現橫向卷軸
+          className="w-full min-w-0 max-w-full truncate px-3 py-2 rounded-lg border border-[var(--line)] bg-white text-sm outline-none focus:border-[var(--gold)] sm:w-auto sm:max-w-md"
         >
           <option value="all">全部（{groups.reduce((n, g) => n + g.products.length, 0)}）</option>
           {groups.map((g) => (
