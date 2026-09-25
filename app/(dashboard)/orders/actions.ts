@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { getStaff } from "@/lib/auth";
+import { getStaff, requireModule } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { shopDomain, shopifyGraphQL } from "@/lib/shopify";
 import { isRslProjectNo } from "@/lib/order-label";
@@ -41,7 +41,7 @@ const SYNC_QUERY = `query ProductOrders($after: String) {
 }`;
 
 export async function syncProductOrders() {
-  if (!(await getStaff())) redirect("/login");
+  await requireModule("orders", "sync");
 
   let synced = 0;
   try {

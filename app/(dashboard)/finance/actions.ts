@@ -2,8 +2,10 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { requireModule } from "@/lib/auth";
 
 export async function updatePlanPrice(formData: FormData) {
+  await requireModule("finance");
   const plan = String(formData.get("plan") || "").trim();
   if (!plan) return;
   const num = (k: string) => {
@@ -18,6 +20,7 @@ export async function updatePlanPrice(formData: FormData) {
 }
 
 export async function updateFinance(formData: FormData) {
+  await requireModule("finance");
   const id = String(formData.get("id") || "");
   if (!id) return;
   const num = (k: string) => {

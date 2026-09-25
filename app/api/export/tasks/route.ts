@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { getStaff } from "@/lib/auth";
+import { moduleGuardResponse } from "@/lib/auth";
 import { toCsv, csvResponse } from "@/lib/csv";
 
 export const runtime = "nodejs";
@@ -8,7 +8,8 @@ export const dynamic = "force-dynamic";
 const STATUS: Record<string, string> = { todo: "待辦", doing: "進行中", done: "完成" };
 
 export async function GET() {
-  if (!(await getStaff())) return new Response("Unauthorized", { status: 401 });
+  const denied = await moduleGuardResponse("tasks", "reports");
+  if (denied) return denied;
   const supabase = await createClient();
   const [tasksRes, staffRes] = await Promise.all([
     supabase.from("tasks").select("title, detail, assignee, due_date, status, created_at").order("created_at", { ascending: false }),

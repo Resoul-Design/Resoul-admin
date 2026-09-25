@@ -3,10 +3,12 @@
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { logAudit } from "@/lib/audit";
+import { requireModule } from "@/lib/auth";
 
 const VALID = ["new", "contacted", "scheduled", "completed", "cancelled"];
 
 export async function updateDeposit(formData: FormData) {
+  await requireModule("deposits");
   const id = String(formData.get("id") || "");
   if (!id) return;
   const value = (key: string) => String(formData.get(key) || "").trim() || null;

@@ -48,16 +48,30 @@ export default async function ProjectGroupPage({ params }: { params: Promise<{ p
     <div>
       <div className="mb-4 text-sm"><Link href="/projects" className="text-[var(--gold)] hover:underline">← 專案管理</Link></div>
       <h1 className="text-2xl font-semibold">{projectNo}</h1>
-      <p className="mt-1 text-sm text-[var(--soft)]">此專案下的預約與訂單明細</p>
       <div className="mt-5 grid grid-cols-2 gap-3 sm:max-w-lg">
         <div className="rounded-xl border border-[var(--line)] bg-[var(--card)] p-4"><div className="text-xs text-[var(--soft)]">記錄數</div><div className="mt-1 text-xl font-semibold">{records.length}</div></div>
         <div className="rounded-xl border border-[var(--line)] bg-[var(--card)] p-4"><div className="text-xs text-[var(--soft)]">收入</div><div className="mt-1 text-xl font-semibold">{money(income)}</div></div>
       </div>
-      <div className="mt-5 overflow-x-auto rounded-2xl border border-[var(--line)] bg-[var(--card)]">
+      <div className="mt-5 hidden overflow-x-auto rounded-2xl border border-[var(--line)] bg-[var(--card)] md:block">
         <table className="w-full min-w-[680px] text-sm">
           <thead><tr className="bg-[var(--head)] text-left text-[var(--soft)]"><th className="px-4 py-3 font-medium">服務／訂單</th><th className="px-4 py-3 font-medium">主人</th><th className="px-4 py-3 font-medium">日期</th><th className="px-4 py-3 font-medium">狀態</th><th className="px-4 py-3 text-right font-medium">收入</th><th className="px-4 py-3 text-right font-medium">明細</th></tr></thead>
           <tbody>{records.map((record) => <tr key={record.key} className="border-t border-[var(--line)]"><td className="px-4 py-3">{record.label}</td><td className="px-4 py-3">{record.person}</td><td className="px-4 py-3 whitespace-nowrap">{record.date}</td><td className="px-4 py-3">{record.status}</td><td className="px-4 py-3 text-right tabular-nums">{money(record.amount)}</td><td className="px-4 py-3 text-right"><Link className="text-[var(--gold)] hover:underline" href={record.href}>查看 →</Link></td></tr>)}</tbody>
         </table>
+      </div>
+      <div className="mt-5 space-y-3 md:hidden">
+        {records.map((record) => (
+          <div key={record.key} className="rounded-2xl border border-[var(--line)] bg-[var(--card)] p-4">
+            <div className="flex items-start justify-between gap-3">
+              <span className="min-w-0 font-medium">{record.label}</span>
+              <span className="shrink-0 font-medium tabular-nums">{money(record.amount)}</span>
+            </div>
+            <div className="mt-1 text-sm text-[var(--soft)]">{record.person}　·　{record.date}</div>
+            <div className="mt-3 flex items-center justify-between gap-3 border-t border-[var(--line)] pt-3 text-xs">
+              <span className="rounded-full bg-[var(--cream)] px-2 py-0.5">{record.status}</span>
+              <Link className="text-[var(--gold)] hover:underline" href={record.href}>查看 →</Link>
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );

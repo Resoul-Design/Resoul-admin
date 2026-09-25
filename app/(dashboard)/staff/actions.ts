@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getStaff } from "@/lib/auth";
+import { getStaff, requireModule } from "@/lib/auth";
 import { MODULES } from "@/lib/modules";
 import { logAudit } from "@/lib/audit";
 
@@ -69,8 +69,7 @@ export async function updateStaff(formData: FormData) {
 
 // ---- 排更 ----
 export async function addShift(formData: FormData) {
-  const me = await getStaff();
-  if (!me) return;
+  const me = await requireModule("roster");
   const shift_date = String(formData.get("shift_date") || "");
   if (!shift_date) return;
   const isAdmin = me.role === "admin";
@@ -100,8 +99,7 @@ export async function approveShift(formData: FormData) {
 }
 
 export async function deleteShift(formData: FormData) {
-  const me = await getStaff();
-  if (!me) return;
+  const me = await requireModule("roster");
   const id = String(formData.get("id") || "");
   if (!id) return;
   const supabase = await createClient();
@@ -114,8 +112,7 @@ export async function deleteShift(formData: FormData) {
 
 // ---- 任務 ----
 export async function createTask(formData: FormData) {
-  const s = await getStaff();
-  if (!s) return;
+  const s = await requireModule("tasks");
   const title = String(formData.get("title") || "").trim();
   if (!title) return;
   const supabase = await createClient();
@@ -133,6 +130,7 @@ export async function createTask(formData: FormData) {
 }
 
 export async function updateTaskStatus(formData: FormData) {
+  await requireModule("tasks");
   const id = String(formData.get("id") || "");
   const status = String(formData.get("status") || "");
   if (!id || !["todo", "doing", "done"].includes(status)) return;
@@ -143,6 +141,7 @@ export async function updateTaskStatus(formData: FormData) {
 }
 
 export async function deleteTask(formData: FormData) {
+  await requireModule("tasks");
   const id = String(formData.get("id") || "");
   if (!id) return;
   const supabase = await createClient();

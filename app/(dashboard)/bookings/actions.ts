@@ -1,9 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getStaff } from "@/lib/auth";
+import { requireModule } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import { isRslProjectNo } from "@/lib/order-label";
 
@@ -23,7 +22,7 @@ function revalidate() {
 }
 
 export async function updateBooking(formData: FormData) {
-  if (!(await getStaff())) redirect("/login");
+  await requireModule("bookings");
   const id = String(formData.get("id") || "");
   if (!id) return;
 

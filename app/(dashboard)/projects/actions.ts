@@ -3,12 +3,11 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getStaff } from "@/lib/auth";
+import { getStaff, requireModule } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 
 export async function addEntry(formData: FormData) {
-  const me = await getStaff();
-  if (!me) return;
+  const me = await requireModule("projects");
   const booking_id = String(formData.get("booking_id") || "");
   const order_ref = String(formData.get("order_ref") || "");
   const kind = String(formData.get("kind") || "");
@@ -48,8 +47,7 @@ export async function addEntry(formData: FormData) {
 }
 
 export async function deleteEntry(formData: FormData) {
-  const me = await getStaff();
-  if (!me) return;
+  await requireModule("projects");
   const id = String(formData.get("id") || "");
   const booking_id = String(formData.get("booking_id") || "");
   const order_ref = String(formData.get("order_ref") || "");

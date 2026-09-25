@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { getStaff } from "@/lib/auth";
+import { moduleGuardResponse } from "@/lib/auth";
 import { toCsv, csvResponse } from "@/lib/csv";
 import { canonicalProjectNo, projectNoFromItems } from "@/lib/order-label";
 import type { ProductOrderRow } from "@/lib/product-orders";
@@ -8,7 +8,8 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  if (!(await getStaff())) return new Response("Unauthorized", { status: 401 });
+  const denied = await moduleGuardResponse("orders", "reports");
+  if (denied) return denied;
   const { data } = await (await createClient()).from("product_orders").select("*").order("shopify_created_at", { ascending: false });
   const headers = ["分類", "專案編號", "Shopify訂單", "日期", "客戶", "電話", "內容", "付款狀態", "出貨狀態", "金額", "貨幣", "取消時間"];
   const rows = ((data ?? []) as ProductOrderRow[]).map((o) => [

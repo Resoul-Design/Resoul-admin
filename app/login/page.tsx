@@ -14,8 +14,16 @@ function friendlyError(msg: string) {
 }
 
 function safePath(p: string | null) {
-  // 只接受站內相對路徑，避免開放式轉址
-  return p && p.startsWith("/") && !p.startsWith("//") ? p : "/";
+  // 只接受站內相對路徑，避免開放式轉址。
+  // 瀏覽器會把「/\」當成「//」，故反斜線及控制字元一律拒絕，再以 URL 解析確認仍屬本站。
+  if (!p || !p.startsWith("/") || p.startsWith("//") || /[\\\u0000-\u001f]/.test(p)) return "/";
+  try {
+    const base = "https://admin.invalid";
+    const url = new URL(p, base);
+    return url.origin === base ? url.pathname + url.search + url.hash : "/";
+  } catch {
+    return "/";
+  }
 }
 
 function LoginForm() {

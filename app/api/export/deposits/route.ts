@@ -1,5 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getStaff } from "@/lib/auth";
+import { moduleGuardResponse } from "@/lib/auth";
 import { toCsv, csvResponse } from "@/lib/csv";
 import { canonicalProjectNo, projectNoFromNotes } from "@/lib/order-label";
 
@@ -7,7 +7,8 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  if (!(await getStaff())) return new Response("Unauthorized", { status: 401 });
+  const denied = await moduleGuardResponse("deposits", "reports");
+  if (denied) return denied;
   const { data } = await createAdminClient()
     .from("deposit_bookings")
     .select("created_at, owner_name, contact, pet_name, pet_type, service_date, service_time, pickup_address, status, payment_ref, payment_status, payment_amount, payment_currency, shopify_order_name, notes")

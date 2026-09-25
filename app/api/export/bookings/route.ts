@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { getStaff } from "@/lib/auth";
+import { moduleGuardResponse } from "@/lib/auth";
 import { toCsv, csvResponse } from "@/lib/csv";
 import { canonicalProjectNo, projectNoFromNotes } from "@/lib/order-label";
 
@@ -7,7 +7,8 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
-  if (!(await getStaff())) return new Response("Unauthorized", { status: 401 });
+  const denied = await moduleGuardResponse("bookings", "reports");
+  if (denied) return denied;
   const supabase = await createClient();
   const { data } = await supabase
     .from("cremation_bookings")
