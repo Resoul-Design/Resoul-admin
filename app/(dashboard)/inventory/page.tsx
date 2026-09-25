@@ -5,6 +5,7 @@ export const dynamic = "force-dynamic";
 
 type ProductsResp = {
   products: {
+    pageInfo: { hasNextPage: boolean; endCursor: string | null };
     edges: {
       node: {
         id: string;
@@ -28,8 +29,10 @@ type ProductsResp = {
   };
 };
 
-const QUERY = `{
-  products(first: 100, sortKey: TITLE) {
+// 分頁讀取全部產品（每頁 100 件；上限 10 頁），店內產品已超過 100 件
+const QUERY = `query InventoryProducts($after: String) {
+  products(first: 100, after: $after, sortKey: TITLE) {
+    pageInfo { hasNextPage endCursor }
     edges { node {
       id title status productType
       featuredImage { url }
@@ -39,17 +42,24 @@ const QUERY = `{
 }`;
 
 type Product = Group["products"][number];
+type ShopifyProduct = ProductsResp["products"]["edges"][number]["node"];
+
+const MAX_PAGES = 10;
 
 export default async function InventoryPage() {
-  let data: ProductsResp | null = null;
+  const products: ShopifyProduct[] = [];
   let err = "";
   try {
-    data = await shopifyGraphQL<ProductsResp>(QUERY);
+    let after: string | null = null;
+    for (let page = 0; page < MAX_PAGES; page++) {
+      const data: ProductsResp = await shopifyGraphQL<ProductsResp>(QUERY, { after });
+      products.push(...data.products.edges.map((e) => e.node));
+      if (!data.products.pageInfo.hasNextPage) break;
+      after = data.products.pageInfo.endCursor;
+    }
   } catch (e) {
     err = String(e);
   }
-
-  const products = data?.products.edges.map((e) => e.node) ?? [];
 
   const byType = new Map<string, Product[]>();
   for (const p of products) {
