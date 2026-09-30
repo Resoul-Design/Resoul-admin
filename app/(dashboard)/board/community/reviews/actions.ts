@@ -10,9 +10,9 @@ function field(data: FormData, name: string) {
   return String(data.get(name) || "").trim();
 }
 
-// 與「照顧誌留言」同一權限（管理員或已獲授權員工）
+// 與「主人評價及故事分享」同一權限（管理員或已獲授權員工）
 async function requireAdmin() {
-  return requireModule("board_blog");
+  return requireModule("board_community");
 }
 
 function validOptionalUrl(value: string) {
@@ -57,8 +57,8 @@ export async function saveReview(data: FormData) {
     : await admin.from("google_reviews").insert(payload).select("id").single();
   if (result.error) throw new Error(`儲存失敗：${result.error.message}`);
   await logAudit(id ? "update_google_review" : "create_google_review", "google_reviews", result.data?.id, name);
-  revalidatePath("/board/blog/reviews");
-  redirect("/board/blog/reviews");
+  revalidatePath("/board/community/reviews");
+  redirect("/board/community/reviews");
 }
 
 export async function deleteReview(data: FormData) {
@@ -68,6 +68,6 @@ export async function deleteReview(data: FormData) {
   const { error } = await createAdminClient().from("google_reviews").delete().eq("id", id);
   if (error) throw new Error(`刪除失敗：${error.message}`);
   await logAudit("delete_google_review", "google_reviews", id);
-  revalidatePath("/board/blog/reviews");
-  redirect("/board/blog/reviews");
+  revalidatePath("/board/community/reviews");
+  redirect("/board/community/reviews");
 }

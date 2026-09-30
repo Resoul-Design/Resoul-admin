@@ -1,29 +1,26 @@
 export type ModuleDef = { key: string; label: string; href: string };
 
-// 功能模組（權限單位）。總覽不列入，所有員工可見。
+// 功能模組（權限單位）。總覽不列入，所有員工可見。名稱與導覽列按鈕一致，次序跟導覽列。
 export const MODULES: ModuleDef[] = [
-  { key: "bookings", label: "客戶預約火化記錄", href: "/bookings" },
-  { key: "deposits", label: "訂金訂單／安排預約接送", href: "/deposits" },
-  { key: "board_blog", label: "照顧誌留言", href: "/board/blog" },
-  { key: "board_community", label: "同路人留言板", href: "/board/community" },
+  { key: "deposits", label: "接送服務", href: "/deposits" },
+  { key: "bookings", label: "火化預約", href: "/bookings" },
+  { key: "vet_assessments", label: "獸醫評估", href: "/vet-assessments" },
   { key: "orders", label: "紀念品訂單", href: "/orders" },
   { key: "inventory", label: "倉存 · 出貨", href: "/inventory" },
+  { key: "board_community", label: "主人評價及故事分享", href: "/board/community" },
   { key: "articles", label: "文章記錄", href: "/articles" },
+  { key: "staff", label: "員工管理", href: "/staff" },
   { key: "roster", label: "排更表", href: "/staff/roster" },
   { key: "tasks", label: "任務指派", href: "/staff/tasks" },
-  { key: "staff", label: "員工管理", href: "/staff" },
-  { key: "projects", label: "專案管理", href: "/projects" },
   { key: "finance", label: "財務管理", href: "/finance" },
+  { key: "projects", label: "專案管理", href: "/projects" },
   { key: "crm", label: "客戶檔案", href: "/crm" },
   { key: "reports", label: "報表與匯出", href: "/reports" },
   { key: "audit", label: "審計記錄", href: "/audit" },
   { key: "sync", label: "同步狀態", href: "/sync" },
 ];
 
-const MODULE_ALIASES: ModuleDef[] = [
-  { key: "bookings", label: "獸醫評估", href: "/vet-assessments" },
-];
-const ROUTES = [...MODULES, ...MODULE_ALIASES].sort((a, b) => b.href.length - a.href.length);
+const ROUTES = [...MODULES].sort((a, b) => b.href.length - a.href.length);
 
 // 由路徑找對應模組 key（最長前綴優先）；非模組路徑回傳 null
 export function moduleForPath(path: string): string | null {

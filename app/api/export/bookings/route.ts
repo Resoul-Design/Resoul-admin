@@ -7,7 +7,10 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
-  const denied = await moduleGuardResponse("bookings", "reports");
+  const category = new URL(request.url).searchParams.get("category");
+  // 獸醫評估與火化預約分開權限；不分類的全部匯出只限報表權限
+  const keys = category === "vet" ? ["vet_assessments", "reports"] : category === "cremation" ? ["bookings", "reports"] : ["reports"];
+  const denied = await moduleGuardResponse(...keys);
   if (denied) return denied;
   const supabase = await createClient();
   const { data } = await supabase
@@ -17,7 +20,6 @@ export async function GET(request: Request) {
     )
     .order("created_at", { ascending: false });
 
-  const category = new URL(request.url).searchParams.get("category");
   const filtered = (data ?? []).filter((b) => category === "vet" ? (b.source || "").includes("euthanasia") : category === "cremation" ? !(b.source || "").includes("euthanasia") : true);
   const headers = [
     "分類", "專案編號", "內部編號 case_no", "收到", "主人", "聯絡", "毛孩", "種類", "方案",

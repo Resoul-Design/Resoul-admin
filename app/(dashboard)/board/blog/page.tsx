@@ -1,26 +1,6 @@
-import { BoardView } from "../_view";
-import Link from "next/link";
+import { redirect } from "next/navigation";
 
-export const dynamic = "force-dynamic";
-
-export default async function BlogCommentsPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ filter?: string }>;
-}) {
-  const { filter = "held" } = await searchParams;
-  return (
-    <div>
-      <div className="mb-4 flex justify-end">
-        <Link href="/board/blog/reviews" className="rounded-lg border border-[var(--line)] bg-[var(--card)] px-3 py-2 text-sm hover:bg-[var(--cream)]">查看 Google 評價</Link>
-      </div>
-      <BoardView
-        title="照顧誌留言"
-        subtitle="讀者於照顧誌文章下的留言，審核後才於前台顯示。"
-        contextType="blog"
-        filter={filter}
-        basePath="/board/blog"
-      />
-    </div>
-  );
+// 照顧誌沒有留言功能，舊連結轉去主人評價及故事分享
+export default function BlogCommentsRedirect() {
+  redirect("/board/community");
 }

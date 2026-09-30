@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { requireModule } from "@/lib/auth";
+import { hasModule, requireModule } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import { isRslProjectNo } from "@/lib/order-label";
 
@@ -22,9 +22,15 @@ function revalidate() {
 }
 
 export async function updateBooking(formData: FormData) {
-  await requireModule("bookings");
+  const staff = await requireModule("bookings", "vet_assessments");
   const id = String(formData.get("id") || "");
   if (!id) return;
+  const supabase = createAdminClient();
+  // 獸醫評估（來源含 euthanasia）與火化預約分開權限
+  const { data: current } = await supabase.from("cremation_bookings").select("source").eq("id", id).maybeSingle();
+  if (!current) return;
+  const key = String(current.source || "").includes("euthanasia") ? "vet_assessments" : "bookings";
+  if (!hasModule(staff, [key])) throw new Error("沒有此功能的使用權限。");
 
   const g = (k: string) => {
     const v = String(formData.get(k) || "").trim();
@@ -33,8 +39,6 @@ export async function updateBooking(formData: FormData) {
   const rawStatus = String(formData.get("status") || "new");
   const status = VALID.includes(rawStatus) ? rawStatus : "new";
   const plan = g("plan");
-
-  const supabase = createAdminClient();
 
   const update: Record<string, unknown> = {
     owner_name: g("owner_name"),

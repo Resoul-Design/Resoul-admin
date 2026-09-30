@@ -3,23 +3,20 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { logAudit } from "@/lib/audit";
-import { hasModule, requireModule } from "@/lib/auth";
+import { requireModule } from "@/lib/auth";
 
 const VALID = ["held", "visible", "hidden"];
 
-// 按貼文所屬留言板檢查權限：context 為 blog:* 屬照顧誌，其餘屬同路人留言板
+// 照顧誌沒有留言功能，所有貼文均屬「主人評價及故事分享」權限
 async function boardClientFor(id: string) {
-  const staff = await requireModule("board_community", "board_blog");
+  await requireModule("board_community");
   const supabase = await createClient();
-  const { data } = await supabase.from("posts").select("context").eq("id", id).maybeSingle();
+  const { data } = await supabase.from("posts").select("id").eq("id", id).maybeSingle();
   if (!data) return null;
-  const key = String(data.context || "").startsWith("blog:") ? "board_blog" : "board_community";
-  if (!hasModule(staff, [key])) throw new Error("沒有此留言板的管理權限。");
   return supabase;
 }
 
 function revalidateBoards() {
-  revalidatePath("/board/blog");
   revalidatePath("/board/community");
   revalidatePath("/");
 }
