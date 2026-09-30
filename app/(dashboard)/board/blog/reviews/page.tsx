@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getStaff } from "@/lib/auth";
+import { getStaff, hasModule } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { deleteReview, saveReview } from "./actions";
 
@@ -42,7 +42,7 @@ function ReviewFields({ review }: { review?: Review }) {
 
 export default async function GoogleReviewsAdminPage() {
   const staff = await getStaff();
-  if (!staff || staff.role !== "admin") notFound();
+  if (!staff || !hasModule(staff, ["board_blog"])) notFound();
   const { data, error } = await createAdminClient().from("google_reviews").select("*").order("sort_order").order("created_at");
   const reviews = (data || []) as Review[];
 

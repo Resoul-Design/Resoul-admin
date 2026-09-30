@@ -2,7 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import type { ProductOrderRow } from "@/lib/product-orders";
 import { shopDomain } from "@/lib/shopify";
 import { canonicalProjectNo } from "@/lib/order-label";
-import { getStaff } from "@/lib/auth";
+import { getStaff, hasModule } from "@/lib/auth";
 import { shopifyGraphQL } from "@/lib/shopify";
 import { syncProductOrders } from "./actions";
 import { OrdersTable, type OrderRow } from "./_table";
@@ -55,6 +55,7 @@ export default async function OrdersPage({ searchParams }: {
   const params = await searchParams;
   const supabase = await createClient();
   const staff = await getStaff();
+  const canCreate = !!staff && hasModule(staff, ["orders"]);
   const { data, error } = await supabase
     .from("product_orders").select("*")
     .order("shopify_created_at", { ascending: false }).limit(2000);
@@ -62,7 +63,7 @@ export default async function OrdersPage({ searchParams }: {
 
   const products: DraftCatalogProduct[] = [];
   let catalogError = "";
-  if (staff?.role === "admin") {
+  if (canCreate) {
     try {
       let after: string | null = null;
       for (let page = 0; page < CATALOG_MAX_PAGES; page++) {
@@ -117,7 +118,7 @@ export default async function OrdersPage({ searchParams }: {
           <p className="mt-1 text-sm text-[var(--soft)]">產品訂單由 Shopify 同步並儲存於 Supabase。</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          {staff?.role === "admin" && <NewSouvenirOrder products={products} catalogError={catalogError} />}
+          {canCreate && <NewSouvenirOrder products={products} catalogError={catalogError} />}
           <form action={syncProductOrders}>
             <button className="rounded-lg border border-[var(--line)] px-4 py-2 text-sm hover:bg-[var(--cream)]">
               同步 Shopify 訂單

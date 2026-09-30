@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { getStaff, requireModule } from "@/lib/auth";
+import { getStaff, hasModule, requireModule } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { shopDomain, shopifyGraphQL } from "@/lib/shopify";
 import { isRslProjectNo } from "@/lib/order-label";
@@ -141,7 +141,7 @@ export async function createSouvenirDraftOrder(
 ): Promise<SouvenirDraftState> {
   const staff = await getStaff();
   if (!staff) return { error: "登入狀態已失效，請重新登入。" };
-  if (staff.role !== "admin") return { error: "只有管理員可以建立 Shopify 草稿訂單。" };
+  if (!hasModule(staff, ["orders"])) return { error: "沒有「紀念品訂單」權限，未能建立 Shopify 草稿訂單。" };
 
   const customerName = String(formData.get("customerName") || "").trim();
   const email = String(formData.get("email") || "").trim();
@@ -254,7 +254,7 @@ export async function sendSouvenirDraftInvoice(
 ): Promise<DraftInvoiceState> {
   const staff = await getStaff();
   if (!staff) return { error: "登入狀態已失效，請重新登入。" };
-  if (staff.role !== "admin") return { error: "只有管理員可以寄送付款連結。" };
+  if (!hasModule(staff, ["orders"])) return { error: "沒有「紀念品訂單」權限，未能寄送付款連結。" };
 
   const id = String(formData.get("draftId") || "");
   if (!/^gid:\/\/shopify\/DraftOrder\/[A-Za-z0-9_-]+$/.test(id)) return { error: "草稿訂單編號無效。" };

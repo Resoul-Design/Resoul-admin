@@ -12,7 +12,7 @@ export default async function BlogCommentsPage({
   return (
     <div>
       <div className="mb-4 flex justify-end">
-        <Link href="/board/blog/reviews" className="rounded-lg border border-[var(--line)] bg-[var(--card)] px-3 py-2 text-sm hover:bg-[var(--cream)]">管理 Google 評價</Link>
+        <Link href="/board/blog/reviews" className="rounded-lg border border-[var(--line)] bg-[var(--card)] px-3 py-2 text-sm hover:bg-[var(--cream)]">查看 Google 評價</Link>
       </div>
       <BoardView
         title="照顧誌留言"

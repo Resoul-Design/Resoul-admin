@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { getStaff } from "@/lib/auth";
+import { requireModule } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { logAudit } from "@/lib/audit";
 
@@ -10,10 +10,9 @@ function field(data: FormData, name: string) {
   return String(data.get(name) || "").trim();
 }
 
+// 與「照顧誌留言」同一權限（管理員或已獲授權員工）
 async function requireAdmin() {
-  const staff = await getStaff();
-  if (!staff || staff.role !== "admin") throw new Error("只有管理員可以管理網站評價。");
-  return staff;
+  return requireModule("board_blog");
 }
 
 function validOptionalUrl(value: string) {
