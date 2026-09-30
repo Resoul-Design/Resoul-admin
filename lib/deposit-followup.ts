@@ -71,12 +71,25 @@ export function needsPaymentLink(kind: FollowUpKind) {
 export const LINK_PLACEHOLDER = "［付款連結］";
 export const LINK_PLACEHOLDER_EN = "[payment link]";
 
+// 預約時段：網站中文版及英文版表格各自儲存本語言的值，後台合併為中英對照選項
+export const TIME_SLOTS = [
+  { zh: "上午（09:00–12:00）", en: "Morning (09:00-12:00)", label: "上午 Morning（09:00–12:00）" },
+  { zh: "下午（12:00–17:00）", en: "Afternoon (12:00-17:00)", label: "下午 Afternoon（12:00–17:00）" },
+  { zh: "傍晚至晚上（17:00–21:00）", en: "Evening (17:00-21:00)", label: "傍晚至晚上 Evening（17:00–21:00）" },
+];
+
+export function findTimeSlot(value: string | null | undefined) {
+  const v = (value || "").trim();
+  return v ? TIME_SLOTS.find((slot) => slot.zh === v || slot.en === v) : undefined;
+}
+
 const MONTHS_EN = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 function whenText(row: FollowUpRow, lang: FollowUpLang = "zh") {
   const m = (row.service_date || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
   const date = !m ? "" : lang === "en" ? `${Number(m[3])} ${MONTHS_EN[Number(m[2]) - 1]}` : `${Number(m[2])} 月 ${Number(m[3])} 日`;
-  const time = (row.service_time || "").trim();
+  const slot = findTimeSlot(row.service_time);
+  const time = slot ? slot[lang] : (row.service_time || "").trim();
   return [date, time].filter(Boolean).join(" ");
 }
 
@@ -97,7 +110,7 @@ export function followUpMessage(kind: FollowUpKind, row: FollowUpRow, staffName:
   const url = link || LINK_PLACEHOLDER;
   switch (kind) {
     case "paid_unscheduled":
-      return `${greeting}多謝你幫${pet}預約接送，${amount} 訂金已經收到。想同你確認返接送嘅日期、時間同地址${when ? `（你揀咗 ${when}）` : ""}，我哋再幫你安排好。有咩想預先話我哋知，都可以隨時講。`;
+      return `${greeting}多謝你幫${pet}預約接送，${amount} 訂金已經收到。${when ? `你之前揀咗 ${when}，` : ""}想同你確認返接送嘅日期、時間同地址，我哋再幫你安排好。有咩想預先話我哋知，都可以隨時講。`;
     case "payment_failed":
       return `${greeting}見到你幫${pet}預約接送嗰陣，${amount} 訂金好似未成功付款，唔緊要㗎。你可以用呢條連結再試一次：\n${url}\n如果遇到任何問題，或者想改時間，隨時搵我就得。`;
     case "unpaid_next_day":
@@ -117,7 +130,7 @@ function followUpMessageEn(kind: FollowUpKind, row: FollowUpRow, staffName: stri
   const url = link || LINK_PLACEHOLDER_EN;
   switch (kind) {
     case "paid_unscheduled":
-      return `${greeting} Thank you for booking ${petPickup} — we've received your ${amount} deposit. We'd like to confirm the pick-up date, time and address${when ? ` (you chose ${when})` : ""} so we can arrange everything for you. If there's anything you'd like us to know beforehand, just let us know.`;
+      return `${greeting} Thank you for booking ${petPickup} — we've received your ${amount} deposit. ${when ? `You chose ${when}; we'd` : "We'd"} like to confirm the pick-up date, time and address so we can arrange everything for you. If there's anything you'd like us to know beforehand, just let us know.`;
     case "payment_failed":
       return `${greeting} It looks like the ${amount} deposit for ${petPickup} didn't go through — no worries. You can try again with this link:\n${url}\nIf you run into any problems or would like to change the time, just message me.`;
     case "unpaid_next_day":

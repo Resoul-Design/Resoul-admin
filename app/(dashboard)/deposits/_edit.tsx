@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { findTimeSlot, TIME_SLOTS } from "@/lib/deposit-followup";
 import { updateDeposit } from "./actions";
 
 export type DepositEditData = {
@@ -28,7 +29,7 @@ export function EditDepositButton({ booking }: { booking: DepositEditData }) {
           <label className={field}>毛孩名字<input name="pet_name" defaultValue={booking.pet_name || ""} className={input}/></label>
           <label className={field}>種類<input name="pet_type" defaultValue={booking.pet_type || ""} className={input}/></label>
           <label className={field}>預約日期<input type="date" name="service_date" defaultValue={booking.service_date || ""} className={input}/></label>
-          <label className={field}>預約時段<select name="service_time" defaultValue={booking.service_time || ""} className={input}><option value="">待確認</option><option value="上午（09:00–12:00）">上午（09:00–12:00）</option><option value="下午（12:00–17:00）">下午（12:00–17:00）</option><option value="傍晚至晚上（17:00–21:00）">傍晚至晚上（17:00–21:00）</option><option value="Morning (09:00-12:00)">Morning (09:00-12:00)</option><option value="Afternoon (12:00-17:00)">Afternoon (12:00-17:00)</option><option value="Evening (17:00-21:00)">Evening (17:00-21:00)</option></select></label>
+          <label className={field}>預約時段<select name="service_time" defaultValue={findTimeSlot(booking.service_time)?.zh ?? (booking.service_time || "")} className={input}><option value="">待確認</option>{TIME_SLOTS.map((slot) => <option key={slot.zh} value={slot.zh}>{slot.label}</option>)}{booking.service_time && !findTimeSlot(booking.service_time) && <option value={booking.service_time}>{booking.service_time}</option>}</select></label>
           <label className={field}>狀態<select name="status" defaultValue={booking.status} className={input}>{statuses.map(([v,l]) => <option key={v} value={v}>{l}</option>)}</select></label>
           <label className={field}>接送地址<input name="pickup_address" defaultValue={booking.pickup_address || ""} className={input}/></label>
           <label className={field + " sm:col-span-2"}>備註<textarea name="notes" rows={3} defaultValue={booking.notes || ""} className={input}/></label>
