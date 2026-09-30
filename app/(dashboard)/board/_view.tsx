@@ -188,7 +188,7 @@ export async function BoardView({
                 </div>
               )}
 
-              {p.visibility === "link" && p.slug && (
+              {(p.visibility === "public" || p.visibility === "link") && p.slug && (
                 <CopyShareLink url={`${LANDING_URL}/board?s=${p.slug}`} active={p.status === "visible"} />
               )}
 

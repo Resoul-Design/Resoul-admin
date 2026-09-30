@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-// 「只限連結」分享：客人忘記網址時，同事核對身份後可複製連結傳回給客人。
+// 公開及「只限連結」分享：同事可複製該故事的專屬連結傳給客人（客人忘記網址時須先核對身份）。
 export function CopyShareLink({ url, active }: { url: string; active: boolean }) {
   const [copied, setCopied] = useState(false);
 
