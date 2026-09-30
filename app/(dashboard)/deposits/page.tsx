@@ -1,6 +1,9 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { shopDomain } from "@/lib/shopify";
+import { getStaff } from "@/lib/auth";
+import { FOLLOW_UP_ORDER, followUpKind } from "@/lib/deposit-followup";
 import { EditDepositButton } from "./_edit";
+import { DepositFollowUp, type FollowUpItem } from "./_followup";
 
 export const dynamic = "force-dynamic";
 
@@ -27,6 +30,10 @@ type DepositRow = {
   shopify_order_name: string | null;
   shopify_order_id: string | null;
   paid_at: string | null;
+  reminded_at?: string | null;
+  reminder_count?: number | null;
+  follow_up_closed_at?: string | null;
+  payment_link?: string | null;
 };
 
 const STATUS_LABEL: Record<string, string> = {
@@ -119,15 +126,35 @@ function whatsappUrl(row: DepositRow) {
 
 export default async function DepositsPage() {
   const supabase = createAdminClient();
-  const { data, error } = await supabase
+  const baseColumns =
+    "id, created_at, owner_name, contact, pet_name, pet_type, plan, service_date, service_time, pickup_address, notes, status, payment_ref, payment_status, payment_amount, payment_currency, shopify_order_name, shopify_order_id, paid_at";
+  // 訂金跟進欄位需先執行 db/migration_deposit_followup.sql；未執行時退回原有欄位，列表照常顯示。
+  const full = await supabase
     .from("deposit_bookings")
-    .select(
-      "id, created_at, owner_name, contact, pet_name, pet_type, plan, service_date, service_time, pickup_address, notes, status, payment_ref, payment_status, payment_amount, payment_currency, shopify_order_name, shopify_order_id, paid_at"
-    )
+    .select(baseColumns + ", reminded_at, reminder_count, follow_up_closed_at, payment_link")
     .order("created_at", { ascending: false });
+  let data = full.data as unknown as DepositRow[] | null;
+  let error = full.error;
+  const followUpNotReady = !!error && /reminded_at|reminder_count|follow_up_closed_at|payment_link/.test(error.message);
+  if (followUpNotReady) {
+    const base = await supabase.from("deposit_bookings").select(baseColumns).order("created_at", { ascending: false });
+    data = base.data as unknown as DepositRow[] | null;
+    error = base.error;
+  }
 
-  const rows = (data ?? []) as DepositRow[];
+  const rows = data ?? [];
   const tableMissing = !!error && /deposit_bookings|does not exist|relation/i.test(error.message);
+  const staff = await getStaff();
+  const staffName = staff?.name?.trim() || staff?.email?.split("@")[0] || "同事";
+  const now = new Date();
+  const followUps: FollowUpItem[] = followUpNotReady
+    ? []
+    : rows
+        .flatMap<FollowUpItem>((r) => {
+          const kind = followUpKind(r, now);
+          return kind ? [{ ...r, kind, projectNo: projectNo(r) }] : [];
+        })
+        .sort((a, b) => FOLLOW_UP_ORDER.indexOf(a.kind) - FOLLOW_UP_ORDER.indexOf(b.kind) || a.created_at.localeCompare(b.created_at));
 
   return (
     <div>
@@ -149,6 +176,8 @@ export default async function DepositsPage() {
           )}
         </div>
       )}
+
+      {!error && <DepositFollowUp items={followUps} staffName={staffName} notReady={followUpNotReady} />}
 
       <div className="mb-2 text-xs text-[var(--soft)]">共 {rows.length} 筆</div>
 

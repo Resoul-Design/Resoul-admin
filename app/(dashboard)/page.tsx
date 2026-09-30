@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getOrdersSinceCached, getProductsCountCached } from "@/lib/revenue";
-import { getStaff } from "@/lib/auth";
+import { getStaff, hasModule } from "@/lib/auth";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { followUpKind, type FollowUpRow } from "@/lib/deposit-followup";
 import { Clock } from "./_clock";
 import { DashboardAutoRefresh } from "./_auto-refresh";
 
@@ -139,6 +141,19 @@ export default async function OverviewPage() {
   ]);
   const crisisHeld = heldCrisisRes.count ?? 0;
 
+  // 接送訂金待跟進數量（只限有「接送服務」權限者；未執行 migration_deposit_followup.sql 時略過）
+  let depositFollowUps = 0;
+  if (staff && hasModule(staff, ["deposits"])) {
+    const { data: deposits, error: depositErr } = await createAdminClient()
+      .from("deposit_bookings")
+      .select("id, created_at, owner_name, contact, pet_name, service_date, service_time, status, payment_status, payment_amount, reminded_at, reminder_count, follow_up_closed_at, payment_link")
+      .not("status", "in", "(cancelled,completed)");
+    if (!depositErr) {
+      const now = new Date();
+      depositFollowUps = ((deposits ?? []) as FollowUpRow[]).filter((d) => followUpKind(d, now) !== null).length;
+    }
+  }
+
   // 訂單營業額（分頁抓取 + 5 分鐘快取）
   const shopErr = ordersRes.ok ? "" : ordersRes.error || "error";
   const revByMonth: Record<string, number> = {};
@@ -217,6 +232,18 @@ export default async function OverviewPage() {
             <div className="text-sm text-red-600/90">可能涉及情緒危機，請盡快查看並處理。</div>
           </div>
           <span className="shrink-0 rounded-lg bg-red-600 px-3 py-1.5 text-sm font-medium text-white">立即審核 →</span>
+        </Link>
+      )}
+
+      {/* 接送訂金跟進入口 */}
+      {depositFollowUps > 0 && (
+        <Link
+          href="/deposits"
+          className="mb-6 flex items-center gap-3 rounded-2xl border border-amber-300 bg-amber-50 px-5 py-4 transition hover:bg-amber-100"
+        >
+          <span className="text-2xl">🔔</span>
+          <div className="min-w-0 flex-1 font-semibold text-amber-800">有 {depositFollowUps} 張接送訂金要跟進</div>
+          <span className="shrink-0 rounded-lg bg-[var(--gold)] px-3 py-1.5 text-sm font-medium text-white">查看 →</span>
         </Link>
       )}
 
