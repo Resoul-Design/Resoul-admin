@@ -5,8 +5,10 @@ import {
   FOLLOW_UP_LABEL,
   followUpMessage,
   needsPaymentLink,
+  preferredLang,
   whatsappLink,
   type FollowUpKind,
+  type FollowUpLang,
   type FollowUpRow,
 } from "@/lib/deposit-followup";
 import { closeDepositFollowUp, createDepositPaymentLink, markDepositContacted, markDepositReminded } from "./actions";
@@ -28,7 +30,8 @@ function fmtTime(iso?: string | null) {
 
 function FollowUpCard({ item, staffName }: { item: FollowUpItem; staffName: string }) {
   const [link, setLink] = useState(item.payment_link || "");
-  const [text, setText] = useState(() => followUpMessage(item.kind, item, staffName, item.payment_link) || "");
+  const [lang, setLang] = useState<FollowUpLang>(() => preferredLang(item));
+  const [text, setText] = useState(() => followUpMessage(item.kind, item, staffName, item.payment_link, lang) || "");
   const [error, setError] = useState("");
   const [pending, startTransition] = useTransition();
   const payKind = needsPaymentLink(item.kind);
@@ -40,10 +43,17 @@ function FollowUpCard({ item, staffName }: { item: FollowUpItem; staffName: stri
       const result = await action();
       if (result.link) {
         setLink(result.link);
-        setText(followUpMessage(item.kind, item, staffName, result.link) || "");
+        setText(followUpMessage(item.kind, item, staffName, result.link, lang) || "");
       }
       if (result.error) setError(result.error);
     });
+  }
+
+  // 切換語言會按範本重寫草稿（已修改的內容不會保留）
+  function switchLang(next: FollowUpLang) {
+    if (next === lang) return;
+    setLang(next);
+    setText(followUpMessage(item.kind, item, staffName, link || null, next) || "");
   }
 
   function close() {
@@ -70,11 +80,24 @@ function FollowUpCard({ item, staffName }: { item: FollowUpItem; staffName: stri
         </p>
       ) : (
         <>
+          <div className="mt-3 flex items-center gap-1 text-xs" role="group" aria-label="訊息語言">
+            {(["zh", "en"] as const).map((l) => (
+              <button
+                key={l}
+                type="button"
+                onClick={() => switchLang(l)}
+                aria-pressed={lang === l}
+                className={"rounded-full border px-3 py-1 " + (lang === l ? "border-[var(--gold)] bg-[var(--gold)] text-white" : "border-[var(--line)] bg-white hover:border-[var(--gold)]")}
+              >
+                {l === "zh" ? "中文" : "English"}
+              </button>
+            ))}
+          </div>
           <textarea
             value={text}
             onChange={(e) => setText(e.target.value)}
             rows={5}
-            className="mt-3 w-full rounded-lg border border-[var(--line)] bg-white px-3 py-2 text-sm leading-6 outline-none focus:border-[var(--gold)]"
+            className="mt-2 w-full rounded-lg border border-[var(--line)] bg-white px-3 py-2 text-sm leading-6 outline-none focus:border-[var(--gold)]"
           />
           {payKind && !link && <p className="mt-1 text-xs text-amber-700">請先按「產生付款連結」，訊息會自動填入連結。</p>}
         </>

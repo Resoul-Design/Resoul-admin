@@ -16,7 +16,15 @@ export type FollowUpRow = {
   reminder_count?: number | null;
   follow_up_closed_at?: string | null;
   payment_link?: string | null;
+  notes?: string | null;
 };
+
+export type FollowUpLang = "zh" | "en";
+
+// 客人在英文版網站落單時，備註會寫「Project no.」，預設用英文訊息
+export function preferredLang(row: FollowUpRow): FollowUpLang {
+  return /Project no\./i.test(row.notes || "") ? "en" : "zh";
+}
 
 export type FollowUpKind = "paid_unscheduled" | "payment_failed" | "unpaid_next_day" | "reminded_unpaid";
 
@@ -61,10 +69,13 @@ export function needsPaymentLink(kind: FollowUpKind) {
 }
 
 export const LINK_PLACEHOLDER = "［付款連結］";
+export const LINK_PLACEHOLDER_EN = "[payment link]";
 
-function whenText(row: FollowUpRow) {
+const MONTHS_EN = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+function whenText(row: FollowUpRow, lang: FollowUpLang = "zh") {
   const m = (row.service_date || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  const date = m ? `${Number(m[2])} 月 ${Number(m[3])} 日` : "";
+  const date = !m ? "" : lang === "en" ? `${Number(m[3])} ${MONTHS_EN[Number(m[2]) - 1]}` : `${Number(m[2])} 月 ${Number(m[3])} 日`;
   const time = (row.service_time || "").trim();
   return [date, time].filter(Boolean).join(" ");
 }
@@ -74,8 +85,9 @@ function amountText(row: FollowUpRow) {
   return "HK$" + amount.toLocaleString("en-US");
 }
 
-// 廣東話口語範本；「已提醒、仍未付款」不起草第二次提醒，回傳 null。
-export function followUpMessage(kind: FollowUpKind, row: FollowUpRow, staffName: string, link?: string | null) {
+// 廣東話口語／英文範本；「已提醒、仍未付款」不起草第二次提醒，回傳 null。
+export function followUpMessage(kind: FollowUpKind, row: FollowUpRow, staffName: string, link?: string | null, lang: FollowUpLang = "zh") {
+  if (lang === "en") return followUpMessageEn(kind, row, staffName, link);
   // 英文名前加空格（嘅 Amy），中文名不加（嘅陳姑娘）
   const who = /^[A-Za-z]/.test(staffName) ? ` ${staffName}` : staffName;
   const greeting = `${(row.owner_name || "").trim()}你好，我係 Resoul 嘅${who}。`;
@@ -90,6 +102,26 @@ export function followUpMessage(kind: FollowUpKind, row: FollowUpRow, staffName:
       return `${greeting}見到你幫${pet}預約接送嗰陣，${amount} 訂金好似未成功付款，唔緊要㗎。你可以用呢條連結再試一次：\n${url}\n如果遇到任何問題，或者想改時間，隨時搵我就得。`;
     case "unpaid_next_day":
       return `${greeting}多謝你幫${pet}預約${when ? ` ${when} ` : ""}嘅接送。我哋留意到 ${amount} 訂金仲未完成付款，唔知係咪遇到啲問題呢？你可以用呢條連結付款：\n${url}\n如果想改時間或者有咩疑問，隨時搵我就得。`;
+    default:
+      return null;
+  }
+}
+
+function followUpMessageEn(kind: FollowUpKind, row: FollowUpRow, staffName: string, link?: string | null) {
+  const name = (row.owner_name || "").trim();
+  const greeting = `Hi${name ? ` ${name}` : ""}, this is ${staffName} from Resoul.`;
+  const pet = (row.pet_name || "").trim();
+  const petPickup = pet ? `${pet}'s pick-up` : "your pet's pick-up";
+  const when = whenText(row, "en");
+  const amount = amountText(row);
+  const url = link || LINK_PLACEHOLDER_EN;
+  switch (kind) {
+    case "paid_unscheduled":
+      return `${greeting} Thank you for booking ${petPickup} — we've received your ${amount} deposit. We'd like to confirm the pick-up date, time and address${when ? ` (you chose ${when})` : ""} so we can arrange everything for you. If there's anything you'd like us to know beforehand, just let us know.`;
+    case "payment_failed":
+      return `${greeting} It looks like the ${amount} deposit for ${petPickup} didn't go through — no worries. You can try again with this link:\n${url}\nIf you run into any problems or would like to change the time, just message me.`;
+    case "unpaid_next_day":
+      return `${greeting} Thank you for booking ${petPickup}${when ? ` on ${when}` : ""}. We noticed the ${amount} deposit hasn't been completed yet — did you run into any issues? You can pay with this link:\n${url}\nIf you'd like to change the time or have any questions, just message me.`;
     default:
       return null;
   }
