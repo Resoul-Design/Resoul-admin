@@ -12,7 +12,7 @@ export default async function CommunityBoardPage({
   return (
     <div>
       <div className="mb-4 flex justify-end">
-        <Link href="/board/community/reviews" className="rounded-lg border border-[var(--line)] bg-[var(--card)] px-3 py-2 text-sm hover:bg-[var(--cream)]">查看 Google 評價</Link>
+        <Link href="/board/community/reviews" className="rounded-lg border border-[var(--line)] bg-[var(--card)] px-3 py-2 text-sm hover:bg-[var(--cream)]">查看服務評價</Link>
       </div>
       <BoardView
         title="主人評價及故事分享"
