@@ -3,6 +3,8 @@ import { getStaff } from "@/lib/auth";
 import { TopNav } from "./_topnav";
 import { UserMenu } from "./_usermenu";
 import { MobileMenu } from "./_mobilemenu";
+import { Suspense } from "react";
+import { NavProgress } from "./_nav-progress";
 
 export default async function DashboardLayout({
   children,
@@ -18,6 +20,9 @@ export default async function DashboardLayout({
 
   return (
     <div className="min-h-screen flex flex-col">
+      <Suspense fallback={null}>
+        <NavProgress />
+      </Suspense>
       {/* 頂部：品牌 + 水平導覽（桌面）／漢堡（手機）+ 使用者選單 */}
       <header className="sticky top-0 z-30 bg-[var(--card)] border-b border-[var(--line)]">
         <div className="flex items-center gap-3 px-4 md:px-6 py-2.5">

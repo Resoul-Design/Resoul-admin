@@ -46,6 +46,7 @@ export function TopNav({ allowed }: { allowed: string[] | null }) {
           const active = isActive(path, g.href!);
           return (
             <Link
+              prefetch={false}
               key={g.label}
               href={g.href!}
               className={
@@ -85,6 +86,7 @@ export function TopNav({ allowed }: { allowed: string[] | null }) {
                   const active = isActive(path, c.href);
                   return (
                     <Link
+                      prefetch={false}
                       key={c.href}
                       href={c.href}
                       onClick={() => setOpenKey(null)}

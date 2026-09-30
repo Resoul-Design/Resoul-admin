@@ -94,6 +94,7 @@ export function NavLinks({
           const active = isActive(path, g.href!);
           return (
             <Link
+              prefetch={false}
               key={g.label}
               href={g.soon ? "#" : g.href!}
               aria-disabled={g.soon}
@@ -149,6 +150,7 @@ export function NavLinks({
                   const active = isActive(path, c.href);
                   return (
                     <Link
+                      prefetch={false}
                       key={c.href}
                       href={c.href}
                       onClick={onNavigate}
