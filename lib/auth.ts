@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { canAccess } from "@/lib/modules";
@@ -13,7 +14,8 @@ export type Staff = {
 };
 
 // 取得目前登入的員工資料；若未登入或非在職員工，回傳 null。
-export async function getStaff(): Promise<Staff | null> {
+// 以 React cache 包裝：同一次請求內版面及頁面共用結果，避免重複查詢 Supabase。
+export const getStaff = cache(async (): Promise<Staff | null> => {
   const supabase = await createClient();
   const {
     data: { user },
@@ -29,7 +31,7 @@ export async function getStaff(): Promise<Staff | null> {
 
   if (!data) return null;
   return { ...(data as Staff), authEmail: user.email ?? undefined };
-}
+});
 
 // 是否可使用任一指定模組（管理員全部可用）
 export function hasModule(staff: Staff, keys: string[]): boolean {

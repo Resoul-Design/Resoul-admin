@@ -117,6 +117,16 @@ export default async function OverviewPage() {
   const today = todayStr();
   const monthStart = curKey + "-01";
 
+  // 接送訂金跟進（與下列查詢並行）；無「接送服務」權限者不讀取
+  const depositsP =
+    staff && hasModule(staff, ["deposits"])
+      ? createAdminClient()
+          .from("deposit_bookings")
+          .select("id, created_at, owner_name, contact, pet_name, service_date, service_time, status, payment_status, payment_amount, reminded_at, reminder_count, follow_up_closed_at, payment_link")
+          .not("status", "in", "(cancelled,completed)")
+          .then((r) => r)
+      : Promise.resolve({ data: [] as FollowUpRow[], error: null });
+
   // 輕量查詢：狀態分佈用聚合 count（不拉全部資料）；列表只取最近 6 筆
   const statusCountsP = Promise.all(
     BOOKING_STATUS.map((s) =>
@@ -143,15 +153,10 @@ export default async function OverviewPage() {
 
   // 接送訂金待跟進數量（只限有「接送服務」權限者；未執行 migration_deposit_followup.sql 時略過）
   let depositFollowUps = 0;
-  if (staff && hasModule(staff, ["deposits"])) {
-    const { data: deposits, error: depositErr } = await createAdminClient()
-      .from("deposit_bookings")
-      .select("id, created_at, owner_name, contact, pet_name, service_date, service_time, status, payment_status, payment_amount, reminded_at, reminder_count, follow_up_closed_at, payment_link")
-      .not("status", "in", "(cancelled,completed)");
-    if (!depositErr) {
-      const now = new Date();
-      depositFollowUps = ((deposits ?? []) as FollowUpRow[]).filter((d) => followUpKind(d, now) !== null).length;
-    }
+  const { data: deposits, error: depositErr } = await depositsP;
+  if (!depositErr) {
+    const now = new Date();
+    depositFollowUps = ((deposits ?? []) as FollowUpRow[]).filter((d) => followUpKind(d, now) !== null).length;
   }
 
   // 訂單營業額（分頁抓取 + 5 分鐘快取）

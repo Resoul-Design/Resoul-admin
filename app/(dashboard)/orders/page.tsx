@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import type { ProductOrderRow } from "@/lib/product-orders";
+import { unstable_cache } from "next/cache";
 import { shopDomain } from "@/lib/shopify";
 import { canonicalProjectNo } from "@/lib/order-label";
 import { getStaff, hasModule } from "@/lib/auth";
@@ -49,6 +50,28 @@ const CATALOG_QUERY = `query SouvenirCatalog($after: String) {
 }`;
 const CATALOG_MAX_PAGES = 10;
 
+// 產品目錄變動不頻繁：快取 5 分鐘，避免每次開頁都向 Shopify 分頁讀取全部產品。
+// 讀取失敗時拋出錯誤，不會把失敗結果寫入快取。
+const getSouvenirCatalogCached = unstable_cache(
+  async (): Promise<DraftCatalogProduct[]> => {
+    const products: DraftCatalogProduct[] = [];
+    let after: string | null = null;
+    for (let page = 0; page < CATALOG_MAX_PAGES; page++) {
+      const catalog: CatalogResponse = await shopifyGraphQL<CatalogResponse>(CATALOG_QUERY, { after });
+      for (const { node } of catalog.products.edges) {
+        const variants = node.variants.edges.map(({ node: variant }) => variant);
+        if (!variants.length) continue;
+        products.push({ id: node.id, title: node.title, productType: (node.productType || "").trim() || "未分類", variants });
+      }
+      if (!catalog.products.pageInfo.hasNextPage) break;
+      after = catalog.products.pageInfo.endCursor;
+    }
+    return products;
+  },
+  ["souvenir-catalog"],
+  { revalidate: 300 }
+);
+
 export default async function OrdersPage({ searchParams }: {
   searchParams: Promise<{ synced?: string; sync_error?: string }>;
 }) {
@@ -56,26 +79,20 @@ export default async function OrdersPage({ searchParams }: {
   const supabase = await createClient();
   const staff = await getStaff();
   const canCreate = !!staff && hasModule(staff, ["orders"]);
+  // 訂單列表與產品目錄同時讀取
+  const catalogP = canCreate ? getSouvenirCatalogCached().catch((e: unknown) => e) : null;
   const { data, error } = await supabase
     .from("product_orders").select("*")
     .order("shopify_created_at", { ascending: false }).limit(2000);
   const orders = (data || []) as ProductOrderRow[];
 
-  const products: DraftCatalogProduct[] = [];
+  let products: DraftCatalogProduct[] = [];
   let catalogError = "";
-  if (canCreate) {
+  if (catalogP) {
     try {
-      let after: string | null = null;
-      for (let page = 0; page < CATALOG_MAX_PAGES; page++) {
-        const catalog: CatalogResponse = await shopifyGraphQL<CatalogResponse>(CATALOG_QUERY, { after });
-        for (const { node } of catalog.products.edges) {
-          const variants = node.variants.edges.map(({ node: variant }) => variant);
-          if (!variants.length) continue;
-          products.push({ id: node.id, title: node.title, productType: (node.productType || "").trim() || "未分類", variants });
-        }
-        if (!catalog.products.pageInfo.hasNextPage) break;
-        after = catalog.products.pageInfo.endCursor;
-      }
+      const catalog = await catalogP;
+      if (!Array.isArray(catalog)) throw catalog;
+      products = catalog;
       if (!products.length) catalogError = "Shopify 暫無可加入的上架產品。";
     } catch (catalogFailure) {
       console.error("[souvenir_catalog]", catalogFailure instanceof Error ? catalogFailure.message : "unknown error");
