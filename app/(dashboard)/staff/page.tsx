@@ -83,7 +83,11 @@ export default async function StaffPage() {
           <tbody>
             {staff.map((s) => (
               <tr key={s.id} className="border-t border-[var(--line)]">
-                <td className="px-4 py-3">{s.name || "—"}</td>
+                <td className="px-4 py-3">
+                  {isAdmin ? (
+                    <input name="name" defaultValue={s.name || ""} form={`f-${s.id}`} maxLength={60} placeholder="姓名" aria-label="姓名" className="w-full min-w-0 rounded-md border border-[var(--line)] bg-white px-2 py-1 text-sm" />
+                  ) : (s.name || "—")}
+                </td>
                 <td className="px-4 py-3 text-[var(--soft)]">{s.email}</td>
                 <td className="px-4 py-3">
                   {isAdmin ? null : s.role === "admin" ? "管理員" : "員工"}
@@ -140,7 +144,9 @@ export default async function StaffPage() {
         {staff.map((s) => (
           <div key={s.id} className="rounded-2xl border border-[var(--line)] bg-[var(--card)] p-4">
             <div className="flex items-center justify-between gap-2">
-              <span className="font-medium">{s.name || "—"}</span>
+              {isAdmin ? (
+                <input name="name" defaultValue={s.name || ""} form={`m-${s.id}`} maxLength={60} placeholder="姓名" aria-label="姓名" className="min-w-0 flex-1 rounded-md border border-[var(--line)] bg-white px-2 py-1 text-sm font-medium" />
+              ) : <span className="font-medium">{s.name || "—"}</span>}
               {isAdmin ? null : <span className={s.active ? "text-xs text-green-700" : "text-xs text-[var(--faint)]"}>{s.active ? "在職" : "停用"}</span>}
             </div>
             <div className="text-xs text-[var(--soft)]">{s.email}</div>

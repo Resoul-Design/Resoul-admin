@@ -61,9 +61,14 @@ export async function updateStaff(formData: FormData) {
   if (!id) return;
   const role = String(formData.get("role") || "staff") === "admin" ? "admin" : "staff";
   const active = formData.get("active") === "on";
+  // 姓名亦用於訂金跟進及回覆助手的訊息署名；留空則不顯示姓名
+  const name = String(formData.get("name") ?? "").trim().slice(0, 60);
   const supabase = await createClient();
-  await supabase.from("staff").update({ role, active }).eq("id", id);
-  await logAudit("update_staff", "staff", id, `role=${role}｜active=${active}`);
+  await supabase
+    .from("staff")
+    .update({ role, active, ...(formData.has("name") ? { name: name || null } : {}) })
+    .eq("id", id);
+  await logAudit("update_staff", "staff", id, `role=${role}｜active=${active}${formData.has("name") ? `｜name=${name || "—"}` : ""}`);
   revalidatePath("/staff");
 }
 
