@@ -8,6 +8,8 @@ export type BookingRow = {
   id: string;
   created: string;
   invoiceNo: string;
+  paymentRef?: string;
+  serviceTime?: string;
   owner: string;
   contact: string;
   address: string;
@@ -123,7 +125,61 @@ export function BookingsTable({
       {shown.length === 0 ? (
         <div className="rounded-2xl border border-[var(--line)] bg-[var(--card)] p-10 text-center text-[var(--soft)]">沒有符合的預約。</div>
       ) : (
-        <><div className="hidden lg:block rounded-2xl border border-[var(--line)] bg-[var(--card)] overflow-x-auto">
+        <>{sourceMode === "vet" ? (
+        /* 獸醫評估：欄位格式與「接送服務」一致 */
+        <div className="hidden lg:block rounded-2xl border border-[var(--line)] bg-[var(--card)] overflow-x-auto">
+          <table className="w-full min-w-[1700px] table-fixed text-sm">
+            <colgroup><col className="w-[9%]"/><col className="w-[14%]"/><col className="w-[11%]"/><col className="w-[8%]"/><col className="w-[14%]"/><col className="w-[7%]"/><col className="w-[7%]"/><col className="w-[7%]"/><col className="w-[23%]"/></colgroup>
+            <thead>
+              <tr className="bg-[var(--head)] text-left text-[var(--soft)] whitespace-nowrap">
+                <th className="px-4 py-3 font-medium">建立時間</th>
+                <th className="px-4 py-3 font-medium">專案編號</th>
+                <th className="px-4 py-3 font-medium">主人 · 電話</th>
+                <th className="px-4 py-3 font-medium">寵物</th>
+                <th className="px-4 py-3 font-medium">希望日期 · 時段</th>
+                <th className="px-4 py-3 font-medium text-right">金額</th>
+                <th className="px-4 py-3 font-medium">付款</th>
+                <th className="px-4 py-3 font-medium min-w-[88px]">狀態</th>
+                <th className="px-4 py-3 font-medium text-right">操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              {shown.map((r) => (
+                <tr key={r.id} className="border-t border-[var(--line)] align-top">
+                  <td className="px-4 py-3 text-[var(--soft)] whitespace-nowrap">{r.created}</td>
+                  <td className="px-4 py-3">
+                    {r.invoiceNo ? (
+                      <div className="min-w-0"><span className="font-medium text-[var(--gold)]">{r.invoiceNo}</span>{r.paymentRef && <div className="break-all text-xs text-[var(--soft)]">付款參考 {r.paymentRef}</div>}</div>
+                    ) : (
+                      <span className="text-[var(--faint)]">—</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 whitespace-nowrap">
+                    <div>{r.owner || "—"}</div>
+                    <div className="text-[var(--soft)] text-xs mt-0.5">{r.contact ? "📞 " + r.contact : "—"}</div>
+                  </td>
+                  <td className="px-4 py-3"><div>{r.petName || "—"}</div><div className="text-[var(--soft)] text-xs">{r.petType}</div></td>
+                  <td className="px-3 py-3">
+                    <div className="whitespace-nowrap">{r.serviceDate || "—"}</div>
+                    {(r.serviceTime || r.timePref) && <div className="mt-0.5 text-xs leading-5 text-[var(--soft)]">{[r.serviceTime, r.timePref].filter(Boolean).join(" ")}</div>}
+                  </td>
+                  <td className="px-4 py-3 whitespace-nowrap text-right tabular-nums">{r.amountText}</td>
+                  <td className="px-4 py-3 whitespace-nowrap">{paymentReady ? <span className={"inline-block px-2 py-0.5 rounded-full text-xs " + r.paymentClass}>{r.paymentLabel}</span> : <span className="text-[var(--faint)] text-xs">待 migration</span>}</td>
+                  <td className="px-4 py-3 whitespace-nowrap"><span className={"inline-block whitespace-nowrap px-2 py-0.5 rounded-full text-xs " + r.statusClass}>{r.statusLabel}</span></td>
+                  {/* 操作：固定四格（日曆／發票／WhatsApp／編輯），沒有的項目留空，各行上下對齊 */}
+                  <td className="px-3 py-3"><div className="grid grid-cols-[5.5rem_2.25rem_7rem_3.25rem] items-center justify-end gap-x-2 whitespace-nowrap">
+                    <div>{r.calUrl && <a href={r.calUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-[var(--gold)] hover:underline">📅 加入日曆</a>}</div>
+                    <div>{r.shopifyOrderUrl && <a href={r.shopifyOrderUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-[var(--gold)] hover:underline">發票</a>}</div>
+                    <div><WhatsAppButton phone={r.contact} text={r.waText} /></div>
+                    <div className="justify-self-end"><EditBookingButton booking={r.booking} /></div>
+                  </div></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        ) : (
+        <div className="hidden lg:block rounded-2xl border border-[var(--line)] bg-[var(--card)] overflow-x-auto">
           <table className="w-full min-w-[1650px] table-fixed text-sm">
             <colgroup><col className="w-[8%]"/><col className="w-[13%]"/><col className="w-[13%]"/><col className="w-[7%]"/><col className="w-[8%]"/><col className="w-[6%]"/><col className="w-[7%]"/><col className="w-[16%]"/><col className="w-[7%]"/><col className="w-[15%]"/></colgroup>
             <thead>
@@ -171,6 +227,7 @@ export function BookingsTable({
             </tbody>
           </table>
         </div>
+        )}
 
         <div className="space-y-3 lg:hidden">
           {shown.map((r) => (

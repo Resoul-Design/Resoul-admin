@@ -170,6 +170,8 @@ export async function BookingsPage({ mode }: { mode: "cremation" | "vet" }) {
       id: b.id,
       created: b.created_at?.slice(0, 16).replace("T", " ") || "",
       invoiceNo,
+      paymentRef: (b as { payment_ref?: string | null }).payment_ref || "",
+      serviceTime: b.service_time || "",
       owner: b.owner_name || "",
       contact: b.contact || "",
       address: b.pickup_address || "",
