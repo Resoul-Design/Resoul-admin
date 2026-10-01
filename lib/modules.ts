@@ -7,6 +7,7 @@ export const MODULES: ModuleDef[] = [
   { key: "vet_assessments", label: "獸醫評估", href: "/vet-assessments" },
   { key: "orders", label: "紀念品訂單", href: "/orders" },
   { key: "inventory", label: "倉存 · 出貨", href: "/inventory" },
+  { key: "replies", label: "回覆助手", href: "/replies" },
   { key: "board_community", label: "主人評價及故事分享", href: "/board/community" },
   { key: "articles", label: "文章記錄", href: "/articles" },
   { key: "staff", label: "員工管理", href: "/staff" },
