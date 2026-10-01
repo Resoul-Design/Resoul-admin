@@ -4,7 +4,7 @@ import { getStaff } from "@/lib/auth";
 import { FOLLOW_UP_ORDER, followUpKind } from "@/lib/deposit-followup";
 import { EditDepositButton } from "./_edit";
 import Link from "next/link";
-import { FollowUpBadge, FollowUpButton, type FollowUpItem } from "./_followup";
+import { FollowUpButton, type FollowUpItem } from "./_followup";
 
 export const dynamic = "force-dynamic";
 
@@ -195,7 +195,7 @@ export default async function DepositsPage({ searchParams }: { searchParams: Pro
           ) : followUps.length > 0 && (
             <Link href="/deposits?followup=1" className="text-[var(--gold)] hover:underline">只顯示要跟進</Link>
           )}
-          <span className="text-xs text-[var(--soft)]">需要跟進的訂金以淡黃色標示，按「🔔 跟進」處理。</span>
+          <span className="text-xs text-[var(--soft)]">需要跟進的訂金以淡黃色標示，按該行「🔔」掣處理。</span>
         </div>
       ))}
 
@@ -209,8 +209,8 @@ export default async function DepositsPage({ searchParams }: { searchParams: Pro
         <>
           {/* 桌面：表格 */}
           <div className="hidden lg:block rounded-2xl border border-[var(--line)] bg-[var(--card)] overflow-x-auto">
-            <table className="w-full min-w-[1650px] table-fixed text-sm">
-              <colgroup><col className="w-[10%]"/><col className="w-[16%]"/><col className="w-[12%]"/><col className="w-[7%]"/><col className="w-[16%]"/><col className="w-[7%]"/><col className="w-[7%]"/><col className="w-[7%]"/><col className="w-[18%]"/></colgroup>
+            <table className="w-full min-w-[1800px] table-fixed text-sm">
+              <colgroup><col className="w-[9%]"/><col className="w-[14%]"/><col className="w-[11%]"/><col className="w-[7%]"/><col className="w-[13%]"/><col className="w-[7%]"/><col className="w-[7%]"/><col className="w-[6%]"/><col className="w-[26%]"/></colgroup>
               <thead>
                 <tr className="bg-[var(--head)] text-left text-[var(--soft)] whitespace-nowrap">
                   <th className="px-4 py-3 font-medium">建立時間</th>
@@ -263,14 +263,14 @@ export default async function DepositsPage({ searchParams }: { searchParams: Pro
                         <span className={"inline-block whitespace-nowrap px-2 py-0.5 rounded-full text-xs " + statusBadgeClass(r.status)}>
                           {STATUS_LABEL[r.status] || r.status}
                         </span>
-                        {fu && <div className="mt-1.5"><FollowUpBadge kind={fu.kind} /></div>}
                       </td>
-                      <td className="px-3 py-3"><div className="flex flex-wrap items-center justify-end gap-x-2 gap-y-1">
-                        {fu && <FollowUpButton item={fu} staffName={staffName} />}
-                        {cal && <a href={cal} target="_blank" rel="noopener noreferrer" className="text-xs text-[var(--gold)] hover:underline">📅 加入日曆</a>}
-                        {invoice && <a href={invoice} target="_blank" rel="noopener noreferrer" className="text-xs text-[var(--gold)] hover:underline">發票</a>}
-                        {wa && <a href={wa} target="_blank" rel="noopener noreferrer" className="text-xs text-green-700 hover:underline">💬 WhatsApp 客人</a>}
-                        <EditDepositButton booking={r}/>
+                      {/* 操作：固定五格（跟進／日曆／發票／WhatsApp／編輯），沒有的項目留空，各行上下對齊 */}
+                      <td className="px-3 py-3"><div className="grid grid-cols-[7rem_5.5rem_2.25rem_7rem_3.25rem] items-center justify-end gap-x-2 whitespace-nowrap">
+                        <div className="justify-self-start">{fu && <FollowUpButton item={fu} staffName={staffName} />}</div>
+                        <div>{cal && <a href={cal} target="_blank" rel="noopener noreferrer" className="text-xs text-[var(--gold)] hover:underline">📅 加入日曆</a>}</div>
+                        <div>{invoice && <a href={invoice} target="_blank" rel="noopener noreferrer" className="text-xs text-[var(--gold)] hover:underline">發票</a>}</div>
+                        <div>{wa && <a href={wa} target="_blank" rel="noopener noreferrer" className="text-xs text-green-700 hover:underline">💬 WhatsApp 客人</a>}</div>
+                        <div className="justify-self-end"><EditDepositButton booking={r}/></div>
                       </div></td>
                     </tr>
                   );
@@ -295,7 +295,6 @@ export default async function DepositsPage({ searchParams }: { searchParams: Pro
                       {STATUS_LABEL[r.status] || r.status}
                     </span>
                   </div>
-                  {fu && <div className="mt-2"><FollowUpBadge kind={fu.kind} /></div>}
                   <dl className="mt-3 grid grid-cols-[76px_minmax(0,1fr)] gap-x-3 gap-y-1.5 text-sm">
                     <dt className="text-[var(--soft)]">主人 · 電話</dt>
                     <dd className="min-w-0"><div className="truncate">{r.owner_name || "—"}</div><div className="text-xs text-[var(--soft)]">{r.contact ? "📞 " + r.contact : "—"}</div></dd>

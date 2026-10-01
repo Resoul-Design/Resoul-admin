@@ -22,14 +22,22 @@ const KIND_CLASS: Record<FollowUpKind, string> = {
   reminded_unpaid: "bg-gray-200 text-gray-700",
 };
 
+// 「操作」欄跟進掣只寫要做的事，不重複付款／狀態欄資料
+const ACTION_LABEL: Record<FollowUpKind, string> = {
+  paid_unscheduled: "安排排期",
+  payment_failed: "重新付款",
+  unpaid_next_day: "提醒付款",
+  reminded_unpaid: "致電跟進",
+};
+
 const btn = "rounded-lg border border-[var(--line)] bg-white px-3 py-1.5 text-xs hover:border-[var(--gold)] disabled:opacity-50";
 
 function fmtTime(iso?: string | null) {
   return iso ? iso.slice(0, 16).replace("T", " ") : "—";
 }
 
-// 表格「狀態」欄下方的跟進類別標籤
-export function FollowUpBadge({ kind }: { kind: FollowUpKind }) {
+// 跟進類別標籤（彈出視窗內使用）
+function FollowUpBadge({ kind }: { kind: FollowUpKind }) {
   return <span className={"inline-block whitespace-nowrap rounded-full px-2 py-0.5 text-xs " + KIND_CLASS[kind]}>🔔 {FOLLOW_UP_LABEL[kind]}</span>;
 }
 
@@ -43,7 +51,7 @@ export function FollowUpButton({ item, staffName }: { item: FollowUpItem; staffN
         onClick={() => setOpen(true)}
         className="whitespace-nowrap rounded-md border border-amber-300 bg-amber-50 px-2.5 py-1.5 text-xs font-medium text-amber-800 hover:bg-amber-100"
       >
-        🔔 跟進
+        🔔 {ACTION_LABEL[item.kind]}
       </button>
       {open && (
         <div className="fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-black/30 px-4 py-8" onClick={() => setOpen(false)}>
