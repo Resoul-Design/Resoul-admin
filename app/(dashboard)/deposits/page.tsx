@@ -3,7 +3,8 @@ import { shopDomain } from "@/lib/shopify";
 import { getStaff } from "@/lib/auth";
 import { FOLLOW_UP_ORDER, followUpKind } from "@/lib/deposit-followup";
 import { EditDepositButton } from "./_edit";
-import { DepositFollowUp, type FollowUpItem } from "./_followup";
+import Link from "next/link";
+import { FollowUpBadge, FollowUpButton, type FollowUpItem } from "./_followup";
 
 export const dynamic = "force-dynamic";
 
@@ -124,7 +125,8 @@ function whatsappUrl(row: DepositRow) {
   return `https://wa.me/${number}?text=${encodeURIComponent(text)}`;
 }
 
-export default async function DepositsPage() {
+export default async function DepositsPage({ searchParams }: { searchParams: Promise<{ followup?: string }> }) {
+  const { followup } = await searchParams;
   const supabase = createAdminClient();
   const baseColumns =
     "id, created_at, owner_name, contact, pet_name, pet_type, plan, service_date, service_time, pickup_address, notes, status, payment_ref, payment_status, payment_amount, payment_currency, shopify_order_name, shopify_order_id, paid_at";
@@ -155,6 +157,10 @@ export default async function DepositsPage() {
           return kind ? [{ ...r, kind, projectNo: projectNo(r) }] : [];
         })
         .sort((a, b) => FOLLOW_UP_ORDER.indexOf(a.kind) - FOLLOW_UP_ORDER.indexOf(b.kind) || a.created_at.localeCompare(b.created_at));
+  const followUpById = new Map(followUps.map((f) => [f.id, f]));
+  // 「只顯示要跟進」：按跟進優先次序排列
+  const onlyFollowUp = followup === "1" && !followUpNotReady;
+  const visibleRows = onlyFollowUp ? followUps.map((f) => rows.find((r) => r.id === f.id)!).filter(Boolean) : rows;
 
   return (
     <div>
@@ -177,11 +183,25 @@ export default async function DepositsPage() {
         </div>
       )}
 
-      {!error && <DepositFollowUp items={followUps} staffName={staffName} notReady={followUpNotReady} />}
+      {!error && (followUpNotReady ? (
+        <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          未啟用訂金跟進：請先於 Supabase（diyxcx）執行 <code>db/migration_deposit_followup.sql</code>。
+        </div>
+      ) : (
+        <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-xl border border-[var(--line)] bg-[var(--head)] px-4 py-3 text-sm">
+          <span>🔔 今日要跟進 <b className={followUps.length ? "text-amber-700" : ""}>{followUps.length}</b> 張</span>
+          {onlyFollowUp ? (
+            <Link href="/deposits" className="text-[var(--gold)] hover:underline">顯示全部</Link>
+          ) : followUps.length > 0 && (
+            <Link href="/deposits?followup=1" className="text-[var(--gold)] hover:underline">只顯示要跟進</Link>
+          )}
+          <span className="text-xs text-[var(--soft)]">需要跟進的訂金以淡黃色標示，按「🔔 跟進」處理。</span>
+        </div>
+      ))}
 
-      <div className="mb-2 text-xs text-[var(--soft)]">共 {rows.length} 筆</div>
+      <div className="mb-2 text-xs text-[var(--soft)]">共 {visibleRows.length} 筆</div>
 
-      {rows.length === 0 ? (
+      {visibleRows.length === 0 ? (
         <div className="rounded-2xl border border-[var(--line)] bg-[var(--card)] p-10 text-center text-[var(--soft)]">
           {error ? "暫時無法顯示接送服務。" : "暫無接送服務記錄。"}
         </div>
@@ -205,13 +225,14 @@ export default async function DepositsPage() {
                 </tr>
               </thead>
               <tbody>
-                {rows.map((r) => {
+                {visibleRows.map((r) => {
+                  const fu = followUpById.get(r.id);
                   const project = projectNo(r);
                   const cal = calendarUrl(r);
                   const wa = whatsappUrl(r);
                   const invoice = r.shopify_order_id ? `https://${shopDomain()}/admin/orders/${String(r.shopify_order_id).split("/").pop()}` : null;
                   return (
-                    <tr key={r.id} className="border-t border-[var(--line)] align-top">
+                    <tr key={r.id} className={"border-t border-[var(--line)] align-top" + (fu ? " bg-amber-50/70" : "")}>
                       <td className="px-4 py-3 text-[var(--soft)] whitespace-nowrap">{fmtCreated(r.created_at)}</td>
                       <td className="px-4 py-3">
                         {project ? (
@@ -242,8 +263,10 @@ export default async function DepositsPage() {
                         <span className={"inline-block whitespace-nowrap px-2 py-0.5 rounded-full text-xs " + statusBadgeClass(r.status)}>
                           {STATUS_LABEL[r.status] || r.status}
                         </span>
+                        {fu && <div className="mt-1.5"><FollowUpBadge kind={fu.kind} /></div>}
                       </td>
                       <td className="px-3 py-3"><div className="flex flex-wrap items-center justify-end gap-x-2 gap-y-1">
+                        {fu && <FollowUpButton item={fu} staffName={staffName} />}
                         {cal && <a href={cal} target="_blank" rel="noopener noreferrer" className="text-xs text-[var(--gold)] hover:underline">📅 加入日曆</a>}
                         {invoice && <a href={invoice} target="_blank" rel="noopener noreferrer" className="text-xs text-[var(--gold)] hover:underline">發票</a>}
                         {wa && <a href={wa} target="_blank" rel="noopener noreferrer" className="text-xs text-green-700 hover:underline">💬 WhatsApp 客人</a>}
@@ -258,19 +281,21 @@ export default async function DepositsPage() {
 
           {/* 手機：卡片 */}
           <div className="space-y-3 lg:hidden">
-            {rows.map((r) => {
+            {visibleRows.map((r) => {
+              const fu = followUpById.get(r.id);
               const project = projectNo(r);
               const cal = calendarUrl(r);
               const wa = whatsappUrl(r);
               const invoice = r.shopify_order_id ? `https://${shopDomain()}/admin/orders/${String(r.shopify_order_id).split("/").pop()}` : null;
               return (
-                <div key={r.id} className="rounded-2xl border border-[var(--line)] bg-[var(--card)] p-4">
+                <div key={r.id} className={"rounded-2xl border p-4 " + (fu ? "border-amber-300 bg-amber-50/70" : "border-[var(--line)] bg-[var(--card)]")}>
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0"><div className="text-xs text-[var(--soft)]">專案編號</div><div className="break-words font-medium text-[var(--gold)]">{project || "（舊記錄未有專案編號）"}</div></div>
                     <span className={"px-2 py-0.5 rounded-full text-xs " + statusBadgeClass(r.status)}>
                       {STATUS_LABEL[r.status] || r.status}
                     </span>
                   </div>
+                  {fu && <div className="mt-2"><FollowUpBadge kind={fu.kind} /></div>}
                   <dl className="mt-3 grid grid-cols-[76px_minmax(0,1fr)] gap-x-3 gap-y-1.5 text-sm">
                     <dt className="text-[var(--soft)]">主人 · 電話</dt>
                     <dd className="min-w-0"><div className="truncate">{r.owner_name || "—"}</div><div className="text-xs text-[var(--soft)]">{r.contact ? "📞 " + r.contact : "—"}</div></dd>
@@ -301,6 +326,7 @@ export default async function DepositsPage() {
                     <dd>{fmtCreated(r.created_at)}</dd>
                   </dl>
                   <div className="mt-3 flex flex-wrap items-center gap-3 border-t border-[var(--line)] pt-3">
+                    {fu && <FollowUpButton item={fu} staffName={staffName} />}
                     {cal && <a href={cal} className="text-xs text-[var(--gold)]">📅 加入日曆</a>}
                     {invoice && <a href={invoice} target="_blank" rel="noopener noreferrer" className="text-xs text-[var(--gold)]">發票</a>}
                     {wa && <a href={wa} target="_blank" rel="noopener noreferrer" className="text-xs text-green-700">💬 WhatsApp 客人</a>}

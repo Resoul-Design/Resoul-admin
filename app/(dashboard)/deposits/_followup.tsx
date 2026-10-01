@@ -28,7 +28,39 @@ function fmtTime(iso?: string | null) {
   return iso ? iso.slice(0, 16).replace("T", " ") : "—";
 }
 
-function FollowUpCard({ item, staffName }: { item: FollowUpItem; staffName: string }) {
+// 表格「狀態」欄下方的跟進類別標籤
+export function FollowUpBadge({ kind }: { kind: FollowUpKind }) {
+  return <span className={"inline-block whitespace-nowrap rounded-full px-2 py-0.5 text-xs " + KIND_CLASS[kind]}>🔔 {FOLLOW_UP_LABEL[kind]}</span>;
+}
+
+// 「操作」欄的「跟進」掣：彈出視窗內草擬訊息、產生付款連結、開啟 WhatsApp 及標記
+export function FollowUpButton({ item, staffName }: { item: FollowUpItem; staffName: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="whitespace-nowrap rounded-md border border-amber-300 bg-amber-50 px-2.5 py-1.5 text-xs font-medium text-amber-800 hover:bg-amber-100"
+      >
+        🔔 跟進
+      </button>
+      {open && (
+        <div className="fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-black/30 px-4 py-8" onClick={() => setOpen(false)}>
+          <div className="my-auto w-full max-w-xl rounded-2xl border border-[var(--line)] bg-[var(--card)] p-6 text-left" onClick={(e) => e.stopPropagation()}>
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <h2 className="text-lg font-semibold">訂金跟進</h2>
+              <button type="button" onClick={() => setOpen(false)} aria-label="關閉">✕</button>
+            </div>
+            <FollowUpPanel item={item} staffName={staffName} onDone={() => setOpen(false)} />
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+function FollowUpPanel({ item, staffName, onDone }: { item: FollowUpItem; staffName: string; onDone: () => void }) {
   const [link, setLink] = useState(item.payment_link || "");
   const [lang, setLang] = useState<FollowUpLang>(() => preferredLang(item));
   const [text, setText] = useState(() => followUpMessage(item.kind, item, staffName, item.payment_link, lang) || "");
@@ -37,7 +69,8 @@ function FollowUpCard({ item, staffName }: { item: FollowUpItem; staffName: stri
   const payKind = needsPaymentLink(item.kind);
   const wa = text ? whatsappLink(item.contact, text) : null;
 
-  function run(action: () => Promise<{ error?: string; link?: string }>) {
+  // closeAfter：標記完成後關閉視窗（該行會從跟進清單消失）
+  function run(action: () => Promise<{ error?: string; link?: string }>, closeAfter = false) {
     setError("");
     startTransition(async () => {
       const result = await action();
@@ -46,6 +79,7 @@ function FollowUpCard({ item, staffName }: { item: FollowUpItem; staffName: stri
         setText(followUpMessage(item.kind, item, staffName, result.link, lang) || "");
       }
       if (result.error) setError(result.error);
+      else if (closeAfter) onDone();
     });
   }
 
@@ -58,24 +92,20 @@ function FollowUpCard({ item, staffName }: { item: FollowUpItem; staffName: stri
 
   function close() {
     if (!window.confirm("確定不再跟進此訂金？之後不會再出現在跟進清單。")) return;
-    run(() => closeDepositFollowUp(item.id));
+    run(() => closeDepositFollowUp(item.id), true);
   }
 
   return (
-    <div className="rounded-xl border border-[var(--line)] bg-[var(--card)] p-4">
-      <div className="flex flex-wrap items-start justify-between gap-2">
-        <div className="min-w-0">
-          <span className={"inline-block rounded-full px-2 py-0.5 text-xs " + KIND_CLASS[item.kind]}>{FOLLOW_UP_LABEL[item.kind]}</span>
-          <div className="mt-1.5 font-medium">{item.owner_name || "—"} · {item.pet_name || "毛孩"}</div>
-          <div className="text-xs text-[var(--soft)]">
-            {item.projectNo || "未有專案編號"} · 建立 {fmtTime(item.created_at)}
-            {item.contact && <> · 📞 {item.contact}</>}
-          </div>
-        </div>
+    <div className="text-sm">
+      <FollowUpBadge kind={item.kind} />
+      <div className="mt-2 font-medium">{item.owner_name || "—"} · {item.pet_name || "毛孩"}</div>
+      <div className="text-xs text-[var(--soft)]">
+        {item.projectNo || "未有專案編號"} · 建立 {fmtTime(item.created_at)}
+        {item.contact && <> · 📞 {item.contact}</>}
       </div>
 
       {item.kind === "reminded_unpaid" ? (
-        <p className="mt-3 text-sm text-[var(--soft)]">
+        <p className="mt-3 text-[var(--soft)]">
           已於 {fmtTime(item.reminded_at)} 提醒（共 {item.reminder_count || 1} 次），仍未付款。不再起草提醒；建議致電問候客人，或標記「不再跟進」／於「編輯」改為已取消。
         </p>
       ) : (
@@ -96,8 +126,8 @@ function FollowUpCard({ item, staffName }: { item: FollowUpItem; staffName: stri
           <textarea
             value={text}
             onChange={(e) => setText(e.target.value)}
-            rows={5}
-            className="mt-2 w-full rounded-lg border border-[var(--line)] bg-white px-3 py-2 text-sm leading-6 outline-none focus:border-[var(--gold)]"
+            rows={6}
+            className="mt-2 w-full rounded-lg border border-[var(--line)] bg-white px-3 py-2 leading-6 outline-none focus:border-[var(--gold)]"
           />
           {payKind && !link && <p className="mt-1 text-xs text-amber-700">請先按「產生付款連結」，訊息會自動填入連結。</p>}
         </>
@@ -105,7 +135,7 @@ function FollowUpCard({ item, staffName }: { item: FollowUpItem; staffName: stri
 
       {error && <p className="mt-2 text-xs text-red-700" role="alert">{error}</p>}
 
-      <div className="mt-3 flex flex-wrap gap-2">
+      <div className="mt-4 flex flex-wrap gap-2">
         {payKind && (
           <button type="button" className={btn} disabled={pending} onClick={() => run(() => createDepositPaymentLink(item.id))}>
             {link ? "重新取得付款連結" : "產生付款連結"}
@@ -122,30 +152,13 @@ function FollowUpCard({ item, staffName }: { item: FollowUpItem; staffName: stri
           <a href={`tel:${item.contact.replace(/[^\d+]/g, "")}`} className={btn}>📞 致電客人</a>
         )}
         {payKind && (
-          <button type="button" className={btn} disabled={pending || !link} onClick={() => run(() => markDepositReminded(item.id))}>標記已提醒</button>
+          <button type="button" className={btn} disabled={pending || !link} onClick={() => run(() => markDepositReminded(item.id), true)}>標記已提醒</button>
         )}
         {item.kind === "paid_unscheduled" && (
-          <button type="button" className={btn} disabled={pending} onClick={() => run(() => markDepositContacted(item.id))}>標記已聯絡</button>
+          <button type="button" className={btn} disabled={pending} onClick={() => run(() => markDepositContacted(item.id), true)}>標記已聯絡</button>
         )}
         <button type="button" className={btn + " text-[var(--soft)]"} disabled={pending} onClick={close}>不再跟進</button>
       </div>
     </div>
-  );
-}
-
-export function DepositFollowUp({ items, staffName, notReady }: { items: FollowUpItem[]; staffName: string; notReady: boolean }) {
-  return (
-    <section className="mb-6 rounded-2xl border border-[var(--line)] bg-[var(--head)] p-4 sm:p-5">
-      <h2 className="text-lg font-semibold">今日要跟進（{notReady ? "—" : items.length}）</h2>
-      {notReady ? (
-        <p className="mt-2 text-sm text-amber-800">未啟用訂金跟進：請先於 Supabase（diyxcx）執行 <code>db/migration_deposit_followup.sql</code>。</p>
-      ) : items.length === 0 ? (
-        <p className="mt-2 text-sm text-[var(--soft)]">暫時沒有需要跟進的訂金。</p>
-      ) : (
-        <div className="mt-3 grid gap-3 xl:grid-cols-2">
-          {items.map((item) => <FollowUpCard key={item.id} item={item} staffName={staffName} />)}
-        </div>
-      )}
-    </section>
   );
 }
