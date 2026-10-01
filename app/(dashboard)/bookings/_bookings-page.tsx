@@ -171,7 +171,8 @@ export async function BookingsPage({ mode }: { mode: "cremation" | "vet" }) {
       created: b.created_at?.slice(0, 16).replace("T", " ") || "",
       invoiceNo,
       paymentRef: (b as { payment_ref?: string | null }).payment_ref || "",
-      serviceTime: b.service_time || "",
+      // 時間欄可能是 14:00:00（只顯示 14:00）或時段文字（原樣顯示）
+      serviceTime: /^\d{2}:\d{2}:\d{2}$/.test(b.service_time || "") ? (b.service_time || "").slice(0, 5) : b.service_time || "",
       owner: b.owner_name || "",
       contact: b.contact || "",
       address: b.pickup_address || "",
