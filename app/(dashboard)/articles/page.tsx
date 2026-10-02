@@ -1,3 +1,4 @@
+import { PageHeader } from "../_page-header";
 import { shopifyGraphQL } from "@/lib/shopify";
 
 export const dynamic = "force-dynamic";
@@ -62,7 +63,7 @@ export default async function ArticlesPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-semibold mb-6">文章記錄</h1>
+      <PageHeader title="文章記錄" />
 
       {err && (
         <div className="rounded-2xl border border-red-300 bg-[var(--card)] p-6 text-sm text-red-600">

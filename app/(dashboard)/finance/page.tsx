@@ -1,3 +1,4 @@
+import { PageHeader } from "../_page-header";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -146,8 +147,8 @@ export default async function FinancePage({
 
   return (
     <div>
-      <h1 className="text-2xl font-semibold mb-1">財務管理</h1>
-      <p className="mb-6 text-xs text-[var(--soft)]">接送收入取自已付款接送服務；產品銷售取自 Shopify 訂單（近 12 個月，數據每 5 分鐘更新）；火化收入取自已付款預約／專案明細。{shopErr ? "　⚠️ 暫時未能讀取 Shopify 訂單。" : ""}</p>
+      <PageHeader title="財務管理" />
+      {shopErr && <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">⚠️ 暫時未能讀取 Shopify 訂單，產品銷售暫以「—」顯示。</div>}
 
       {/* 月份選擇 */}
       <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
@@ -253,6 +254,7 @@ export default async function FinancePage({
         </div>
       </div>
 
+      <p className="mt-6 text-xs text-[var(--soft)]">接送收入取自已付款接送服務；產品銷售取自 Shopify 訂單（近 12 個月，數據每 5 分鐘更新）；火化收入取自已付款預約／專案明細。</p>
     </div>
   );
 }

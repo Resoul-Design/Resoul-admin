@@ -1,3 +1,4 @@
+import { PageHeader } from "../_page-header";
 import { createClient } from "@/lib/supabase/server";
 import type { ProductOrderRow } from "@/lib/product-orders";
 import { shopDomain } from "@/lib/shopify";
@@ -64,20 +65,14 @@ export default async function OrdersPage({ searchParams }: {
 
   return (
     <div>
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold">紀念品訂單</h1>
-          <p className="mt-1 text-sm text-[var(--soft)]">產品訂單由 Shopify 同步並儲存於 Supabase。</p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
+      <PageHeader title="紀念品訂單">
           {canCreate && <NewSouvenirOrder products={products} catalogError={catalogError} />}
           <form action={syncProductOrders}>
             <button className="rounded-lg border border-[var(--line)] px-4 py-2 text-sm hover:bg-[var(--cream)]">
               同步 Shopify 訂單
             </button>
           </form>
-        </div>
-      </div>
+      </PageHeader>
 
       {params.synced && <div className="mb-4 rounded-lg border border-green-300 bg-green-50 px-4 py-3 text-sm text-green-800">已同步 {params.synced} 張產品訂單到 Supabase。</div>}
       {params.sync_error && <div className="mb-4 rounded-lg border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700">同步失敗：{params.sync_error}</div>}

@@ -1,3 +1,4 @@
+import { PageHeader } from "../_page-header";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -65,7 +66,7 @@ export default async function CrmPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-semibold mb-6">客戶檔案</h1>
+      <PageHeader title="客戶檔案" />
 
       {customers.length === 0 ? (
         <div className="rounded-2xl border border-[var(--line)] bg-[var(--card)] p-10 text-center text-[var(--soft)]">

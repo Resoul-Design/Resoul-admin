@@ -1,3 +1,4 @@
+import { PageHeader } from "../_page-header";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { ProductOrderRow } from "@/lib/product-orders";
@@ -62,7 +63,7 @@ export default async function ReportsPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-semibold mb-6">報表與匯出</h1>
+      <PageHeader title="報表與匯出" />
 
       <div className="grid gap-4 mb-6 sm:grid-cols-2 xl:grid-cols-4">
         {[

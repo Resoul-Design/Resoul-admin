@@ -1,3 +1,4 @@
+import { PageHeader } from "../_page-header";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getStaff, hasModule } from "@/lib/auth";
 import { loadCatalog } from "@/lib/catalog";
@@ -210,10 +211,9 @@ export async function BookingsPage({ mode }: { mode: "cremation" | "vet" }) {
 
   return (
     <div>
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold">{mode === "vet" ? "獸醫評估" : "火化預約"}</h1>
+      <PageHeader title={mode === "vet" ? "獸醫評估" : "火化預約"}>
         {cremationCatalog && <NewBookingOrder mode="cremation" products={cremationCatalog.products} catalogError={cremationCatalog.error} staffName={staffName} />}
-      </div>
+      </PageHeader>
 
       <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
         ⚠️ 測試期間：「💬 WhatsApp 客人」只會開啟預填訊息草稿，<b>請勿按下傳送鍵，或向客人發送任何訊息</b>。正式啟用後，可於程式中移除此限制。

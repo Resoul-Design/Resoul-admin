@@ -1,3 +1,4 @@
+import { PageHeader } from "../_page-header";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { shopDomain } from "@/lib/shopify";
 import { getStaff, hasModule } from "@/lib/auth";
@@ -168,12 +169,11 @@ export default async function DepositsPage({ searchParams }: { searchParams: Pro
 
   return (
     <div>
-      <div className="mb-1 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold">接送服務</h1>
+      <PageHeader title="接送服務">
         {staff && hasModule(staff, ["deposits"]) && <NewBookingOrder mode="deposit" products={depositCatalog.products} catalogError={depositCatalog.error} staffName={staffName} />}
-      </div>
+      </PageHeader>
 
-      <div className="mt-5 mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+      <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
         測試期間：「💬 WhatsApp 客人」只會開啟預填訊息草稿，<b>請勿按下傳送鍵，或向客人發送任何訊息</b>。
       </div>
 

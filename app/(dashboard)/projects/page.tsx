@@ -1,3 +1,4 @@
+import { PageHeader } from "../_page-header";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { canonicalProjectNo, projectNoFromItems, projectNoFromNotes } from "@/lib/order-label";
@@ -197,8 +198,7 @@ export default async function ProjectsPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-semibold mb-1">專案管理</h1>
-      <p className="mb-6 text-sm text-[var(--soft)]"><span className="font-medium text-[var(--ink)]">RSL-xxxxxx-xxxx</span> 會連結接送、火化及紀念產品；每次付款的 Shopify 發票編號則獨立保留。</p>
+      <PageHeader title="專案管理" />
 
       {rows.length === 0 ? (
         <div className="rounded-2xl border border-[var(--line)] bg-[var(--card)] p-10 text-center text-[var(--soft)]">
@@ -207,6 +207,7 @@ export default async function ProjectsPage() {
       ) : (
         <ProjectsTable rows={rows} />
       )}
+      <p className="mt-6 text-sm text-[var(--soft)]"><span className="font-medium text-[var(--ink)]">RSL-xxxxxx-xxxx</span> 會連結接送、火化及紀念產品；每次付款的 Shopify 發票編號則獨立保留。</p>
     </div>
   );
 }

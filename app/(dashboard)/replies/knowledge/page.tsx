@@ -1,3 +1,4 @@
+import { PageHeader, headerLinkClass } from "../../_page-header";
 import Link from "next/link";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { REPLY_CATEGORIES, REPLY_TOKENS, type ReplySnippet } from "@/lib/reply";
@@ -47,10 +48,9 @@ export default async function ReplyKnowledgePage() {
 
   return (
     <div>
-      <div className="mb-5">
-        <Link href="/replies" className="text-sm text-[var(--gold)] hover:underline">← 回覆助手</Link>
-        <h1 className="mt-3 text-2xl font-semibold">回覆知識庫</h1>
-      </div>
+      <PageHeader title="回覆知識庫">
+        <Link href="/replies" className={headerLinkClass}>← 回覆助手</Link>
+      </PageHeader>
 
       {error ? (
         <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">

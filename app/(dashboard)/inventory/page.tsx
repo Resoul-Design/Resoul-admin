@@ -1,3 +1,4 @@
+import { PageHeader } from "../_page-header";
 import { shopifyGraphQL } from "@/lib/shopify";
 import { InventoryList, type Group } from "./_list";
 
@@ -85,7 +86,7 @@ export default async function InventoryPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-semibold mb-6">倉存 · 出貨</h1>
+      <PageHeader title="倉存 · 出貨" />
 
       {err && (
         <div className="rounded-2xl border border-red-300 bg-[var(--card)] p-6 text-sm text-red-600">

@@ -1,3 +1,5 @@
+import { type ReactNode } from "react";
+import { PageHeader } from "../_page-header";
 import { createClient } from "@/lib/supabase/server";
 import { setPostStatus, deletePost } from "./actions";
 import { LANDING_URL } from "@/lib/company";
@@ -37,13 +39,15 @@ const IMG_BASE =
 
 export async function BoardView({
   title,
-  subtitle,
+  actions,
+  note,
   contextType,
   filter,
   basePath,
 }: {
   title: string;
-  subtitle: string;
+  actions?: ReactNode;
+  note?: string;
   contextType: "blog" | "community";
   filter: string;
   basePath: string;
@@ -73,8 +77,7 @@ export async function BoardView({
 
   return (
     <div>
-      <h1 className="text-2xl font-semibold mb-1">{title}</h1>
-      <p className="text-sm text-[var(--soft)] mb-5">{subtitle}</p>
+      <PageHeader title={title}>{actions}</PageHeader>
 
       <div className="flex gap-2 mb-6">
         {tabs.map((t) => (
@@ -233,6 +236,7 @@ export async function BoardView({
           ))}
         </div>
       )}
+      {note && <p className="mt-6 text-sm text-[var(--soft)]">{note}</p>}
     </div>
   );
 }

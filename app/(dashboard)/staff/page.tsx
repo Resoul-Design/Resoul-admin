@@ -1,3 +1,4 @@
+import { PageHeader } from "../_page-header";
 import { createClient } from "@/lib/supabase/server";
 import { getStaff } from "@/lib/auth";
 import { createStaff, updateStaff } from "./actions";
@@ -31,7 +32,7 @@ export default async function StaffPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-semibold mb-6">員工管理</h1>
+      <PageHeader title="員工管理" />
 
       {isAdmin && (
         <details className="mb-5 rounded-2xl border border-[var(--line)] bg-[var(--card)]">

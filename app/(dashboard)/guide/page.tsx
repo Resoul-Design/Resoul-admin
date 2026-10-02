@@ -1,3 +1,4 @@
+import { PageHeader } from "../_page-header";
 import { notFound } from "next/navigation";
 import { getStaff, hasModule } from "@/lib/auth";
 
@@ -11,8 +12,7 @@ export default async function GuidePage() {
   if (!staff || !hasModule(staff, ["guide"])) notFound();
   return (
     <div>
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold">使用教學</h1>
+      <PageHeader title="使用教學">
         <a
           href={GUIDE_URL}
           target="_blank"
@@ -21,7 +21,7 @@ export default async function GuidePage() {
         >
           新分頁開啟 ↗
         </a>
-      </div>
+      </PageHeader>
       <iframe
         src={GUIDE_URL}
         title="RESOUL 營運手冊"

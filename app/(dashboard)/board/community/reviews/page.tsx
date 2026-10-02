@@ -1,3 +1,4 @@
+import { PageHeader, headerLinkClass } from "../../../_page-header";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getStaff, hasModule } from "@/lib/auth";
@@ -50,11 +51,9 @@ export default async function GoogleReviewsAdminPage() {
 
   return (
     <div>
-      <div className="mb-5">
-        <Link href="/board/community" className="text-sm text-[var(--gold)] hover:underline">← 主人評價及故事分享</Link>
-        <h1 className="mt-3 text-2xl font-semibold">Google 評價管理</h1>
-        <p className="mt-1 text-sm text-[var(--soft)]">只管理 Resoul 網站展示內容，不會修改 Google 商家頁。請確保評價引文忠於原文；英文欄可填翻譯。</p>
-      </div>
+      <PageHeader title="Google 評價管理">
+        <Link href="/board/community" className={headerLinkClass}>← 主人評價及故事分享</Link>
+      </PageHeader>
 
       {error ? (
         <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">

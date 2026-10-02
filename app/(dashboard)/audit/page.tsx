@@ -1,3 +1,4 @@
+import { PageHeader } from "../_page-header";
 import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -66,8 +67,7 @@ export default async function AuditPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-semibold mb-1">審計記錄</h1>
-      <p className="mb-6 text-sm text-[var(--soft)]">紀錄後台的重要操作（刪除、改狀態、改員工等），方便日後追查。</p>
+      <PageHeader title="審計記錄" />
 
       {error && (
         <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
