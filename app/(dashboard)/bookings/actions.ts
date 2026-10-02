@@ -11,6 +11,7 @@ const VALID = [
   "scheduled",
   "pickup",
   "cremating",
+  "ready",
   "completed",
   "cancelled",
 ];

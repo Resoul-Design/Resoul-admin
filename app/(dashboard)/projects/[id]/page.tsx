@@ -12,8 +12,9 @@ const inputCls =
 const STATUS_LABEL: Record<string, string> = {
   new: "新收到",
   scheduled: "已排期",
-  pickup: "接送中",
+  pickup: "已接送",
   cremating: "火化中",
+  ready: "可取回",
   completed: "已完成",
   cancelled: "已取消",
 };

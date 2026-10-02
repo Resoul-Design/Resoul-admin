@@ -32,8 +32,9 @@ function lastSixMonths() {
 const BOOKING_STATUS: { key: string; label: string; color: string }[] = [
   { key: "new", label: "新收到", color: "#c8a86b" },
   { key: "scheduled", label: "已排期", color: "#9c7f52" },
-  { key: "pickup", label: "接送中", color: "#b89a6e" },
+  { key: "pickup", label: "已接送", color: "#b89a6e" },
   { key: "cremating", label: "火化中", color: "#8a7350" },
+  { key: "ready", label: "可取回", color: "#7f9a96" },
   { key: "completed", label: "已完成", color: "#9aa87f" },
   { key: "cancelled", label: "已取消", color: "#c4b8a6" },
 ];

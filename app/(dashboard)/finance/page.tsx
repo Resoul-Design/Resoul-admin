@@ -254,7 +254,6 @@ export default async function FinancePage({
         </div>
       </div>
 
-      <p className="mt-6 text-xs text-[var(--soft)]">接送收入取自已付款接送服務；產品銷售取自 Shopify 訂單（近 12 個月，數據每 5 分鐘更新）；火化收入取自已付款預約／專案明細。</p>
     </div>
   );
 }

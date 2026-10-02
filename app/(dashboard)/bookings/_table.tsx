@@ -5,6 +5,8 @@ import { Fragment, useMemo, useState } from "react";
 import { EditBookingInline, type BookingData } from "./_edit";
 import { WHATSAPP_CONFIRM, whatsappHref } from "./_whatsapp";
 import { RowActions, type RowAction } from "../_row-actions";
+import { ProgressInline } from "./_progress";
+import type { ProgressData } from "@/lib/booking-progress";
 
 export type BookingRow = {
   id: string;
@@ -34,6 +36,8 @@ export type BookingRow = {
   search: string;
   shopifyOrderUrl: string | null;
   booking: BookingData & { created_at: string; notes?: string | null };
+  english: boolean;
+  progress: ProgressData | null; // null：獸醫評估或未執行進度 migration
 };
 
 const PAGE = 25;
@@ -41,8 +45,9 @@ const STATUS_FILTER = [
   { key: "all", label: "全部狀態" },
   { key: "new", label: "新收到" },
   { key: "scheduled", label: "已排期" },
-  { key: "pickup", label: "接送中" },
+  { key: "pickup", label: "已接送" },
   { key: "cremating", label: "火化中" },
+  { key: "ready", label: "可取回" },
   { key: "completed", label: "已完成" },
   { key: "cancelled", label: "已取消" },
 ];
@@ -53,8 +58,30 @@ const SOURCE_FILTER = [
 ];
 
 // 「操作」視窗內的功能
-function rowActions(r: BookingRow): RowAction[] {
+function rowActions(r: BookingRow, staffName: string): RowAction[] {
   const list: RowAction[] = [];
+  if (r.sourceKey === "cremation") {
+    list.push({
+      kind: "panel",
+      key: "progress",
+      label: `📍 更新進度（目前：${r.statusLabel}）`,
+      title: "火化進度",
+      alert: r.statusKey === "ready",
+      node: (
+        <ProgressInline
+          id={r.id}
+          owner={r.owner}
+          petName={r.petName}
+          contact={r.contact}
+          status={r.statusKey}
+          scheduledText={r.serviceDateTime}
+          english={r.english}
+          staffName={staffName}
+          progress={r.progress}
+        />
+      ),
+    });
+  }
   const wa = whatsappHref(r.contact, r.waText);
   if (wa) list.push({ kind: "link", key: "wa", label: "💬 WhatsApp 客人", href: wa, whatsapp: true, confirm: WHATSAPP_CONFIRM });
   if (r.calUrl) list.push({ kind: "link", key: "cal", label: "📅 加入日曆", href: r.calUrl });
@@ -68,11 +95,13 @@ export function BookingsTable({
   paymentReady,
   sourceMode,
   initialQuery = "",
+  staffName = "同事",
 }: {
   rows: BookingRow[];
   paymentReady: boolean;
   sourceMode?: "cremation" | "vet";
   initialQuery?: string;
+  staffName?: string;
 }) {
   const [q, setQ] = useState(initialQuery);
   const [status, setStatus] = useState("all");
@@ -188,7 +217,7 @@ export function BookingsTable({
                       <div className="px-4 whitespace-nowrap">{paymentReady ? <span className={"inline-block px-2 py-0.5 rounded-full text-xs " + r.paymentClass}>{r.paymentLabel}</span> : <span className="text-[var(--faint)] text-xs">待 migration</span>}</div>
                       <div className="px-4 whitespace-nowrap"><span className={"inline-block whitespace-nowrap px-2 py-0.5 rounded-full text-xs " + r.statusClass}>{r.statusLabel}</span></div>
                     </div>
-                    <div className="mt-1.5 flex justify-end px-4"><RowActions heading={r.owner || "—"} sub={r.invoiceNo} actions={rowActions(r)} /></div>
+                    <div className="mt-1.5 flex justify-end px-4"><RowActions heading={r.owner || "—"} sub={r.invoiceNo} actions={rowActions(r, staffName)} /></div>
                   </td>
                 </tr>
                 </Fragment>
@@ -233,7 +262,7 @@ export function BookingsTable({
                 <dd>{r.created || "—"}</dd>
               </dl>
               <div className="mt-3 flex justify-end border-t border-[var(--line)] pt-3">
-                <RowActions heading={r.owner || "—"} sub={r.invoiceNo} actions={rowActions(r)} />
+                <RowActions heading={r.owner || "—"} sub={r.invoiceNo} actions={rowActions(r, staffName)} />
               </div>
             </div>
           ))}

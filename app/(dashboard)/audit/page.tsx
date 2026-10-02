@@ -24,8 +24,9 @@ const BOOKING_STATUS: Record<string, string> = {
   new: "新收到",
   contacted: "已聯絡",
   scheduled: "已排期",
-  pickup: "接送中",
+  pickup: "已接送",
   cremating: "火化中",
+  ready: "可取回",
   completed: "已完成",
   cancelled: "已取消",
 };
@@ -60,6 +61,10 @@ function describe(l: Log, names: Names): string {
       const s = statusOf(d);
       return `更新火化預約${quote(who)}資料${s ? `，狀態為「${s}」` : ""}`;
     }
+    case "update_progress":
+      return `火化預約${quote(who)}進度更新為「${parts[0]}」${parts[1] ? `（${parts[1]}）` : ""}`;
+    case "undo_progress":
+      return `火化預約${quote(who)}撤回進度「${d}」`;
     case "update_deposit": {
       if (d.includes("訂金跟進")) return `接送服務${quote(who)}訂金跟進：標記為已聯絡`;
       const s = statusOf(d);

@@ -40,14 +40,12 @@ const IMG_BASE =
 export async function BoardView({
   title,
   actions,
-  note,
   contextType,
   filter,
   basePath,
 }: {
   title: string;
   actions?: ReactNode;
-  note?: string;
   contextType: "blog" | "community";
   filter: string;
   basePath: string;
@@ -236,7 +234,6 @@ export async function BoardView({
           ))}
         </div>
       )}
-      {note && <p className="mt-6 text-sm text-[var(--soft)]">{note}</p>}
     </div>
   );
 }

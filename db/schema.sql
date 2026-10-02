@@ -61,7 +61,7 @@ create table if not exists public.cremation_bookings (
   service_time   time,                              -- 預約服務時間
   pickup_address text,                              -- 接送地址
   status         text        not null default 'new'
-                 check (status in ('new','scheduled','pickup','cremating','completed','cancelled')),
+                 check (status in ('new','scheduled','pickup','cremating','ready','completed','cancelled')),
   source         text,                              -- web / whatsapp / partner:<code>
   notes          text,
   handled_by     uuid        references public.staff(id) on delete set null

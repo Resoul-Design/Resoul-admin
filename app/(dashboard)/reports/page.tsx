@@ -10,8 +10,9 @@ export const dynamic = "force-dynamic";
 const BSTATUS: { key: string; label: string }[] = [
   { key: "new", label: "新收到" },
   { key: "scheduled", label: "已排期" },
-  { key: "pickup", label: "接送中" },
+  { key: "pickup", label: "已接送" },
   { key: "cremating", label: "火化中" },
+  { key: "ready", label: "可取回" },
   { key: "completed", label: "已完成" },
   { key: "cancelled", label: "已取消" },
 ];

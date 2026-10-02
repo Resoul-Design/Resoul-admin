@@ -8,6 +8,7 @@ import { shopDomain } from "@/lib/shopify";
 import { canonicalProjectNo, projectNoFromNotes } from "@/lib/order-label";
 import { type BookingData } from "./_edit";
 import { BookingsTable, type BookingRow } from "./_table";
+import { PROGRESS_COLUMNS, type ProgressData } from "@/lib/booking-progress";
 
 export const dynamic = "force-dynamic";
 
@@ -59,8 +60,9 @@ function gcalUrl(
 const STATUS_LABEL: Record<string, string> = {
   new: "新收到",
   scheduled: "已排期",
-  pickup: "接送中",
+  pickup: "已接送",
   cremating: "火化中",
+  ready: "可取回",
   completed: "已完成",
   cancelled: "已取消",
 };
@@ -81,6 +83,8 @@ function badgeClass(status: string) {
     case "pickup":
     case "cremating":
       return "bg-violet-100 text-violet-800";
+    case "ready":
+      return "bg-teal-100 text-teal-800";
     case "completed":
       return "bg-green-100 text-green-800";
     case "cancelled":
@@ -137,10 +141,19 @@ export async function BookingsPage({ mode, query = "" }: { mode: "cremation" | "
   const cremationCatalogP = mode === "cremation" && hasModule(staff, ["bookings"]) ? loadCatalog("cremation") : null;
   const supabase = createAdminClient();
   let paymentColumnsReady = true;
-  const primary = await supabase
+  // 進度欄需先執行 db/migration_cremation_progress.sql；未執行時照常顯示列表
+  let progressReady = true;
+  let primary: { data: unknown[] | null; error: { message: string } | null } = await supabase
     .from("cremation_bookings")
-    .select(PAYMENT_SELECT)
+    .select(PAYMENT_SELECT + ", " + PROGRESS_COLUMNS)
     .order("created_at", { ascending: false });
+  if (primary.error && /picked_up_at|cremation_started_at|ready_at|returned_at|returned_to/.test(primary.error.message)) {
+    progressReady = false;
+    primary = await supabase
+      .from("cremation_bookings")
+      .select(PAYMENT_SELECT)
+      .order("created_at", { ascending: false });
+  }
   let rows: unknown[] | null = primary.data as unknown[] | null;
   let error = primary.error;
 
@@ -173,6 +186,7 @@ export async function BookingsPage({ mode, query = "" }: { mode: "cremation" | "
       b.service_time ? b.service_time.slice(0, 5) : "",
     ].filter(Boolean).join(" ");
     const vet = isVet(b.source);
+    const pg = b as unknown as Partial<ProgressData>;
     return {
       id: b.id,
       created: b.created_at?.slice(0, 16).replace("T", " ") || "",
@@ -204,6 +218,16 @@ export async function BookingsPage({ mode, query = "" }: { mode: "cremation" | "
         ? `https://${shopDomain()}/admin/orders/${String(b.shopify_order_id).split("/").pop()}`
         : null,
       booking: b,
+      english: /-en$/.test(b.source || ""),
+      progress: progressReady && !vet
+        ? {
+            picked_up_at: pg.picked_up_at ?? null,
+            cremation_started_at: pg.cremation_started_at ?? null,
+            ready_at: pg.ready_at ?? null,
+            returned_at: pg.returned_at ?? null,
+            returned_to: pg.returned_to ?? null,
+          }
+        : null,
     };
   });
 
@@ -241,7 +265,7 @@ export async function BookingsPage({ mode, query = "" }: { mode: "cremation" | "
           {mode === "vet" ? "暫無獸醫評估記錄。" : "暫無火化預約記錄。"}
         </div>
       ) : (
-        <BookingsTable key={query} rows={tableRows} paymentReady={paymentColumnsReady} sourceMode={mode} initialQuery={query} />
+        <BookingsTable key={query} rows={tableRows} paymentReady={paymentColumnsReady} sourceMode={mode} initialQuery={query} staffName={staffName} />
       )}
     </div>
   );
