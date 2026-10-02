@@ -1,6 +1,7 @@
 "use client";
 
 import { Fragment, useMemo, useState } from "react";
+import { RowActions, type RowAction } from "../_row-actions";
 
 export type OrderRow = {
   id: string;
@@ -20,6 +21,14 @@ export type OrderRow = {
   whatsapp: string | null;
   editUrl: string;
 };
+
+// 「操作」視窗內的功能（與接送服務、火化預約一致）
+function rowActions(r: OrderRow): RowAction[] {
+  const list: RowAction[] = [];
+  if (r.whatsapp && !r.cancelled) list.push({ kind: "link", key: "wa", label: "💬 WhatsApp 客人", href: r.whatsapp, whatsapp: true });
+  list.push({ kind: "link", key: "edit", label: "✏️ 編輯（開啟 Shopify 訂單）", href: r.editUrl });
+  return list;
+}
 
 const money = (n: number, c: string) => "$" + Number(n).toLocaleString() + " " + c;
 const PAGE = 25;
@@ -115,7 +124,7 @@ export function OrdersTable({ rows }: { rows: OrderRow[] }) {
       <div className="mb-2 text-xs text-[var(--soft)]">共 {filtered.length} 張{q || status !== "all" ? "（已篩選）" : ""}</div>
 
       {/* 桌面表格：欄位格式與「接送服務」一致，操作放在第二行金額至出貨下方 */}
-      <div className="hidden overflow-x-auto rounded-2xl border border-[var(--line)] bg-[var(--card)] md:block">
+      <div className="hidden overflow-x-auto rounded-2xl border border-[var(--line)] bg-[var(--card)] lg:block">
         <table className="w-full min-w-[1200px] table-fixed text-sm">
           <colgroup><col className="w-[10%]"/><col className="w-[14%]"/><col className="w-[13%]"/><col className="w-[27%]"/><col className="w-[12%]"/><col className="w-[12%]"/><col className="w-[12%]"/></colgroup>
           <thead>
@@ -142,7 +151,7 @@ export function OrdersTable({ rows }: { rows: OrderRow[] }) {
                 <div className="mt-0.5 text-xs text-[var(--soft)]">{r.phone ? "📞 " + r.phone : "—"}</div>
               </td>
               <td className="break-words px-4 py-3 text-[var(--soft)]">{r.items}</td>
-              {/* 金額／付款／出貨同一行；操作掣放在第二行（與電話同一行） */}
+              {/* 金額／付款／出貨同一行；操作掣放在第二行，合併為一個「操作」掣 */}
               <td colSpan={3} className="py-3">
                 <div className="grid grid-cols-3">
                   <div className="px-4 text-right whitespace-nowrap tabular-nums">{money(r.amount, r.currency)}</div>
@@ -153,12 +162,7 @@ export function OrdersTable({ rows }: { rows: OrderRow[] }) {
                   </div>
                   <div className="px-4 whitespace-nowrap"><span className={"inline-block rounded-full px-2 py-0.5 text-xs " + fulClass(r.fulLabel)}>{r.fulLabel}</span></div>
                 </div>
-                <div className="mt-1.5 grid grid-cols-[7rem_3.25rem] items-center gap-x-2 whitespace-nowrap px-4">
-                {r.cancelled ? <span className="text-xs text-[var(--faint)]">已取消</span> : <>
-                  <div>{r.whatsapp && <a href={r.whatsapp} target="_blank" rel="noopener noreferrer" className="text-xs text-green-700 hover:underline">💬 WhatsApp 客人</a>}</div>
-                  <div><a href={r.editUrl} target="_blank" rel="noopener noreferrer" className="rounded-md border border-[var(--line)] px-2.5 py-1.5 text-xs text-[var(--ink)] hover:bg-[var(--cream)]">編輯</a></div>
-                </>}
-                </div>
+                <div className="mt-1.5 flex justify-end px-4"><RowActions heading={r.customer || "—"} sub={r.orderName} actions={rowActions(r)} /></div>
               </td>
             </tr>
             </Fragment>
@@ -166,25 +170,41 @@ export function OrdersTable({ rows }: { rows: OrderRow[] }) {
         </table>
       </div>
 
-      {/* 手機卡片 */}
-      <div className="space-y-3 md:hidden">{shown.map((r) => (
-        <div key={r.id} className={"rounded-lg border border-[var(--line)] bg-[var(--card)] p-4 " + (r.cancelled ? "opacity-60" : "")}>
-          <div className="flex items-center justify-between gap-2"><span className="font-medium">{r.orderName}</span><span className="text-xs text-[var(--soft)]">{r.date}</span></div>
-          {r.projectNo && r.projectNo !== "—" && r.projectNo !== r.orderName && <div className="mt-1 text-xs font-medium text-[var(--gold)]">專案：{r.projectNo}</div>}
-          <div className="mt-1 text-sm">{r.customer || "—"}</div><div className="mt-1 break-words text-sm text-[var(--soft)]">{r.items}</div>
-          <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
-            {r.cancelled
-              ? <span className="rounded-full bg-red-100 px-2 py-0.5 text-red-700">已取消</span>
-              : <span className="rounded-full bg-[var(--cream)] px-2 py-0.5 text-[var(--soft)]">{r.finLabel}</span>}
-            <span className="rounded-full bg-[var(--cream)] px-2 py-0.5 text-[var(--soft)]">{r.fulLabel}</span>
-            <span className="ml-auto font-medium">{money(r.amount, r.currency)}</span>
+      {/* 手機卡片：格式與接送服務一致（編號 → 基本資料 → 付款／金額灰底區 → 建立時間 → 操作） */}
+      <div className="space-y-3 lg:hidden">{shown.map((r) => (
+        <div key={r.id} className={"rounded-2xl border border-[var(--line)] bg-[var(--card)] p-4 " + (r.cancelled ? "opacity-60" : "")}>
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0"><div className="text-xs text-[var(--soft)]">訂單編號</div><div className="break-words font-medium text-[var(--gold)]">{r.orderName}</div></div>
+            <span className={"whitespace-nowrap rounded-full px-2 py-0.5 text-xs " + fulClass(r.fulLabel)}>{r.fulLabel}</span>
           </div>
-          {!r.cancelled && (
-            <div className="mt-3 flex flex-wrap gap-2 border-t border-[var(--line)] pt-3">
-              {r.whatsapp && <a href={r.whatsapp} target="_blank" rel="noopener noreferrer" className="rounded-md border border-green-300 px-3 py-2 text-xs text-green-700">WhatsApp 客人</a>}
-              <a href={r.editUrl} target="_blank" rel="noopener noreferrer" className="rounded-md border border-[var(--line)] px-3 py-2 text-xs">編輯</a>
+          <dl className="mt-3 grid grid-cols-[76px_minmax(0,1fr)] gap-x-3 gap-y-1.5 text-sm">
+            <dt className="text-[var(--soft)]">客戶 · 電話</dt>
+            <dd className="min-w-0"><div className="truncate">{r.customer || "—"}</div><div className="text-xs text-[var(--soft)]">{r.phone ? "📞 " + r.phone : "—"}</div></dd>
+            {r.projectNo && r.projectNo !== "—" && r.projectNo !== r.orderName && <>
+              <dt className="text-[var(--soft)]">專案編號</dt>
+              <dd className="min-w-0 break-all text-xs text-[var(--soft)]">{r.projectNo}</dd>
+            </>}
+            <dt className="text-[var(--soft)]">內容</dt>
+            <dd className="min-w-0 break-words">{r.items || "—"}</dd>
+          </dl>
+          <div className="mt-3 grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 rounded-xl bg-[var(--head)] px-3 py-2.5 text-xs">
+            <div className="self-end">
+              {r.cancelled
+                ? <span className="inline-block rounded-full bg-red-100 px-2 py-0.5 text-red-700">已取消</span>
+                : <span className={"inline-block rounded-full px-2 py-0.5 " + finClass(r.fin)}>{r.finLabel}</span>}
             </div>
-          )}
+            <div className="text-right">
+              <div className="text-[var(--soft)]">金額</div>
+              <div className="mt-0.5 font-medium tabular-nums text-sm text-[var(--ink)]">{money(r.amount, r.currency)}</div>
+            </div>
+          </div>
+          <dl className="mt-3 grid grid-cols-[76px_minmax(0,1fr)] gap-x-3 text-xs text-[var(--soft)]">
+            <dt>建立時間</dt>
+            <dd>{r.date || "—"}</dd>
+          </dl>
+          <div className="mt-3 flex justify-end border-t border-[var(--line)] pt-3">
+            <RowActions heading={r.customer || "—"} sub={r.orderName} actions={rowActions(r)} />
+          </div>
         </div>
       ))}</div>
 
