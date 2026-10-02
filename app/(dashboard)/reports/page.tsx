@@ -2,6 +2,8 @@ import { PageHeader } from "../_page-header";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { ProductOrderRow } from "@/lib/product-orders";
+import { computeMonthMetrics, hkMonth, shiftMonth, type MetricBooking, type MetricDeposit, type MetricOrder } from "@/lib/metrics";
+import { MetricsSection } from "./_metrics";
 
 export const dynamic = "force-dynamic";
 
@@ -14,7 +16,7 @@ const BSTATUS: { key: string; label: string }[] = [
   { key: "cancelled", label: "已取消" },
 ];
 
-type Booking = {
+type Booking = MetricBooking & {
   id: string;
   status: string;
   source: string | null;
@@ -23,15 +25,18 @@ type Booking = {
   payment_status: string | null;
 };
 type Entry = { booking_id: string | null; kind: string; amount: number };
-type Deposit = { status: string; payment_status: string | null; payment_amount: number | null };
+type Deposit = MetricDeposit;
 
-export default async function ReportsPage() {
+export default async function ReportsPage({ searchParams }: { searchParams: Promise<{ m?: string }> }) {
+  const { m } = await searchParams;
+  const thisMonth = hkMonth(new Date().toISOString());
+  const month = m && /^\d{4}-(0[1-9]|1[0-2])$/.test(m) && m <= thisMonth ? m : thisMonth;
   const supabase = await createClient();
   const admin = createAdminClient();
   const [bkRes, peRes, depRes, orderRes] = await Promise.all([
-    supabase.from("cremation_bookings").select("id, status, source, amount, payment_amount, payment_status").limit(2000),
+    supabase.from("cremation_bookings").select("id, created_at, case_no, notes, contact, plan, status, source, service_date, amount, payment_amount, payment_status, paid_at").limit(2000),
     supabase.from("project_entries").select("booking_id, kind, amount").limit(5000),
-    admin.from("deposit_bookings").select("status, payment_status, payment_amount").limit(2000),
+    admin.from("deposit_bookings").select("created_at, notes, contact, status, service_date, payment_status, payment_amount, paid_at").limit(2000),
     supabase.from("product_orders").select("*").order("shopify_created_at", { ascending: false }).limit(2000),
   ]);
   const allBookings = (bkRes.data ?? []) as Booking[];
@@ -40,6 +45,9 @@ export default async function ReportsPage() {
   const entries = (peRes.data ?? []) as Entry[];
   const deposits = (depRes.data ?? []) as Deposit[];
   const orders = (orderRes.data ?? []) as ProductOrderRow[];
+  const metricOrders = orders as unknown as MetricOrder[];
+  const metrics = computeMonthMetrics(month, allBookings, deposits, metricOrders);
+  const prevMetrics = computeMonthMetrics(shiftMonth(month, -1), allBookings, deposits, metricOrders);
 
   // 手動收入按專案加總（與「專案管理／財務」一致）
   const incByBooking: Record<string, number> = {};
@@ -64,6 +72,10 @@ export default async function ReportsPage() {
   return (
     <div>
       <PageHeader title="報表與匯出" />
+
+      <MetricsSection cur={metrics} prev={prevMetrics} isLatest={month === thisMonth} />
+
+      <h2 className="mb-4 text-lg font-semibold">累計概況</h2>
 
       <div className="grid gap-4 mb-6 sm:grid-cols-2 xl:grid-cols-4">
         {[
