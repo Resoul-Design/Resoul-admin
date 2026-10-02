@@ -53,6 +53,7 @@ export const GROUPS: Group[] = [
       { label: "報表與匯出", href: "/reports" },
       { label: "審計記錄", href: "/audit" },
       { label: "同步狀態", href: "/sync" },
+      { label: "使用教學", href: "/guide" },
     ],
   },
 ];

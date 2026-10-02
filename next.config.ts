@@ -20,6 +20,21 @@ const csp = [
   "upgrade-insecure-requests",
 ].join("; ");
 
+// 使用教學（public/manual）：只容許後台自己嵌入，並載入 Google Fonts
+const manualCsp = [
+  "default-src 'self'",
+  "base-uri 'self'",
+  "object-src 'none'",
+  "frame-ancestors 'self'",
+  "form-action 'self'",
+  "img-src 'self' data:",
+  "font-src 'self' data: https://fonts.gstatic.com",
+  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+  "script-src 'self' 'unsafe-inline'",
+  "connect-src 'self'",
+  "upgrade-insecure-requests",
+].join("; ");
+
 const nextConfig: NextConfig = {
   // 允許較大的檔案上載（專案文件）
   experimental: { serverActions: { bodySizeLimit: "10mb" } },
@@ -33,6 +48,14 @@ const nextConfig: NextConfig = {
         { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
         { key: "Content-Security-Policy", value: csp },
         { key: "Strict-Transport-Security", value: "max-age=31536000; includeSubDomains" },
+      ],
+    }, {
+      // 後列規則覆蓋前列同名標頭
+      source: "/manual/:path*",
+      headers: [
+        { key: "X-Frame-Options", value: "SAMEORIGIN" },
+        { key: "Content-Security-Policy", value: manualCsp },
+        { key: "Cache-Control", value: "private, no-cache" },
       ],
     }];
   },
