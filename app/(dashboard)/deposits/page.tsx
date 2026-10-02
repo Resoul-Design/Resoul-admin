@@ -260,28 +260,29 @@ export default async function DepositsPage({ searchParams }: { searchParams: Pro
                         <div className="whitespace-nowrap">{r.service_date || "—"}</div>
                         {r.service_time && <div className="mt-0.5 text-xs leading-5 text-[var(--soft)]">{r.service_time}</div>}
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-right tabular-nums">{fmtAmount(r)}</td>
-                      <td className="px-4 py-3 whitespace-nowrap">
-                        <span className={"inline-block px-2 py-0.5 rounded-full text-xs " + paymentBadgeClass(r.payment_status)}>
-                          {PAYMENT_LABEL[r.payment_status || "pending"] || r.payment_status || "待付款"}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 whitespace-nowrap">
-                        <span className={"inline-block whitespace-nowrap px-2 py-0.5 rounded-full text-xs " + statusBadgeClass(r.status)}>
-                          {STATUS_LABEL[r.status] || r.status}
-                        </span>
-                      </td>
-                    </tr>
-                    {/* 操作：放在第二行金額至狀態下方；固定五格（跟進／日曆／發票／WhatsApp／編輯），沒有的項目留空，各行上下對齊 */}
-                    <tr className={fu ? "bg-amber-50/70" : ""}>
-                      <td colSpan={5} />
-                      <td colSpan={3} className="px-4 pb-3"><div className="grid grid-cols-[7rem_5.5rem_2.25rem_7rem_3.25rem] items-center gap-x-2 whitespace-nowrap">
+                      {/* 金額／付款／狀態同一行；操作掣放在第二行（與電話、時段同一行），固定五格對齊 */}
+                      <td colSpan={3} className="py-3">
+                        <div className="grid grid-cols-3">
+                          <div className="px-4 whitespace-nowrap text-right tabular-nums">{fmtAmount(r)}</div>
+                          <div className="px-4 whitespace-nowrap">
+                            <span className={"inline-block px-2 py-0.5 rounded-full text-xs " + paymentBadgeClass(r.payment_status)}>
+                              {PAYMENT_LABEL[r.payment_status || "pending"] || r.payment_status || "待付款"}
+                            </span>
+                          </div>
+                          <div className="px-4 whitespace-nowrap">
+                            <span className={"inline-block whitespace-nowrap px-2 py-0.5 rounded-full text-xs " + statusBadgeClass(r.status)}>
+                              {STATUS_LABEL[r.status] || r.status}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="mt-1.5 grid grid-cols-[7rem_5.5rem_2.25rem_7rem_3.25rem] items-center gap-x-2 whitespace-nowrap px-4">
                         <div>{fu && <FollowUpButton item={fu} staffName={staffName} />}</div>
                         <div>{cal && <a href={cal} target="_blank" rel="noopener noreferrer" className="text-xs text-[var(--gold)] hover:underline">📅 加入日曆</a>}</div>
                         <div>{invoice && <a href={invoice} target="_blank" rel="noopener noreferrer" className="text-xs text-[var(--gold)] hover:underline">發票</a>}</div>
                         <div>{wa && <a href={wa} target="_blank" rel="noopener noreferrer" className="text-xs text-green-700 hover:underline">💬 WhatsApp 客人</a>}</div>
                         <div><EditDepositButton booking={r}/></div>
-                      </div></td>
+                        </div>
+                      </td>
                     </tr>
                     </Fragment>
                   );

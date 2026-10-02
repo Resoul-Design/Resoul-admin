@@ -142,22 +142,24 @@ export function OrdersTable({ rows }: { rows: OrderRow[] }) {
                 <div className="mt-0.5 text-xs text-[var(--soft)]">{r.phone ? "📞 " + r.phone : "—"}</div>
               </td>
               <td className="break-words px-4 py-3 text-[var(--soft)]">{r.items}</td>
-              <td className="px-4 py-3 text-right whitespace-nowrap tabular-nums">{money(r.amount, r.currency)}</td>
-              <td className="px-4 py-3 whitespace-nowrap">
-                {r.cancelled
-                  ? <span className="inline-block rounded-full bg-red-100 px-2 py-0.5 text-xs text-red-700">已取消</span>
-                  : <span className={"inline-block rounded-full px-2 py-0.5 text-xs " + finClass(r.fin)}>{r.finLabel}</span>}
-              </td>
-              <td className="px-4 py-3 whitespace-nowrap"><span className={"inline-block rounded-full px-2 py-0.5 text-xs " + fulClass(r.fulLabel)}>{r.fulLabel}</span></td>
-            </tr>
-            <tr className={r.cancelled ? "opacity-60" : ""}>
-              <td colSpan={4} />
-              <td colSpan={3} className="px-4 pb-3"><div className="grid grid-cols-[7rem_3.25rem] items-center gap-x-2 whitespace-nowrap">
+              {/* 金額／付款／出貨同一行；操作掣放在第二行（與電話同一行） */}
+              <td colSpan={3} className="py-3">
+                <div className="grid grid-cols-3">
+                  <div className="px-4 text-right whitespace-nowrap tabular-nums">{money(r.amount, r.currency)}</div>
+                  <div className="px-4 whitespace-nowrap">
+                    {r.cancelled
+                      ? <span className="inline-block rounded-full bg-red-100 px-2 py-0.5 text-xs text-red-700">已取消</span>
+                      : <span className={"inline-block rounded-full px-2 py-0.5 text-xs " + finClass(r.fin)}>{r.finLabel}</span>}
+                  </div>
+                  <div className="px-4 whitespace-nowrap"><span className={"inline-block rounded-full px-2 py-0.5 text-xs " + fulClass(r.fulLabel)}>{r.fulLabel}</span></div>
+                </div>
+                <div className="mt-1.5 grid grid-cols-[7rem_3.25rem] items-center gap-x-2 whitespace-nowrap px-4">
                 {r.cancelled ? <span className="text-xs text-[var(--faint)]">已取消</span> : <>
                   <div>{r.whatsapp && <a href={r.whatsapp} target="_blank" rel="noopener noreferrer" className="text-xs text-green-700 hover:underline">💬 WhatsApp 客人</a>}</div>
                   <div><a href={r.editUrl} target="_blank" rel="noopener noreferrer" className="rounded-md border border-[var(--line)] px-2.5 py-1.5 text-xs text-[var(--ink)] hover:bg-[var(--cream)]">編輯</a></div>
                 </>}
-              </div></td>
+                </div>
+              </td>
             </tr>
             </Fragment>
           ))}</tbody>

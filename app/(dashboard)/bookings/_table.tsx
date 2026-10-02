@@ -171,19 +171,20 @@ export function BookingsTable({
                     <div className="whitespace-nowrap">{r.serviceDate || "—"}</div>
                     {(r.serviceTime || r.timePref) && <div className="mt-0.5 text-xs leading-5 text-[var(--soft)]">{[r.serviceTime, r.timePref].filter(Boolean).join(" ")}</div>}
                   </td>
-                  <td className="px-4 py-3 whitespace-nowrap text-right tabular-nums">{r.amountText}</td>
-                  <td className="px-4 py-3 whitespace-nowrap">{paymentReady ? <span className={"inline-block px-2 py-0.5 rounded-full text-xs " + r.paymentClass}>{r.paymentLabel}</span> : <span className="text-[var(--faint)] text-xs">待 migration</span>}</td>
-                  <td className="px-4 py-3 whitespace-nowrap"><span className={"inline-block whitespace-nowrap px-2 py-0.5 rounded-full text-xs " + r.statusClass}>{r.statusLabel}</span></td>
-                </tr>
-                {/* 操作：放在第二行金額至狀態下方；固定四格（日曆／發票／WhatsApp／編輯），沒有的項目留空，各行上下對齊 */}
-                <tr>
-                  <td colSpan={showPlan ? 6 : 5} />
-                  <td colSpan={3} className="px-4 pb-3"><div className="grid grid-cols-[5.5rem_2.25rem_7rem_3.25rem] items-center gap-x-2 whitespace-nowrap">
+                  {/* 金額／付款／狀態同一行；操作掣放在第二行（與電話、時段同一行），固定四格對齊 */}
+                  <td colSpan={3} className="py-3">
+                    <div className="grid grid-cols-3">
+                      <div className="px-4 whitespace-nowrap text-right tabular-nums">{r.amountText}</div>
+                      <div className="px-4 whitespace-nowrap">{paymentReady ? <span className={"inline-block px-2 py-0.5 rounded-full text-xs " + r.paymentClass}>{r.paymentLabel}</span> : <span className="text-[var(--faint)] text-xs">待 migration</span>}</div>
+                      <div className="px-4 whitespace-nowrap"><span className={"inline-block whitespace-nowrap px-2 py-0.5 rounded-full text-xs " + r.statusClass}>{r.statusLabel}</span></div>
+                    </div>
+                    <div className="mt-1.5 grid grid-cols-[5.5rem_2.25rem_7rem_3.25rem] items-center gap-x-2 whitespace-nowrap px-4">
                     <div>{r.calUrl && <a href={r.calUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-[var(--gold)] hover:underline">📅 加入日曆</a>}</div>
                     <div>{r.shopifyOrderUrl && <a href={r.shopifyOrderUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-[var(--gold)] hover:underline">發票</a>}</div>
                     <div><WhatsAppButton phone={r.contact} text={r.waText} /></div>
                     <div><EditBookingButton booking={r.booking} /></div>
-                  </div></td>
+                    </div>
+                  </td>
                 </tr>
                 </Fragment>
               ))}
