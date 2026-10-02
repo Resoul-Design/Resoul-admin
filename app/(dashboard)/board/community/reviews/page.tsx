@@ -2,7 +2,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getStaff, hasModule } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { deleteReview, saveReview } from "./actions";
+import { deleteReview, saveAllReviews, saveReview } from "./actions";
+import { BulkReviewsForm } from "./_bulk-form";
 
 export const dynamic = "force-dynamic";
 
@@ -20,22 +21,23 @@ type Review = {
 
 const inputClass = "w-full rounded-lg border border-[var(--line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--gold)]";
 
-function ReviewFields({ review }: { review?: Review }) {
+// prefix：「儲存全部」表格內每則評價的欄位前綴（評價 id:），避免欄位名稱重複
+function ReviewFields({ review, prefix = "" }: { review?: Review; prefix?: string }) {
+  const n = (name: string) => prefix + name;
   return (
     <>
-      {review && <input type="hidden" name="id" value={review.id} />}
       <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_120px_120px]">
-        <label className="text-sm">顯示名稱<input required name="display_name" defaultValue={review?.display_name} className={inputClass + " mt-1"} /></label>
-        <label className="text-sm">星級<select name="rating" defaultValue={review?.rating || 5} className={inputClass + " mt-1"}>{[5, 4, 3, 2, 1].map((n) => <option key={n} value={n}>{n} 星</option>)}</select></label>
-        <label className="text-sm">排序<input type="number" name="sort_order" defaultValue={review?.sort_order ?? 0} className={inputClass + " mt-1"} /></label>
+        <label className="text-sm">顯示名稱<input required name={n("display_name")} defaultValue={review?.display_name} className={inputClass + " mt-1"} /></label>
+        <label className="text-sm">星級<select name={n("rating")} defaultValue={review?.rating || 5} className={inputClass + " mt-1"}>{[5, 4, 3, 2, 1].map((n) => <option key={n} value={n}>{n} 星</option>)}</select></label>
+        <label className="text-sm">排序<input type="number" name={n("sort_order")} defaultValue={review?.sort_order ?? 0} className={inputClass + " mt-1"} /></label>
       </div>
-      <label className="block text-sm">中文評價<textarea required name="zh_content" rows={3} defaultValue={review?.zh_content} className={inputClass + " mt-1"} /></label>
-      <label className="block text-sm">英文版本<textarea name="en_content" rows={3} defaultValue={review?.en_content} className={inputClass + " mt-1"} /></label>
+      <label className="block text-sm">中文評價<textarea required name={n("zh_content")} rows={3} defaultValue={review?.zh_content} className={inputClass + " mt-1"} /></label>
+      <label className="block text-sm">英文版本<textarea name={n("en_content")} rows={3} defaultValue={review?.en_content} className={inputClass + " mt-1"} /></label>
       <div className="grid gap-3 sm:grid-cols-2">
-        <label className="text-sm">相片網址<input name="photo_url" defaultValue={review?.photo_url} className={inputClass + " mt-1"} placeholder="可留空" /></label>
-        <label className="text-sm">Google 來源網址<input name="source_url" defaultValue={review?.source_url} className={inputClass + " mt-1"} placeholder="可留空" /></label>
+        <label className="text-sm">相片網址<input name={n("photo_url")} defaultValue={review?.photo_url} className={inputClass + " mt-1"} placeholder="可留空" /></label>
+        <label className="text-sm">Google 來源網址<input name={n("source_url")} defaultValue={review?.source_url} className={inputClass + " mt-1"} placeholder="可留空" /></label>
       </div>
-      <label className="flex items-center gap-2 text-sm"><input type="checkbox" name="is_published" value="true" defaultChecked={review?.is_published ?? false} className="h-4 w-4 accent-[var(--gold)]" />在 Resoul 網站顯示</label>
+      <label className="flex items-center gap-2 text-sm"><input type="checkbox" name={n("is_published")} value="true" defaultChecked={review?.is_published ?? false} className="h-4 w-4 accent-[var(--gold)]" />在 Resoul 網站顯示</label>
     </>
   );
 }
@@ -66,18 +68,21 @@ export default async function GoogleReviewsAdminPage() {
             <button className="rounded-lg bg-[var(--gold)] px-4 py-2 text-sm text-white hover:opacity-90">新增</button>
           </form>
           <div className="mb-2 text-xs text-[var(--soft)]">共 {reviews.length} 則</div>
-          <div className="space-y-3">
-            {reviews.map((review) => (
-              <form key={review.id} action={saveReview} className="space-y-3 rounded-xl border border-[var(--line)] bg-[var(--card)] p-4">
-                <div className="flex items-center justify-between gap-3"><h2 className="font-medium">{review.display_name}</h2><span className={"text-xs " + (review.is_published ? "text-green-700" : "text-[var(--soft)]")}>{review.is_published ? "網站顯示中" : "已隱藏"}</span></div>
-                <ReviewFields review={review} />
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <button className="rounded-lg bg-[var(--gold)] px-4 py-2 text-sm text-white hover:opacity-90">儲存</button>
-                  <button formAction={deleteReview} formNoValidate className="rounded-lg px-3 py-2 text-sm text-red-700 hover:bg-red-50">刪除評價</button>
-                </div>
-              </form>
-            ))}
-          </div>
+          {reviews.length > 0 && (
+            <BulkReviewsForm action={saveAllReviews}>
+              <div className="space-y-3">
+                {reviews.map((review) => (
+                  <section key={review.id} data-review-id={review.id} className="space-y-3 rounded-xl border border-[var(--line)] bg-[var(--card)] p-4">
+                    <div className="flex items-center justify-between gap-3"><h2 className="font-medium">{review.display_name}</h2><span className={"text-xs " + (review.is_published ? "text-green-700" : "text-[var(--soft)]")}>{review.is_published ? "網站顯示中" : "已隱藏"}</span></div>
+                    <ReviewFields review={review} prefix={`${review.id}:`} />
+                    <div className="flex justify-end">
+                      <button name="id" value={review.id} formAction={deleteReview} formNoValidate className="rounded-lg px-3 py-2 text-sm text-red-700 hover:bg-red-50">刪除評價</button>
+                    </div>
+                  </section>
+                ))}
+              </div>
+            </BulkReviewsForm>
+          )}
         </>
       )}
     </div>
