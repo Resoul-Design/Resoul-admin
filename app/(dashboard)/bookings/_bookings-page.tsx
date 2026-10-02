@@ -129,7 +129,7 @@ function isVet(source?: string | null) {
   return (source || "").indexOf("euthanasia") >= 0;
 }
 
-export async function BookingsPage({ mode }: { mode: "cremation" | "vet" }) {
+export async function BookingsPage({ mode, query = "" }: { mode: "cremation" | "vet"; query?: string }) {
   const staff = await getStaff();
   if (!staff) redirect("/login");
   const staffName = staff.name?.trim() || staff.email.split("@")[0] || "同事";
@@ -241,7 +241,7 @@ export async function BookingsPage({ mode }: { mode: "cremation" | "vet" }) {
           {mode === "vet" ? "暫無獸醫評估記錄。" : "暫無火化預約記錄。"}
         </div>
       ) : (
-        <BookingsTable rows={tableRows} paymentReady={paymentColumnsReady} sourceMode={mode} />
+        <BookingsTable key={query} rows={tableRows} paymentReady={paymentColumnsReady} sourceMode={mode} initialQuery={query} />
       )}
     </div>
   );

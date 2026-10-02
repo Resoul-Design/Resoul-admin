@@ -55,8 +55,8 @@ const STATUS_OPTS = [
   { key: "PARTIALLY_REFUNDED", label: "部分退款" },
 ];
 
-export function OrdersTable({ rows }: { rows: OrderRow[] }) {
-  const [q, setQ] = useState("");
+export function OrdersTable({ rows, initialQuery = "" }: { rows: OrderRow[]; initialQuery?: string }) {
+  const [q, setQ] = useState(initialQuery);
   const [status, setStatus] = useState("all");
   const [page, setPage] = useState(1);
 

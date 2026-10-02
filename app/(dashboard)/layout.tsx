@@ -5,6 +5,7 @@ import { UserMenu } from "./_usermenu";
 import { MobileMenu } from "./_mobilemenu";
 import { Suspense } from "react";
 import { NavProgress } from "./_nav-progress";
+import { GlobalSearch } from "./_global-search";
 
 export default async function DashboardLayout({
   children,
@@ -35,6 +36,9 @@ export default async function DashboardLayout({
             <TopNav allowed={allowed} />
           </nav>
           <div className="flex-1 lg:hidden" />
+          <div className="shrink-0">
+            <GlobalSearch />
+          </div>
           <div className="shrink-0">
             <UserMenu name={displayName} role={roleLabel} />
           </div>

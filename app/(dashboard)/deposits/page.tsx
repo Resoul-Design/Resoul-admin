@@ -141,8 +141,8 @@ function depositActions(r: DepositRow, fu: FollowUpItem | undefined, staffName: 
   return list;
 }
 
-export default async function DepositsPage({ searchParams }: { searchParams: Promise<{ followup?: string }> }) {
-  const { followup } = await searchParams;
+export default async function DepositsPage({ searchParams }: { searchParams: Promise<{ followup?: string; q?: string }> }) {
+  const { followup, q } = await searchParams;
   const supabase = createAdminClient();
   const baseColumns =
     "id, created_at, owner_name, contact, pet_name, pet_type, plan, service_date, service_time, pickup_address, notes, status, payment_ref, payment_status, payment_amount, payment_currency, shopify_order_name, shopify_order_id, paid_at";
@@ -177,13 +177,29 @@ export default async function DepositsPage({ searchParams }: { searchParams: Pro
   const followUpById = new Map(followUps.map((f) => [f.id, f]));
   // 「只顯示要跟進」：按跟進優先次序排列
   const onlyFollowUp = followup === "1" && !followUpNotReady;
-  const visibleRows = onlyFollowUp ? followUps.map((f) => rows.find((r) => r.id === f.id)!).filter(Boolean) : rows;
+  const listRows = onlyFollowUp ? followUps.map((f) => rows.find((r) => r.id === f.id)!).filter(Boolean) : rows;
+  // 由全後台搜尋進入（?q=）：按主人、毛孩、專案編號、付款參考、電話篩選
+  const query = (q || "").trim();
+  const queryText = query.toLowerCase();
+  const queryDigits = /^[\d\s()+-]{4,}$/.test(query) ? query.replace(/\D/g, "").replace(/^852(?=\d{8}$)/, "") : "";
+  const visibleRows = query
+    ? listRows.filter((r) =>
+        [r.owner_name, r.pet_name, r.payment_ref, r.shopify_order_name, r.notes].some((v) => (v || "").toLowerCase().includes(queryText)) ||
+        (!!queryDigits && (r.contact || "").replace(/\D/g, "").includes(queryDigits)))
+    : listRows;
 
   return (
     <div>
       <PageHeader title="接送服務">
         {staff && hasModule(staff, ["deposits"]) && <NewBookingOrder mode="deposit" products={depositCatalog.products} catalogError={depositCatalog.error} staffName={staffName} />}
       </PageHeader>
+
+      {query && (
+        <div className="mb-4 flex flex-wrap items-center gap-2 rounded-xl border border-[var(--line)] bg-[var(--card)] px-4 py-2.5 text-sm">
+          <span>搜尋「{query}」：{visibleRows.length} 筆</span>
+          <Link href={onlyFollowUp ? "/deposits?followup=1" : "/deposits"} className="text-[var(--gold)] hover:underline">清除搜尋</Link>
+        </div>
+      )}
 
       <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
         測試期間：「💬 WhatsApp 客人」只會開啟預填訊息草稿，<b>請勿按下傳送鍵，或向客人發送任何訊息</b>。

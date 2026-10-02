@@ -21,7 +21,7 @@ const FUL: Record<string, string> = {
 };
 
 export default async function OrdersPage({ searchParams }: {
-  searchParams: Promise<{ synced?: string; sync_error?: string }>;
+  searchParams: Promise<{ synced?: string; sync_error?: string; q?: string }>;
 }) {
   const params = await searchParams;
   const supabase = await createClient();
@@ -79,7 +79,7 @@ export default async function OrdersPage({ searchParams }: {
       {error && <div className="rounded-lg border border-red-300 bg-[var(--card)] p-6 text-sm text-red-600">讀取 Supabase 失敗：{error.message}<div className="mt-2 text-[var(--soft)]">請先執行 db/migration_product_orders.sql。</div></div>}
       {!error && orders.length === 0 && <div className="rounded-lg border border-[var(--line)] bg-[var(--card)] p-10 text-center text-[var(--soft)]">暫無產品訂單。請按「同步 Shopify 訂單」匯入舊記錄。</div>}
 
-      {orders.length > 0 && <OrdersTable rows={rows} />}
+      {orders.length > 0 && <OrdersTable key={params.q || ""} rows={rows} initialQuery={params.q || ""} />}
     </div>
   );
 }

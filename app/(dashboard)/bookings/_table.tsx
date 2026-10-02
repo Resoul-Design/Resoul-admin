@@ -67,12 +67,14 @@ export function BookingsTable({
   rows,
   paymentReady,
   sourceMode,
+  initialQuery = "",
 }: {
   rows: BookingRow[];
   paymentReady: boolean;
   sourceMode?: "cremation" | "vet";
+  initialQuery?: string;
 }) {
-  const [q, setQ] = useState("");
+  const [q, setQ] = useState(initialQuery);
   const [status, setStatus] = useState("all");
   const [source, setSource] = useState("all");
   const [page, setPage] = useState(1);
