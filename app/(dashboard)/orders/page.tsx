@@ -1,13 +1,12 @@
 import { createClient } from "@/lib/supabase/server";
 import type { ProductOrderRow } from "@/lib/product-orders";
-import { unstable_cache } from "next/cache";
 import { shopDomain } from "@/lib/shopify";
 import { canonicalProjectNo } from "@/lib/order-label";
 import { getStaff, hasModule } from "@/lib/auth";
-import { shopifyGraphQL } from "@/lib/shopify";
 import { syncProductOrders } from "./actions";
 import { OrdersTable, type OrderRow } from "./_table";
-import { NewSouvenirOrder, type DraftCatalogProduct } from "./_new-order";
+import { NewSouvenirOrder } from "./_new-order";
+import { loadCatalog } from "@/lib/catalog";
 
 export const dynamic = "force-dynamic";
 
@@ -20,58 +19,6 @@ const FUL: Record<string, string> = {
   PARTIALLY_FULFILLED: "部分出貨", RESTOCKED: "已退貨入庫",
 };
 
-type CatalogResponse = {
-  products: {
-    pageInfo: { hasNextPage: boolean; endCursor: string | null };
-    edges: {
-      node: {
-        id: string;
-        title: string;
-        productType: string | null;
-        variants: {
-          edges: {
-            node: { id: string; title: string; sku: string | null; price: string | null };
-          }[];
-        };
-      };
-    }[];
-  };
-};
-
-// 分頁讀取全部上架產品（每頁 50 件；上限 10 頁），並帶產品類型供草稿訂單篩選。
-const CATALOG_QUERY = `query SouvenirCatalog($after: String) {
-  products(first: 50, after: $after, sortKey: TITLE, query: "status:active") {
-    pageInfo { hasNextPage endCursor }
-    edges { node {
-      id title productType
-      variants(first: 20) { edges { node { id title sku price } } }
-    } }
-  }
-}`;
-const CATALOG_MAX_PAGES = 10;
-
-// 產品目錄變動不頻繁：快取 5 分鐘，避免每次開頁都向 Shopify 分頁讀取全部產品。
-// 讀取失敗時拋出錯誤，不會把失敗結果寫入快取。
-const getSouvenirCatalogCached = unstable_cache(
-  async (): Promise<DraftCatalogProduct[]> => {
-    const products: DraftCatalogProduct[] = [];
-    let after: string | null = null;
-    for (let page = 0; page < CATALOG_MAX_PAGES; page++) {
-      const catalog: CatalogResponse = await shopifyGraphQL<CatalogResponse>(CATALOG_QUERY, { after });
-      for (const { node } of catalog.products.edges) {
-        const variants = node.variants.edges.map(({ node: variant }) => variant);
-        if (!variants.length) continue;
-        products.push({ id: node.id, title: node.title, productType: (node.productType || "").trim() || "未分類", variants });
-      }
-      if (!catalog.products.pageInfo.hasNextPage) break;
-      after = catalog.products.pageInfo.endCursor;
-    }
-    return products;
-  },
-  ["souvenir-catalog"],
-  { revalidate: 300 }
-);
-
 export default async function OrdersPage({ searchParams }: {
   searchParams: Promise<{ synced?: string; sync_error?: string }>;
 }) {
@@ -80,25 +27,13 @@ export default async function OrdersPage({ searchParams }: {
   const staff = await getStaff();
   const canCreate = !!staff && hasModule(staff, ["orders"]);
   // 訂單列表與產品目錄同時讀取
-  const catalogP = canCreate ? getSouvenirCatalogCached().catch((e: unknown) => e) : null;
+  const catalogP = canCreate ? loadCatalog("souvenir") : null;
   const { data, error } = await supabase
     .from("product_orders").select("*")
     .order("shopify_created_at", { ascending: false }).limit(2000);
   const orders = (data || []) as ProductOrderRow[];
 
-  let products: DraftCatalogProduct[] = [];
-  let catalogError = "";
-  if (catalogP) {
-    try {
-      const catalog = await catalogP;
-      if (!Array.isArray(catalog)) throw catalog;
-      products = catalog;
-      if (!products.length) catalogError = "Shopify 暫無可加入的上架產品。";
-    } catch (catalogFailure) {
-      console.error("[souvenir_catalog]", catalogFailure instanceof Error ? catalogFailure.message : "unknown error");
-      catalogError = "未能讀取 Shopify 產品。請確認 Shopify 連線和 read_products 權限。";
-    }
-  }
+  const { products, error: catalogError } = catalogP ? await catalogP : { products: [], error: "" };
 
   const orderId = (o: ProductOrderRow) => o.shopify_order_id.split("/").pop() || "";
   const rows: OrderRow[] = orders.map((o) => {

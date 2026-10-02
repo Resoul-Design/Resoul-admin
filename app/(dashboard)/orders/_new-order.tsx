@@ -8,12 +8,8 @@ import {
   type SouvenirDraftState,
 } from "./actions";
 
-export type DraftCatalogProduct = {
-  id: string;
-  title: string;
-  productType: string;
-  variants: { id: string; title: string; sku: string | null; price: string | null }[];
-};
+export type { DraftCatalogProduct } from "@/lib/catalog";
+import type { DraftCatalogProduct } from "@/lib/catalog";
 
 type SelectedLine = { variantId: string; quantity: number };
 

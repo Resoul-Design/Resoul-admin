@@ -1,6 +1,8 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { shopDomain } from "@/lib/shopify";
-import { getStaff } from "@/lib/auth";
+import { getStaff, hasModule } from "@/lib/auth";
+import { loadCatalog } from "@/lib/catalog";
+import { NewBookingOrder } from "../_booking-order";
 import { FOLLOW_UP_ORDER, followUpKind } from "@/lib/deposit-followup";
 import { EditDepositButton } from "./_edit";
 import Link from "next/link";
@@ -149,6 +151,7 @@ export default async function DepositsPage({ searchParams }: { searchParams: Pro
   const tableMissing = !!error && /deposit_bookings|does not exist|relation/i.test(error.message);
   const staff = await getStaff();
   const staffName = staff?.name?.trim() || staff?.email?.split("@")[0] || "同事";
+  const depositCatalog = staff && hasModule(staff, ["deposits"]) ? await loadCatalog("deposit") : { products: [], error: "" };
   const now = new Date();
   const followUps: FollowUpItem[] = followUpNotReady
     ? []
@@ -165,7 +168,10 @@ export default async function DepositsPage({ searchParams }: { searchParams: Pro
 
   return (
     <div>
-      <h1 className="text-2xl font-semibold mb-1">接送服務</h1>
+      <div className="mb-1 flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-2xl font-semibold">接送服務</h1>
+        {staff && hasModule(staff, ["deposits"]) && <NewBookingOrder mode="deposit" products={depositCatalog.products} catalogError={depositCatalog.error} staffName={staffName} />}
+      </div>
 
       <div className="mt-5 mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
         測試期間：「💬 WhatsApp 客人」只會開啟預填訊息草稿，<b>請勿按下傳送鍵，或向客人發送任何訊息</b>。

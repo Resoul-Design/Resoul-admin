@@ -1,5 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getStaff } from "@/lib/auth";
+import { getStaff, hasModule } from "@/lib/auth";
+import { loadCatalog } from "@/lib/catalog";
+import { NewBookingOrder } from "../_booking-order";
 import { redirect } from "next/navigation";
 import { shopDomain } from "@/lib/shopify";
 import { canonicalProjectNo, projectNoFromNotes } from "@/lib/order-label";
@@ -127,7 +129,11 @@ function isVet(source?: string | null) {
 }
 
 export async function BookingsPage({ mode }: { mode: "cremation" | "vet" }) {
-  if (!(await getStaff())) redirect("/login");
+  const staff = await getStaff();
+  if (!staff) redirect("/login");
+  const staffName = staff.name?.trim() || staff.email.split("@")[0] || "同事";
+  // 「＋ 新增訂單」只在火化預約頁，且只可選火化服務產品
+  const cremationCatalogP = mode === "cremation" && hasModule(staff, ["bookings"]) ? loadCatalog("cremation") : null;
   const supabase = createAdminClient();
   let paymentColumnsReady = true;
   const primary = await supabase
@@ -200,11 +206,14 @@ export async function BookingsPage({ mode }: { mode: "cremation" | "vet" }) {
     };
   });
 
+  const cremationCatalog = cremationCatalogP ? await cremationCatalogP : null;
+
   return (
     <div>
-      <h1 className="text-2xl font-semibold mb-6">
-        {mode === "vet" ? "獸醫評估" : "火化預約"}
-      </h1>
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-2xl font-semibold">{mode === "vet" ? "獸醫評估" : "火化預約"}</h1>
+        {cremationCatalog && <NewBookingOrder mode="cremation" products={cremationCatalog.products} catalogError={cremationCatalog.error} staffName={staffName} />}
+      </div>
 
       <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
         ⚠️ 測試期間：「💬 WhatsApp 客人」只會開啟預填訊息草稿，<b>請勿按下傳送鍵，或向客人發送任何訊息</b>。正式啟用後，可於程式中移除此限制。
