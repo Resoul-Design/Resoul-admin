@@ -11,6 +11,7 @@ import {
   type FollowUpLang,
   type FollowUpRow,
 } from "@/lib/deposit-followup";
+import { useCloseRowActions } from "../_row-actions";
 import { closeDepositFollowUp, createDepositPaymentLink, markDepositContacted, markDepositReminded } from "./actions";
 
 export type FollowUpItem = FollowUpRow & { kind: FollowUpKind; projectNo: string };
@@ -20,14 +21,6 @@ const KIND_CLASS: Record<FollowUpKind, string> = {
   payment_failed: "bg-red-100 text-red-700",
   unpaid_next_day: "bg-amber-100 text-amber-800",
   reminded_unpaid: "bg-gray-200 text-gray-700",
-};
-
-// 「操作」欄跟進掣只寫要做的事，不重複付款／狀態欄資料
-const ACTION_LABEL: Record<FollowUpKind, string> = {
-  paid_unscheduled: "安排排期",
-  payment_failed: "重新付款",
-  unpaid_next_day: "提醒付款",
-  reminded_unpaid: "致電跟進",
 };
 
 const btn = "rounded-lg border border-[var(--line)] bg-white px-3 py-1.5 text-xs hover:border-[var(--gold)] disabled:opacity-50";
@@ -41,31 +34,10 @@ function FollowUpBadge({ kind }: { kind: FollowUpKind }) {
   return <span className={"inline-block whitespace-nowrap rounded-full px-2 py-0.5 text-xs " + KIND_CLASS[kind]}>🔔 {FOLLOW_UP_LABEL[kind]}</span>;
 }
 
-// 「操作」欄的「跟進」掣：彈出視窗內草擬訊息、產生付款連結、開啟 WhatsApp 及標記
-export function FollowUpButton({ item, staffName }: { item: FollowUpItem; staffName: string }) {
-  const [open, setOpen] = useState(false);
-  return (
-    <>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className="whitespace-nowrap rounded-md border border-amber-300 bg-amber-50 px-2.5 py-1.5 text-xs font-medium text-amber-800 hover:bg-amber-100"
-      >
-        🔔 {ACTION_LABEL[item.kind]}
-      </button>
-      {open && (
-        <div className="fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-black/30 px-4 py-8" onClick={() => setOpen(false)}>
-          <div className="my-auto w-full max-w-xl rounded-2xl border border-[var(--line)] bg-[var(--card)] p-6 text-left" onClick={(e) => e.stopPropagation()}>
-            <div className="mb-3 flex items-center justify-between gap-3">
-              <h2 className="text-lg font-semibold">訂金跟進</h2>
-              <button type="button" onClick={() => setOpen(false)} aria-label="關閉">✕</button>
-            </div>
-            <FollowUpPanel item={item} staffName={staffName} onDone={() => setOpen(false)} />
-          </div>
-        </div>
-      )}
-    </>
-  );
+// 操作視窗內的訂金跟進：草擬訊息、產生付款連結、開啟 WhatsApp 及標記
+export function FollowUpInline({ item, staffName }: { item: FollowUpItem; staffName: string }) {
+  const close = useCloseRowActions();
+  return <FollowUpPanel item={item} staffName={staffName} onDone={close} />;
 }
 
 function FollowUpPanel({ item, staffName, onDone }: { item: FollowUpItem; staffName: string; onDone: () => void }) {

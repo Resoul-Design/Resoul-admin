@@ -1,8 +1,9 @@
 "use client";
 
 import { Fragment, useMemo, useState } from "react";
-import { EditBookingButton, type BookingData } from "./_edit";
-import { WhatsAppButton } from "./_whatsapp";
+import { EditBookingInline, type BookingData } from "./_edit";
+import { WHATSAPP_CONFIRM, whatsappHref } from "./_whatsapp";
+import { RowActions, type RowAction } from "../_row-actions";
 
 export type BookingRow = {
   id: string;
@@ -53,6 +54,17 @@ const SOURCE_FILTER = [
 function csvCell(v: string | number) {
   const s = String(v ?? "");
   return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+}
+
+// 「操作」視窗內的功能
+function rowActions(r: BookingRow): RowAction[] {
+  const list: RowAction[] = [];
+  const wa = whatsappHref(r.contact, r.waText);
+  if (wa) list.push({ kind: "link", key: "wa", label: "💬 WhatsApp 客人", href: wa, whatsapp: true, confirm: WHATSAPP_CONFIRM });
+  if (r.calUrl) list.push({ kind: "link", key: "cal", label: "📅 加入日曆", href: r.calUrl });
+  if (r.shopifyOrderUrl) list.push({ kind: "link", key: "invoice", label: "🧾 發票（Shopify 訂單）", href: r.shopifyOrderUrl });
+  list.push({ kind: "panel", key: "edit", label: "✏️ 編輯資料", title: "編輯預約", node: <EditBookingInline booking={r.booking} /> });
+  return list;
 }
 
 export function BookingsTable({
@@ -171,19 +183,14 @@ export function BookingsTable({
                     <div className="whitespace-nowrap">{r.serviceDate || "—"}</div>
                     {(r.serviceTime || r.timePref) && <div className="mt-0.5 text-xs leading-5 text-[var(--soft)]">{[r.serviceTime, r.timePref].filter(Boolean).join(" ")}</div>}
                   </td>
-                  {/* 金額／付款／狀態同一行；操作掣放在第二行（與電話、時段同一行），固定四格對齊 */}
+                  {/* 金額／付款／狀態同一行；操作掣放在第二行（與電話、時段同一行），操作合併為一個掣 */}
                   <td colSpan={3} className="py-3">
                     <div className="grid grid-cols-3">
                       <div className="px-4 whitespace-nowrap text-right tabular-nums">{r.amountText}</div>
                       <div className="px-4 whitespace-nowrap">{paymentReady ? <span className={"inline-block px-2 py-0.5 rounded-full text-xs " + r.paymentClass}>{r.paymentLabel}</span> : <span className="text-[var(--faint)] text-xs">待 migration</span>}</div>
                       <div className="px-4 whitespace-nowrap"><span className={"inline-block whitespace-nowrap px-2 py-0.5 rounded-full text-xs " + r.statusClass}>{r.statusLabel}</span></div>
                     </div>
-                    <div className="mt-1.5 grid grid-cols-[5.5rem_2.25rem_7rem_3.25rem] items-center gap-x-2 whitespace-nowrap px-4">
-                    <div>{r.calUrl && <a href={r.calUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-[var(--gold)] hover:underline">📅 加入日曆</a>}</div>
-                    <div>{r.shopifyOrderUrl && <a href={r.shopifyOrderUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-[var(--gold)] hover:underline">發票</a>}</div>
-                    <div><WhatsAppButton phone={r.contact} text={r.waText} /></div>
-                    <div><EditBookingButton booking={r.booking} /></div>
-                    </div>
+                    <div className="mt-1.5 flex justify-end px-4"><RowActions heading={r.owner || "—"} sub={r.invoiceNo} actions={rowActions(r)} /></div>
                   </td>
                 </tr>
                 </Fragment>
@@ -227,11 +234,8 @@ export function BookingsTable({
                 <dt>建立時間</dt>
                 <dd>{r.created || "—"}</dd>
               </dl>
-              <div className="mt-3 flex flex-wrap items-center gap-3 border-t border-[var(--line)] pt-3">
-                {r.calUrl && <a href={r.calUrl} className="text-xs text-[var(--gold)] hover:underline">📅 加入日曆</a>}
-                {r.shopifyOrderUrl && <a href={r.shopifyOrderUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-[var(--gold)] hover:underline">發票</a>}
-                <WhatsAppButton phone={r.contact} text={r.waText} />
-                <EditBookingButton booking={r.booking} />
+              <div className="mt-3 flex justify-end border-t border-[var(--line)] pt-3">
+                <RowActions heading={r.owner || "—"} sub={r.invoiceNo} actions={rowActions(r)} />
               </div>
             </div>
           ))}

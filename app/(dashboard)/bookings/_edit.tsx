@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCloseRowActions } from "../_row-actions";
 import { updateBooking } from "./actions";
 import { isRslProjectNo } from "@/lib/order-label";
 
@@ -57,117 +57,87 @@ function Field({
 const inputCls =
   "w-full px-3 py-2 rounded-lg border border-[var(--line)] bg-white outline-none focus:border-[var(--gold)]";
 
-export function EditBookingButton({ booking }: { booking: BookingData }) {
-  const [open, setOpen] = useState(false);
+// 操作視窗內的編輯表格
+export function EditBookingInline({ booking }: { booking: BookingData }) {
+  const close = useCloseRowActions();
   const b = booking;
   const projectNo = isRslProjectNo(b.case_no) ? b.case_no?.toUpperCase() : "";
 
   return (
-    <>
-      <button
-        onClick={() => setOpen(true)}
-        className="text-xs px-3 py-1.5 rounded-md border border-[var(--line)] hover:bg-[var(--cream)]"
-      >
-        編輯
-      </button>
+    <form
+      action={updateBooking}
+      onSubmit={(e) => {
+        const status = (e.currentTarget.elements.namedItem("status") as HTMLSelectElement | null)?.value;
+        if (status === "cancelled" && !confirm("確定將此預約標為「已取消」？")) {
+          e.preventDefault();
+          return;
+        }
+        close();
+      }}
+      className="grid sm:grid-cols-2 gap-3"
+    >
+      <input type="hidden" name="id" value={b.id} />
 
-      {open && (
-        <div
-          className="fixed inset-0 z-50 bg-black/30 grid place-items-center px-4 py-8 overflow-y-auto"
-          onClick={() => setOpen(false)}
-        >
-          <div
-            className="bg-[var(--card)] rounded-2xl border border-[var(--line)] p-6 w-full max-w-lg my-auto"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold">編輯預約</h3>
-              <button
-                onClick={() => setOpen(false)}
-                className="text-[var(--soft)] hover:text-[var(--ink)]"
-              >
-                ✕
-              </button>
-            </div>
+      <Field label="RSL 專案編號">
+        <input name="case_no" defaultValue={projectNo} className={inputCls} placeholder="RSL-260922-AB12" pattern="RSL-[A-Za-z0-9]+-[A-Za-z0-9]+" title="請輸入 RSL 開頭的專案編號" />
+      </Field>
+      <Field label="狀態">
+        <select name="status" defaultValue={b.status} className={inputCls}>
+          {STATUSES.map((s) => (
+            <option key={s.key} value={s.key}>
+              {s.label}
+            </option>
+          ))}
+        </select>
+      </Field>
 
-            <form
-              action={updateBooking}
-              onSubmit={(e) => {
-                const status = (e.currentTarget.elements.namedItem("status") as HTMLSelectElement | null)?.value;
-                if (status === "cancelled" && !confirm("確定將此預約標為「已取消」？")) {
-                  e.preventDefault();
-                  return;
-                }
-                setOpen(false);
-              }}
-              className="grid sm:grid-cols-2 gap-3"
-            >
-              <input type="hidden" name="id" value={b.id} />
+      <Field label="主人姓名">
+        <input name="owner_name" defaultValue={b.owner_name || ""} className={inputCls} />
+      </Field>
+      <Field label="電話 / 聯絡">
+        <input name="contact" defaultValue={b.contact || ""} className={inputCls} />
+      </Field>
 
-              <Field label="RSL 專案編號">
-                <input name="case_no" defaultValue={projectNo} className={inputCls} placeholder="RSL-260922-AB12" pattern="RSL-[A-Za-z0-9]+-[A-Za-z0-9]+" title="請輸入 RSL 開頭的專案編號" />
-              </Field>
-              <Field label="狀態">
-                <select name="status" defaultValue={b.status} className={inputCls}>
-                  {STATUSES.map((s) => (
-                    <option key={s.key} value={s.key}>
-                      {s.label}
-                    </option>
-                  ))}
-                </select>
-              </Field>
+      <Field label="毛孩名">
+        <input name="pet_name" defaultValue={b.pet_name || ""} className={inputCls} />
+      </Field>
+      <Field label="種類">
+        <input name="pet_type" defaultValue={b.pet_type || ""} className={inputCls} />
+      </Field>
 
-              <Field label="主人姓名">
-                <input name="owner_name" defaultValue={b.owner_name || ""} className={inputCls} />
-              </Field>
-              <Field label="電話 / 聯絡">
-                <input name="contact" defaultValue={b.contact || ""} className={inputCls} />
-              </Field>
+      <Field label="方案">
+        <select name="plan" defaultValue={b.plan || ""} className={inputCls}>
+          <option value="">未定</option>
+          {PLANS.map((p) => (
+            <option key={p} value={p}>
+              {p}
+            </option>
+          ))}
+        </select>
+      </Field>
+      <Field label="接送地址">
+        <input name="pickup_address" defaultValue={b.pickup_address || ""} className={inputCls} />
+      </Field>
 
-              <Field label="毛孩名">
-                <input name="pet_name" defaultValue={b.pet_name || ""} className={inputCls} />
-              </Field>
-              <Field label="種類">
-                <input name="pet_type" defaultValue={b.pet_type || ""} className={inputCls} />
-              </Field>
+      <Field label="服務日期">
+        <input type="date" name="service_date" defaultValue={b.service_date || ""} className={inputCls} />
+      </Field>
+      <Field label="服務時間">
+        <input type="time" name="service_time" defaultValue={b.service_time ? b.service_time.slice(0, 5) : ""} className={inputCls} />
+      </Field>
 
-              <Field label="方案">
-                <select name="plan" defaultValue={b.plan || ""} className={inputCls}>
-                  <option value="">未定</option>
-                  {PLANS.map((p) => (
-                    <option key={p} value={p}>
-                      {p}
-                    </option>
-                  ))}
-                </select>
-              </Field>
-              <Field label="接送地址">
-                <input name="pickup_address" defaultValue={b.pickup_address || ""} className={inputCls} />
-              </Field>
+      <Field label="備註" full>
+        <textarea name="notes" defaultValue={b.notes || ""} rows={3} className={inputCls + " resize-y"} placeholder="預約要求 / 內部備註…" />
+      </Field>
 
-              <Field label="服務日期">
-                <input type="date" name="service_date" defaultValue={b.service_date || ""} className={inputCls} />
-              </Field>
-              <Field label="服務時間">
-                <input type="time" name="service_time" defaultValue={b.service_time ? b.service_time.slice(0, 5) : ""} className={inputCls} />
-              </Field>
-
-              <Field label="備註" full>
-                <textarea name="notes" defaultValue={b.notes || ""} rows={3} className={inputCls + " resize-y"} placeholder="預約要求 / 內部備註…" />
-              </Field>
-
-              <div className="sm:col-span-2 flex justify-end gap-2 mt-1">
-                <button type="button" onClick={() => setOpen(false)} className="px-4 py-2 rounded-lg text-sm text-[var(--soft)] hover:bg-[var(--cream)]">
-                  取消
-                </button>
-                <button type="submit" className="px-4 py-2 rounded-lg text-sm bg-[var(--gold)] text-white hover:opacity-90">
-                  儲存
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-    </>
+      <div className="sm:col-span-2 flex justify-end gap-2 mt-1">
+        <button type="button" onClick={close} className="px-4 py-2 rounded-lg text-sm text-[var(--soft)] hover:bg-[var(--cream)]">
+          取消
+        </button>
+        <button type="submit" className="px-4 py-2 rounded-lg text-sm bg-[var(--gold)] text-white hover:opacity-90">
+          儲存
+        </button>
+      </div>
+    </form>
   );
 }

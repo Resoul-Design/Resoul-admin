@@ -38,6 +38,14 @@ export const FOLLOW_UP_LABEL: Record<FollowUpKind, string> = {
   reminded_unpaid: "已提醒、仍未付款",
 };
 
+// 「操作」掣上顯示的跟進動作（只寫要做的事）
+export const FOLLOW_UP_ACTION: Record<FollowUpKind, string> = {
+  paid_unscheduled: "安排排期",
+  payment_failed: "重新付款",
+  unpaid_next_day: "提醒付款",
+  reminded_unpaid: "致電跟進",
+};
+
 // 已提醒後等候多久才列入「已提醒、仍未付款」
 export const REMIND_WAIT_MS = 2 * 24 * 60 * 60 * 1000;
 

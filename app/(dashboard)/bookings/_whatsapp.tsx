@@ -1,7 +1,5 @@
 "use client";
 
-import type { MouseEvent } from "react";
-
 /**
  * WhatsApp 客人（職員跟進）
  * - 只會「開啟」WhatsApp 並預填訊息；WhatsApp 本身不會自動發送，須人手㩒 send。
@@ -18,32 +16,13 @@ function toIntlHK(phone: string | null): string {
   return digits.replace(/^0+/, "");
 }
 
-export function WhatsAppButton({ phone, text }: { phone: string | null; text: string }) {
+// WhatsApp 草稿連結（無有效電話時回傳空字串）
+export function whatsappHref(phone: string | null, text: string): string {
   const intl = toIntlHK(phone);
-  if (!intl) return null;
-  const url = `https://wa.me/${intl}?text=${encodeURIComponent(text)}`;
-
-  function open(e: MouseEvent) {
-    e.preventDefault();
-    if (
-      TESTING &&
-      !window.confirm(
-        "測試期間提示\n\n只會開啟 WhatsApp 並預填訊息，不會自動發送。\n請勿㩒 send 發送任何訊息給客人。\n\n繼續開啟草稿？"
-      )
-    ) {
-      return;
-    }
-    window.open(url, "_blank", "noopener,noreferrer");
-  }
-
-  return (
-    <a
-      href={url}
-      onClick={open}
-      className="text-xs text-green-700 hover:underline"
-      title="開啟 WhatsApp 草稿（預填訊息，不會自動發送）"
-    >
-      💬 WhatsApp 客人
-    </a>
-  );
+  return intl ? `https://wa.me/${intl}?text=${encodeURIComponent(text)}` : "";
 }
+
+// 測試期間開啟前的確認提示
+export const WHATSAPP_CONFIRM = TESTING
+  ? "測試期間提示\n\n只會開啟 WhatsApp 並預填訊息，不會自動發送。\n請勿㩒 send 發送任何訊息給客人。\n\n繼續開啟草稿？"
+  : undefined;

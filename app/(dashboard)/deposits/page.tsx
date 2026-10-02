@@ -4,11 +4,12 @@ import { shopDomain } from "@/lib/shopify";
 import { getStaff, hasModule } from "@/lib/auth";
 import { loadCatalog } from "@/lib/catalog";
 import { NewBookingOrder } from "../_booking-order";
-import { FOLLOW_UP_ORDER, followUpKind } from "@/lib/deposit-followup";
-import { EditDepositButton } from "./_edit";
+import { FOLLOW_UP_ACTION, FOLLOW_UP_LABEL, FOLLOW_UP_ORDER, followUpKind } from "@/lib/deposit-followup";
+import { EditDepositInline } from "./_edit";
+import { RowActions, type RowAction } from "../_row-actions";
 import Link from "next/link";
 import { Fragment } from "react";
-import { FollowUpButton, type FollowUpItem } from "./_followup";
+import { FollowUpInline, type FollowUpItem } from "./_followup";
 
 export const dynamic = "force-dynamic";
 
@@ -127,6 +128,17 @@ function whatsappUrl(row: DepositRow) {
   const project = projectNo(row);
   const text = `你好，我哋係 RESOUL 🐾。已收到${row.pet_name || "毛孩"}嘅接送服務預約${project ? `（專案編號 ${project}）` : ""}。想同你確認接送時間同安排，請問方便嗎？`;
   return `https://wa.me/${number}?text=${encodeURIComponent(text)}`;
+}
+
+// 「操作」視窗內的功能（有跟進事項時排第一）
+function depositActions(r: DepositRow, fu: FollowUpItem | undefined, staffName: string, cal: string | null, invoice: string | null, wa: string | null): RowAction[] {
+  const list: RowAction[] = [];
+  if (fu) list.push({ kind: "panel", key: "followup", label: `🔔 ${FOLLOW_UP_ACTION[fu.kind]}（${FOLLOW_UP_LABEL[fu.kind]}）`, title: "訂金跟進", alert: true, node: <FollowUpInline item={fu} staffName={staffName} /> });
+  if (wa) list.push({ kind: "link", key: "wa", label: "💬 WhatsApp 客人", href: wa, whatsapp: true });
+  if (cal) list.push({ kind: "link", key: "cal", label: "📅 加入日曆", href: cal });
+  if (invoice) list.push({ kind: "link", key: "invoice", label: "🧾 發票（Shopify 訂單）", href: invoice });
+  list.push({ kind: "panel", key: "edit", label: "✏️ 編輯資料", title: "編輯接送服務", node: <EditDepositInline booking={r} /> });
+  return list;
 }
 
 export default async function DepositsPage({ searchParams }: { searchParams: Promise<{ followup?: string }> }) {
@@ -260,7 +272,7 @@ export default async function DepositsPage({ searchParams }: { searchParams: Pro
                         <div className="whitespace-nowrap">{r.service_date || "—"}</div>
                         {r.service_time && <div className="mt-0.5 text-xs leading-5 text-[var(--soft)]">{r.service_time}</div>}
                       </td>
-                      {/* 金額／付款／狀態同一行；操作掣放在第二行（與電話、時段同一行），固定五格對齊 */}
+                      {/* 金額／付款／狀態同一行；操作掣放在第二行，合併為一個「操作」掣 */}
                       <td colSpan={3} className="py-3">
                         <div className="grid grid-cols-3">
                           <div className="px-4 whitespace-nowrap text-right tabular-nums">{fmtAmount(r)}</div>
@@ -275,13 +287,7 @@ export default async function DepositsPage({ searchParams }: { searchParams: Pro
                             </span>
                           </div>
                         </div>
-                        <div className="mt-1.5 grid grid-cols-[7rem_5.5rem_2.25rem_7rem_3.25rem] items-center gap-x-2 whitespace-nowrap px-4">
-                        <div>{fu && <FollowUpButton item={fu} staffName={staffName} />}</div>
-                        <div>{cal && <a href={cal} target="_blank" rel="noopener noreferrer" className="text-xs text-[var(--gold)] hover:underline">📅 加入日曆</a>}</div>
-                        <div>{invoice && <a href={invoice} target="_blank" rel="noopener noreferrer" className="text-xs text-[var(--gold)] hover:underline">發票</a>}</div>
-                        <div>{wa && <a href={wa} target="_blank" rel="noopener noreferrer" className="text-xs text-green-700 hover:underline">💬 WhatsApp 客人</a>}</div>
-                        <div><EditDepositButton booking={r}/></div>
-                        </div>
+                        <div className="mt-1.5 flex justify-end px-4"><RowActions heading={r.owner_name || "—"} sub={project || undefined} alertLabel={fu ? FOLLOW_UP_ACTION[fu.kind] : undefined} actions={depositActions(r, fu, staffName, cal, invoice, wa)} /></div>
                       </td>
                     </tr>
                     </Fragment>
@@ -336,12 +342,8 @@ export default async function DepositsPage({ searchParams }: { searchParams: Pro
                     <dt>建立時間</dt>
                     <dd>{fmtCreated(r.created_at)}</dd>
                   </dl>
-                  <div className="mt-3 flex flex-wrap items-center gap-3 border-t border-[var(--line)] pt-3">
-                    {fu && <FollowUpButton item={fu} staffName={staffName} />}
-                    {cal && <a href={cal} className="text-xs text-[var(--gold)]">📅 加入日曆</a>}
-                    {invoice && <a href={invoice} target="_blank" rel="noopener noreferrer" className="text-xs text-[var(--gold)]">發票</a>}
-                    {wa && <a href={wa} target="_blank" rel="noopener noreferrer" className="text-xs text-green-700">💬 WhatsApp 客人</a>}
-                    <EditDepositButton booking={r}/>
+                  <div className="mt-3 flex justify-end border-t border-[var(--line)] pt-3">
+                    <RowActions heading={r.owner_name || "—"} sub={project || undefined} alertLabel={fu ? FOLLOW_UP_ACTION[fu.kind] : undefined} actions={depositActions(r, fu, staffName, cal, invoice, wa)} />
                   </div>
                 </div>
               );
