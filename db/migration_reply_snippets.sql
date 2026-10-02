@@ -94,22 +94,18 @@ Over 60 kg: quoted individually. (Day: 12 noon–8 pm; evening: 8 pm–midnight)
 Final fees and sedation are assessed and confirmed by the independent registered vet; cremation and keepsakes are charged separately.$$, 30),
 
 ('price_grief', '收費', '情緒支援收費',
-$$情緒支援嘅建議收費：
+$$情緒支援的收費：
 ・離別後關懷訊息及電子指南：免費
-・15 分鐘關懷電話／初步需要了解：善終客戶免費一次
-・同路人小組或主題分享會：HK$180 至 280／位
-・非臨床悲傷陪伴 30 分鐘：HK$380 至 480
-・合資格輔導員個別面談 50 分鐘：HK$680 至 900
+・與我們傾訴／初步需要了解：免費
+・合資格輔導員個別面談 50 分鐘：HK$380 至 580
 ・註冊輔導／臨床心理學家 50 分鐘：約 HK$1,100 至 1,600（由專業人士確認）
-實際服務內容、資格同收費會喺預約前確認。$$,
-$$Suggested fees for emotional support:
-• Post-farewell care messages and e-guide: free
-• 15-minute care call / initial needs check: one free call for our farewell clients
-• Peer group or themed sharing session: HK$180–280 per person
-• Non-clinical grief companionship, 30 minutes: HK$380–480
-• Individual session with a qualified counsellor, 50 minutes: HK$680–900
-• Registered counsellor / clinical psychologist, 50 minutes: about HK$1,100–1,600 (confirmed by the professional)
-Service details, qualifications and fees are confirmed before booking.$$, 40),
+實際服務內容、資格同收費會喺預約前確認。詳情可以睇：{網站}/referral#pricing$$,
+$$Grief support fees:
+• Aftercare message and digital guide: free
+• Talk to us / initial needs check: free
+• Qualified counsellor session (50 min): HK$380–580
+• Registered counselling / clinical psychologist (50 min): approx. HK$1,100–1,600, confirmed by the professional
+Service details, qualifications and fees are confirmed before booking. Details: {網站}/referral-en#pricing$$, 40),
 
 ('pay_methods', '付款', '訂金及付款方法',
 $$預約接送需要先俾 HK$1,800 訂金，餘額喺紀念儀式當日俾就得。我哋接受現金、易辦事、PayMe、FPS 同信用卡。$$,
