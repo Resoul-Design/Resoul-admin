@@ -19,21 +19,6 @@ export function canonicalProjectNo(...candidates: Array<string | null | undefine
   return "—";
 }
 
-/**
- * @deprecated 舊版 #RS-#### 標籤；請改用 canonicalProjectNo()。保留供尚未遷移的位置參考。
- */
-export function orderLabel(
-  name: string | null | undefined,
-  kind: "cremation" | "product"
-): string {
-  if (!name) return "—";
-  void kind;
-  const value = String(name).trim();
-  const num = value.replace(/[^0-9]/g, "");
-  if (!num) return value;
-  return `#RS-${num}`;
-}
-
 export function projectNoFromNotes(notes?: string | null): string {
   const match = (notes || "").match(/(?:專案編號|Project no\.)[：:]\s*([^｜|]+)/i);
   const value = match?.[1]?.trim() || "";

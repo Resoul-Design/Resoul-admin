@@ -1,5 +1,6 @@
 "use client";
 
+import { csvCell } from "@/lib/csv";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
@@ -20,11 +21,6 @@ export type ProjectRow = {
 
 const money = (n: number) => "$" + Math.round(n).toLocaleString();
 const PAGE = 25;
-
-function csvCell(v: string | number) {
-  const s = String(v ?? "");
-  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
-}
 
 export function ProjectsTable({ rows }: { rows: ProjectRow[] }) {
   const [q, setQ] = useState("");

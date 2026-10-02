@@ -2,8 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { createAdminClient } from "@/lib/supabase/admin";
-import { getStaff, requireModule } from "@/lib/auth";
+import { requireModule } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 
 export async function addEntry(formData: FormData) {
@@ -69,20 +68,4 @@ export async function deleteEntry(formData: FormData) {
   if (order_ref) revalidatePath(`/projects/order/${order_ref.split("/").pop()}`);
   revalidatePath("/projects");
   revalidatePath("/finance");
-}
-
-// 刪除整個火化專案（連帶其收支明細）——僅限管理員；不可還原。
-export async function deleteProject(formData: FormData) {
-  const me = await getStaff();
-  if (!me || me.role !== "admin") return;
-  const id = String(formData.get("id") || "");
-  if (!id) return;
-  const admin = createAdminClient();
-  // 先刪明細（若外鍵未設 cascade 亦安全），再刪預約本身
-  await admin.from("project_entries").delete().eq("booking_id", id);
-  await admin.from("cremation_bookings").delete().eq("id", id);
-  await logAudit("delete_project", "cremation_bookings", id);
-  revalidatePath("/projects");
-  revalidatePath("/finance");
-  revalidatePath("/");
 }

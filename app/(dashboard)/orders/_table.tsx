@@ -1,5 +1,6 @@
 "use client";
 
+import { csvCell } from "@/lib/csv";
 import { Fragment, useMemo, useState } from "react";
 import { RowActions, type RowAction } from "../_row-actions";
 
@@ -53,11 +54,6 @@ const STATUS_OPTS = [
   { key: "REFUNDED", label: "已退款" },
   { key: "PARTIALLY_REFUNDED", label: "部分退款" },
 ];
-
-function csvCell(v: string | number) {
-  const s = String(v ?? "");
-  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
-}
 
 export function OrdersTable({ rows }: { rows: OrderRow[] }) {
   const [q, setQ] = useState("");

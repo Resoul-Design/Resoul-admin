@@ -1,5 +1,6 @@
 "use client";
 
+import { csvCell } from "@/lib/csv";
 import { Fragment, useMemo, useState } from "react";
 import { EditBookingInline, type BookingData } from "./_edit";
 import { WHATSAPP_CONFIRM, whatsappHref } from "./_whatsapp";
@@ -50,11 +51,6 @@ const SOURCE_FILTER = [
   { key: "cremation", label: "火化預約" },
   { key: "vet", label: "獸醫評估／安辭查詢" },
 ];
-
-function csvCell(v: string | number) {
-  const s = String(v ?? "");
-  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
-}
 
 // 「操作」視窗內的功能
 function rowActions(r: BookingRow): RowAction[] {
