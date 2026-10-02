@@ -4,6 +4,7 @@ import { getStaff } from "@/lib/auth";
 import { FOLLOW_UP_ORDER, followUpKind } from "@/lib/deposit-followup";
 import { EditDepositButton } from "./_edit";
 import Link from "next/link";
+import { Fragment } from "react";
 import { FollowUpButton, type FollowUpItem } from "./_followup";
 
 export const dynamic = "force-dynamic";
@@ -209,8 +210,8 @@ export default async function DepositsPage({ searchParams }: { searchParams: Pro
         <>
           {/* 桌面：表格 */}
           <div className="hidden lg:block rounded-2xl border border-[var(--line)] bg-[var(--card)] overflow-x-auto">
-            <table className="w-full min-w-[1800px] table-fixed text-sm">
-              <colgroup><col className="w-[9%]"/><col className="w-[14%]"/><col className="w-[11%]"/><col className="w-[7%]"/><col className="w-[13%]"/><col className="w-[7%]"/><col className="w-[7%]"/><col className="w-[6%]"/><col className="w-[26%]"/></colgroup>
+            <table className="w-full min-w-[1300px] table-fixed text-sm">
+              <colgroup><col className="w-[10%]"/><col className="w-[17%]"/><col className="w-[13%]"/><col className="w-[9%]"/><col className="w-[15%]"/><col className="w-[12%]"/><col className="w-[12%]"/><col className="w-[12%]"/></colgroup>
               <thead>
                 <tr className="bg-[var(--head)] text-left text-[var(--soft)] whitespace-nowrap">
                   <th className="px-4 py-3 font-medium">建立時間</th>
@@ -221,7 +222,6 @@ export default async function DepositsPage({ searchParams }: { searchParams: Pro
                   <th className="px-4 py-3 font-medium text-right">金額</th>
                   <th className="px-4 py-3 font-medium">付款</th>
                   <th className="px-4 py-3 font-medium min-w-[88px]">狀態</th>
-                  <th className="px-4 py-3 font-medium text-right">操作</th>
                 </tr>
               </thead>
               <tbody>
@@ -232,7 +232,8 @@ export default async function DepositsPage({ searchParams }: { searchParams: Pro
                   const wa = whatsappUrl(r);
                   const invoice = r.shopify_order_id ? `https://${shopDomain()}/admin/orders/${String(r.shopify_order_id).split("/").pop()}` : null;
                   return (
-                    <tr key={r.id} className={"border-t border-[var(--line)] align-top" + (fu ? " bg-amber-50/70" : "")}>
+                    <Fragment key={r.id}>
+                    <tr className={"border-t border-[var(--line)] align-top" + (fu ? " bg-amber-50/70" : "")}>
                       <td className="px-4 py-3 text-[var(--soft)] whitespace-nowrap">{fmtCreated(r.created_at)}</td>
                       <td className="px-4 py-3">
                         {project ? (
@@ -264,15 +265,19 @@ export default async function DepositsPage({ searchParams }: { searchParams: Pro
                           {STATUS_LABEL[r.status] || r.status}
                         </span>
                       </td>
-                      {/* 操作：固定五格（跟進／日曆／發票／WhatsApp／編輯），沒有的項目留空，各行上下對齊 */}
-                      <td className="px-3 py-3"><div className="grid grid-cols-[7rem_5.5rem_2.25rem_7rem_3.25rem] items-center justify-end gap-x-2 whitespace-nowrap">
-                        <div className="justify-self-start">{fu && <FollowUpButton item={fu} staffName={staffName} />}</div>
+                    </tr>
+                    {/* 操作：放在第二行金額至狀態下方；固定五格（跟進／日曆／發票／WhatsApp／編輯），沒有的項目留空，各行上下對齊 */}
+                    <tr className={fu ? "bg-amber-50/70" : ""}>
+                      <td colSpan={5} />
+                      <td colSpan={3} className="px-4 pb-3"><div className="grid grid-cols-[7rem_5.5rem_2.25rem_7rem_3.25rem] items-center gap-x-2 whitespace-nowrap">
+                        <div>{fu && <FollowUpButton item={fu} staffName={staffName} />}</div>
                         <div>{cal && <a href={cal} target="_blank" rel="noopener noreferrer" className="text-xs text-[var(--gold)] hover:underline">📅 加入日曆</a>}</div>
                         <div>{invoice && <a href={invoice} target="_blank" rel="noopener noreferrer" className="text-xs text-[var(--gold)] hover:underline">發票</a>}</div>
                         <div>{wa && <a href={wa} target="_blank" rel="noopener noreferrer" className="text-xs text-green-700 hover:underline">💬 WhatsApp 客人</a>}</div>
-                        <div className="justify-self-end"><EditDepositButton booking={r}/></div>
+                        <div><EditDepositButton booking={r}/></div>
                       </div></td>
                     </tr>
+                    </Fragment>
                   );
                 })}
               </tbody>

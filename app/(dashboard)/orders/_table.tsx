@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 
 export type OrderRow = {
   id: string;
@@ -23,6 +23,18 @@ export type OrderRow = {
 
 const money = (n: number, c: string) => "$" + Number(n).toLocaleString() + " " + c;
 const PAGE = 25;
+
+// 付款／出貨標籤顏色（與接送服務一致）
+function finClass(fin: string) {
+  if (fin === "PAID") return "bg-green-100 text-green-800";
+  if (fin === "REFUNDED" || fin === "PARTIALLY_REFUNDED" || fin === "VOIDED") return "bg-gray-200 text-gray-700";
+  return "bg-amber-100 text-amber-800";
+}
+function fulClass(label: string) {
+  if (label === "已出貨") return "bg-green-100 text-green-800";
+  if (label === "未出貨") return "bg-amber-100 text-amber-800";
+  return "bg-blue-100 text-blue-800";
+}
 
 const STATUS_OPTS = [
   { key: "all", label: "全部" },
@@ -102,35 +114,52 @@ export function OrdersTable({ rows }: { rows: OrderRow[] }) {
 
       <div className="mb-2 text-xs text-[var(--soft)]">共 {filtered.length} 張{q || status !== "all" ? "（已篩選）" : ""}</div>
 
-      {/* 桌面表格 */}
-      <div className="hidden overflow-hidden rounded-lg border border-[var(--line)] bg-[var(--card)] md:block">
-        <table className="w-full table-fixed text-sm">
-          <thead><tr className="bg-[var(--head)] text-left text-[var(--soft)]">
-            <th className="w-[9%] px-4 py-3 font-medium">訂單</th><th className="w-[10%] px-4 py-3 font-medium">日期</th>
-            <th className="w-[13%] px-4 py-3 font-medium">客戶</th><th className="px-4 py-3 font-medium">內容</th>
-            <th className="w-[9%] px-4 py-3 font-medium">付款</th><th className="w-[9%] px-4 py-3 font-medium">出貨</th>
-            <th className="w-[11%] px-4 py-3 text-right font-medium">金額</th><th className="w-[24%] px-4 py-3 text-right font-medium">操作</th>
-          </tr></thead>
+      {/* 桌面表格：欄位格式與「接送服務」一致，操作放在第二行金額至出貨下方 */}
+      <div className="hidden overflow-x-auto rounded-2xl border border-[var(--line)] bg-[var(--card)] md:block">
+        <table className="w-full min-w-[1200px] table-fixed text-sm">
+          <colgroup><col className="w-[10%]"/><col className="w-[14%]"/><col className="w-[13%]"/><col className="w-[27%]"/><col className="w-[12%]"/><col className="w-[12%]"/><col className="w-[12%]"/></colgroup>
+          <thead>
+            <tr className="bg-[var(--head)] text-left text-[var(--soft)] whitespace-nowrap">
+              <th className="px-4 py-3 font-medium">建立時間</th>
+              <th className="px-4 py-3 font-medium">訂單編號</th>
+              <th className="px-4 py-3 font-medium">客戶 · 電話</th>
+              <th className="px-4 py-3 font-medium">內容</th>
+              <th className="px-4 py-3 text-right font-medium">金額</th>
+              <th className="px-4 py-3 font-medium">付款</th>
+              <th className="px-4 py-3 font-medium">出貨</th>
+            </tr>
+          </thead>
           <tbody>{shown.map((r) => (
-            <tr key={r.id} className={"border-t border-[var(--line)] align-top " + (r.cancelled ? "opacity-60" : "")}>
-              <td className="px-4 py-3 font-medium"><div>{r.orderName}</div>{r.projectNo && r.projectNo !== "—" && r.projectNo !== r.orderName && <div className="mt-0.5 text-xs text-[var(--gold)]">專案 {r.projectNo}</div>}</td>
+            <Fragment key={r.id}>
+            <tr className={"border-t border-[var(--line)] align-top " + (r.cancelled ? "opacity-60" : "")}>
               <td className="px-4 py-3 whitespace-nowrap text-[var(--soft)]">{r.date}</td>
-              <td className="break-words px-4 py-3">{r.customer || "—"}</td>
-              <td className="break-words px-4 py-3 text-[var(--soft)]">{r.items}</td>
               <td className="px-4 py-3">
-                {r.cancelled
-                  ? <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs text-red-700">已取消</span>
-                  : r.finLabel}
+                <span className="font-medium text-[var(--gold)]">{r.orderName}</span>
+                {r.projectNo && r.projectNo !== "—" && r.projectNo !== r.orderName && <div className="break-all text-xs text-[var(--soft)]">專案 {r.projectNo}</div>}
               </td>
-              <td className="px-4 py-3">{r.fulLabel}</td>
-              <td className="px-4 py-3 text-right whitespace-nowrap">{money(r.amount, r.currency)}</td>
-              <td className="px-4 py-3"><div className="flex flex-wrap justify-end gap-2">
+              <td className="px-4 py-3">
+                <div className="break-words">{r.customer || "—"}</div>
+                <div className="mt-0.5 text-xs text-[var(--soft)]">{r.phone ? "📞 " + r.phone : "—"}</div>
+              </td>
+              <td className="break-words px-4 py-3 text-[var(--soft)]">{r.items}</td>
+              <td className="px-4 py-3 text-right whitespace-nowrap tabular-nums">{money(r.amount, r.currency)}</td>
+              <td className="px-4 py-3 whitespace-nowrap">
+                {r.cancelled
+                  ? <span className="inline-block rounded-full bg-red-100 px-2 py-0.5 text-xs text-red-700">已取消</span>
+                  : <span className={"inline-block rounded-full px-2 py-0.5 text-xs " + finClass(r.fin)}>{r.finLabel}</span>}
+              </td>
+              <td className="px-4 py-3 whitespace-nowrap"><span className={"inline-block rounded-full px-2 py-0.5 text-xs " + fulClass(r.fulLabel)}>{r.fulLabel}</span></td>
+            </tr>
+            <tr className={r.cancelled ? "opacity-60" : ""}>
+              <td colSpan={4} />
+              <td colSpan={3} className="px-4 pb-3"><div className="grid grid-cols-[7rem_3.25rem] items-center gap-x-2 whitespace-nowrap">
                 {r.cancelled ? <span className="text-xs text-[var(--faint)]">已取消</span> : <>
-                  {r.whatsapp && <a href={r.whatsapp} target="_blank" rel="noopener noreferrer" className="rounded-md border border-green-300 px-2.5 py-1.5 text-xs text-green-700 hover:bg-green-50">WhatsApp 客人</a>}
-                  <a href={r.editUrl} target="_blank" rel="noopener noreferrer" className="rounded-md border border-[var(--line)] px-2.5 py-1.5 text-xs text-[var(--ink)] hover:bg-[var(--cream)]">編輯</a>
+                  <div>{r.whatsapp && <a href={r.whatsapp} target="_blank" rel="noopener noreferrer" className="text-xs text-green-700 hover:underline">💬 WhatsApp 客人</a>}</div>
+                  <div><a href={r.editUrl} target="_blank" rel="noopener noreferrer" className="rounded-md border border-[var(--line)] px-2.5 py-1.5 text-xs text-[var(--ink)] hover:bg-[var(--cream)]">編輯</a></div>
                 </>}
               </div></td>
             </tr>
+            </Fragment>
           ))}</tbody>
         </table>
       </div>

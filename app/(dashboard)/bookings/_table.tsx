@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import { EditBookingButton, type BookingData } from "./_edit";
 import { WhatsAppButton } from "./_whatsapp";
 
@@ -130,11 +130,11 @@ export function BookingsTable({
         <>
         {/* 欄位格式與「接送服務」一致；火化預約多一欄「方案」 */}
         <div className="hidden lg:block rounded-2xl border border-[var(--line)] bg-[var(--card)] overflow-x-auto">
-          <table className={"w-full table-fixed text-sm " + (showPlan ? "min-w-[1800px]" : "min-w-[1700px]")}>
+          <table className="w-full min-w-[1300px] table-fixed text-sm">
             {showPlan ? (
-              <colgroup><col className="w-[8%]"/><col className="w-[13%]"/><col className="w-[11%]"/><col className="w-[7%]"/><col className="w-[7%]"/><col className="w-[13%]"/><col className="w-[7%]"/><col className="w-[7%]"/><col className="w-[6%]"/><col className="w-[21%]"/></colgroup>
+              <colgroup><col className="w-[9%]"/><col className="w-[15%]"/><col className="w-[12%]"/><col className="w-[9%]"/><col className="w-[9%]"/><col className="w-[13%]"/><col className="w-[11%]"/><col className="w-[11%]"/><col className="w-[11%]"/></colgroup>
             ) : (
-              <colgroup><col className="w-[9%]"/><col className="w-[14%]"/><col className="w-[11%]"/><col className="w-[8%]"/><col className="w-[14%]"/><col className="w-[7%]"/><col className="w-[7%]"/><col className="w-[7%]"/><col className="w-[23%]"/></colgroup>
+              <colgroup><col className="w-[10%]"/><col className="w-[17%]"/><col className="w-[13%]"/><col className="w-[9%]"/><col className="w-[15%]"/><col className="w-[12%]"/><col className="w-[12%]"/><col className="w-[12%]"/></colgroup>
             )}
             <thead>
               <tr className="bg-[var(--head)] text-left text-[var(--soft)] whitespace-nowrap">
@@ -147,12 +147,12 @@ export function BookingsTable({
                 <th className="px-4 py-3 font-medium text-right">金額</th>
                 <th className="px-4 py-3 font-medium">付款</th>
                 <th className="px-4 py-3 font-medium min-w-[88px]">狀態</th>
-                <th className="px-4 py-3 font-medium text-right">操作</th>
               </tr>
             </thead>
             <tbody>
               {shown.map((r) => (
-                <tr key={r.id} className="border-t border-[var(--line)] align-top">
+                <Fragment key={r.id}>
+                <tr className="border-t border-[var(--line)] align-top">
                   <td className="px-4 py-3 text-[var(--soft)] whitespace-nowrap">{r.created}</td>
                   <td className="px-4 py-3">
                     {r.invoiceNo ? (
@@ -174,14 +174,18 @@ export function BookingsTable({
                   <td className="px-4 py-3 whitespace-nowrap text-right tabular-nums">{r.amountText}</td>
                   <td className="px-4 py-3 whitespace-nowrap">{paymentReady ? <span className={"inline-block px-2 py-0.5 rounded-full text-xs " + r.paymentClass}>{r.paymentLabel}</span> : <span className="text-[var(--faint)] text-xs">待 migration</span>}</td>
                   <td className="px-4 py-3 whitespace-nowrap"><span className={"inline-block whitespace-nowrap px-2 py-0.5 rounded-full text-xs " + r.statusClass}>{r.statusLabel}</span></td>
-                  {/* 操作：固定四格（日曆／發票／WhatsApp／編輯），沒有的項目留空，各行上下對齊 */}
-                  <td className="px-3 py-3"><div className="grid grid-cols-[5.5rem_2.25rem_7rem_3.25rem] items-center justify-end gap-x-2 whitespace-nowrap">
+                </tr>
+                {/* 操作：放在第二行金額至狀態下方；固定四格（日曆／發票／WhatsApp／編輯），沒有的項目留空，各行上下對齊 */}
+                <tr>
+                  <td colSpan={showPlan ? 6 : 5} />
+                  <td colSpan={3} className="px-4 pb-3"><div className="grid grid-cols-[5.5rem_2.25rem_7rem_3.25rem] items-center gap-x-2 whitespace-nowrap">
                     <div>{r.calUrl && <a href={r.calUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-[var(--gold)] hover:underline">📅 加入日曆</a>}</div>
                     <div>{r.shopifyOrderUrl && <a href={r.shopifyOrderUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-[var(--gold)] hover:underline">發票</a>}</div>
                     <div><WhatsAppButton phone={r.contact} text={r.waText} /></div>
-                    <div className="justify-self-end"><EditBookingButton booking={r.booking} /></div>
+                    <div><EditBookingButton booking={r.booking} /></div>
                   </div></td>
                 </tr>
+                </Fragment>
               ))}
             </tbody>
           </table>
