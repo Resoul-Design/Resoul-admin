@@ -19,9 +19,13 @@ export const MODULES: ModuleDef[] = [
   { key: "reports", label: "報表與匯出", href: "/reports" },
   { key: "audit", label: "審計記錄", href: "/audit" },
   { key: "sync", label: "同步狀態", href: "/sync" },
+  { key: "guide", label: "使用教學", href: "/guide" },
 ];
 
-const ROUTES = [...MODULES].sort((a, b) => b.href.length - a.href.length);
+// 不在導覽列、但屬於某模組的路徑（使用教學嵌入的手冊網頁 public/manual）
+const EXTRA_ROUTES: ModuleDef[] = [{ key: "guide", label: "使用教學", href: "/manual" }];
+
+const ROUTES = [...MODULES, ...EXTRA_ROUTES].sort((a, b) => b.href.length - a.href.length);
 
 // 由路徑找對應模組 key（最長前綴優先）；非模組路徑回傳 null
 export function moduleForPath(path: string): string | null {
@@ -32,7 +36,7 @@ export function moduleForPath(path: string): string | null {
 }
 
 export function keyForHref(href: string): string | null {
-  const m = ROUTES.find((x) => x.href === href);
+  const m = MODULES.find((x) => x.href === href);
   return m ? m.key : null;
 }
 

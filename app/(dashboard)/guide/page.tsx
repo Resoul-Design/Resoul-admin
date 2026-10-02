@@ -1,7 +1,14 @@
-// 使用教學：嵌入營運手冊網頁版（public/manual/resoul-guide.html，須登入才可讀取）
+import { notFound } from "next/navigation";
+import { getStaff, hasModule } from "@/lib/auth";
+
+export const dynamic = "force-dynamic";
+
+// 使用教學：嵌入營運手冊網頁版（public/manual/resoul-guide.html，須有「使用教學」權限才可讀取）
 const GUIDE_URL = "/manual/resoul-guide.html";
 
-export default function GuidePage() {
+export default async function GuidePage() {
+  const staff = await getStaff();
+  if (!staff || !hasModule(staff, ["guide"])) notFound();
   return (
     <div>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
