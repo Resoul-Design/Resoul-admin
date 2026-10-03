@@ -223,6 +223,7 @@ export async function createSouvenirDraftOrder(
     const draft = payload.draftOrder;
     const host = shopDomain().replace(/^https?:\/\//, "").replace(/\/+$/, "");
     const numericId = draft.id.split("/").pop() || "";
+    revalidatePath("/orders");
     return {
       draft: {
         id: draft.id,

@@ -148,7 +148,7 @@ function DraftOrderForm({
             <p className="mt-1 text-sm text-[var(--soft)]">
               {draft.customerName} · {draft.email} · {money(Number(draft.amount), draft.currency)}
             </p>
-            <p className="mt-1 text-sm text-[var(--soft)]">客人付款前不會列入正式訂單；付款後可在此同步查看。</p>
+            <p className="mt-1 text-sm text-[var(--soft)]">已加入列表（付款欄顯示「待付款」、出貨欄顯示「草稿」）；客人付款後會變成正式訂單。</p>
           </div>
           <a href={draft.adminUrl} target="_blank" rel="noopener noreferrer" className="rounded-lg border border-[var(--line)] px-3 py-2 text-sm hover:bg-[var(--cream)]">
             查看 Shopify 草稿 ↗
