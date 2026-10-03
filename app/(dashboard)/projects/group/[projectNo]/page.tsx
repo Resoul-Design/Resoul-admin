@@ -1,3 +1,4 @@
+import { loadSouvenirDrafts } from "@/lib/souvenir-drafts";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -23,6 +24,7 @@ const STATUS_LABEL: Record<string, string> = {
   UNFULFILLED: "未出貨",
   PARTIALLY_FULFILLED: "部分出貨",
   RESTOCKED: "已退貨入庫",
+  DRAFT: "草稿",
 };
 const PAYMENT_LABEL: Record<string, string> = {
   pending: "待付款",
@@ -99,6 +101,7 @@ export default async function ProjectGroupPage({ params }: { params: Promise<{ p
   if (!isRslProjectNo(projectNo)) notFound();
 
   const admin = createAdminClient();
+  const draftsP = loadSouvenirDrafts();
   const [depositRes, bookingRes, orderRes] = await Promise.all([
     admin.from("deposit_bookings").select("id, owner_name, pet_name, status, service_date, created_at, payment_amount, payment_status, shopify_order_name, notes").order("created_at", { ascending: false }).limit(1000),
     admin.from("cremation_bookings").select("id, case_no, owner_name, pet_name, plan, status, service_date, created_at, amount, payment_amount, payment_status, shopify_order_name, notes, source").order("created_at", { ascending: false }).limit(1000),
@@ -152,6 +155,22 @@ export default async function ProjectGroupPage({ params }: { params: Promise<{ p
       payment: financial,
       amount: cancelled ? 0 : Number(order.total_amount || 0),
       href: `/projects/order/${order.shopify_order_id.split("/").pop()}`,
+    });
+  }
+
+  for (const d of await draftsP) {
+    if (d.projectNo !== projectNo) continue;
+    const first = d.items[0]?.title || "—";
+    records.push({
+      key: `draft:${d.id}`,
+      label: `紀念產品 · ${first}${d.items.length > 1 ? ` 等 ${d.items.length} 項` : ""}`,
+      invoiceNo: d.name,
+      person: d.owner || "—",
+      date: d.createdAt.slice(0, 10),
+      status: "DRAFT",
+      payment: "PENDING",
+      amount: 0,
+      href: `/orders?q=${encodeURIComponent(d.name)}`,
     });
   }
 

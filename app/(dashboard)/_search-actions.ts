@@ -1,5 +1,6 @@
 "use server";
 
+import { loadSouvenirDrafts } from "@/lib/souvenir-drafts";
 import { getStaff, hasModule } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { canonicalProjectNo, projectNoFromNotes } from "@/lib/order-label";
@@ -46,7 +47,7 @@ export async function globalSearch(query: string): Promise<SearchGroup[]> {
   const match = makeMatcher(q);
   const admin = createAdminClient();
 
-  const [deposits, bookings, orders] = await Promise.all([
+  const [deposits, bookings, orders, drafts] = await Promise.all([
     can("deposits")
       ? admin
           .from("deposit_bookings")
@@ -68,6 +69,7 @@ export async function globalSearch(query: string): Promise<SearchGroup[]> {
           .order("shopify_created_at", { ascending: false })
           .limit(1000)
       : null,
+    can("orders") ? loadSouvenirDrafts() : [],
   ]);
 
   const groups: (SearchGroup | null)[] = [];
@@ -106,8 +108,16 @@ export async function globalSearch(query: string): Promise<SearchGroup[]> {
     groups.push(group("火化預約", cremation), group("獸醫評估", vet));
   }
 
-  if (orders?.data) {
-    const items = orders.data
+  if (orders?.data || drafts.length) {
+    const draftItems: SearchItem[] = drafts
+      .filter((d) => match([d.name, d.owner, d.projectNo, d.itemsText], [d.phone]))
+      .map((d) => ({
+        key: "draft-" + d.id,
+        title: join(`${d.name}（草稿）`, d.owner),
+        sub: join(d.projectNo, d.createdAt.slice(0, 10), "待付款"),
+        href: listHref("/orders", d.name),
+      }));
+    const items = draftItems.concat((orders?.data || [])
       .filter((o) => {
         const lines = (o.line_items || []) as { title?: string; attributes?: { key?: string; value?: string }[] }[];
         const attrs = lines.flatMap((l) => l.attributes || []).map((a) => a.value);
@@ -118,7 +128,7 @@ export async function globalSearch(query: string): Promise<SearchGroup[]> {
         title: join(o.order_name, o.customer_name),
         sub: join(o.shopify_created_at.slice(0, 10), o.cancelled_at ? "已取消" : o.financial_status === "PAID" ? "已付款" : o.financial_status),
         href: listHref("/orders", o.order_name),
-      }));
+      })));
     groups.push(group("紀念品訂單", items));
   }
 

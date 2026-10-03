@@ -1,3 +1,4 @@
+import { loadSouvenirDrafts } from "@/lib/souvenir-drafts";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -73,6 +74,7 @@ const FIN: Record<string, string> = {
   REFUNDED: "已退款",
   PARTIALLY_REFUNDED: "部分退款",
   VOIDED: "已作廢",
+  DRAFT: "待付款（草稿）",
 };
 
 export default async function CustomerPage({
@@ -124,7 +126,30 @@ export default async function CustomerPage({
       .order("shopify_created_at", { ascending: false });
     productOrders = (orderData || []) as ProductOrderRow[];
   }
+  // 未付款草稿：列出但不計入消費
+  const draftOrders: ProductOrderRow[] = custPhone
+    ? (await loadSouvenirDrafts())
+        .filter((d) => d.phoneKey === custPhone)
+        .map((d) => ({
+          shopify_order_id: d.id,
+          order_name: d.name,
+          shopify_created_at: d.createdAt,
+          shopify_updated_at: null,
+          customer_name: d.owner,
+          email: null,
+          phone: d.phone,
+          phone_key: d.phoneKey,
+          financial_status: "DRAFT",
+          fulfillment_status: null,
+          total_amount: d.amount,
+          currency: d.currency,
+          line_items: d.items.map((it) => ({ title: it.title, quantity: it.quantity })) as ProductOrderRow["line_items"],
+          cancelled_at: null,
+          synced_at: d.createdAt,
+        }))
+    : [];
   const productSpend = productOrders.reduce((sum, order) => sum + Number(order.total_amount), 0);
+  productOrders = [...draftOrders, ...productOrders];
 
   const stat = (label: string, value: string) => (
     <div className="rounded-xl border border-[var(--line)] bg-[var(--card)] px-4 py-3">
@@ -153,7 +178,7 @@ export default async function CustomerPage({
         {stat("火化預約", `${bookings.length} 次`)}
         {stat("火化消費（已付）", "$" + Math.round(cremPaid).toLocaleString())}
         {stat("獸醫評估", `${vetBookings.length} 次`)}
-        {stat("產品消費", `${productOrders.length} 張 · $${Math.round(productSpend).toLocaleString()}`)}
+        {stat("產品消費", `${productOrders.length - draftOrders.length} 張 · $${Math.round(productSpend).toLocaleString()}${draftOrders.length ? `（另有 ${draftOrders.length} 張待付款）` : ""}`)}
       </div>
 
       <h2 className="text-base font-semibold mb-3 flex items-center gap-2">

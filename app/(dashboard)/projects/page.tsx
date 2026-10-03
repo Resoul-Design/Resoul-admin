@@ -1,3 +1,4 @@
+import { loadSouvenirDrafts } from "@/lib/souvenir-drafts";
 import { PageHeader } from "../_page-header";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -63,6 +64,7 @@ export default async function ProjectsPage() {
   const supabase = await createClient();
   const admin = createAdminClient();
 
+  const draftsP = loadSouvenirDrafts();
   const [bkRes, peRes, poRes, depRes] = await Promise.all([
     createAdminClient()
       .from("cremation_bookings")
@@ -149,6 +151,22 @@ export default async function ProjectsPage() {
       income,
       expense: a.expense,
       date: o.shopify_created_at?.slice(0, 10) || "",
+    });
+  }
+  // 未付款的紀念品草稿：列出但不計收入
+  for (const d of await draftsP) {
+    rows.push({
+      key: "draft:" + d.id,
+      href: `/orders?q=${encodeURIComponent(d.name)}`,
+      projectNo: d.projectNo || "—",
+      primary: d.owner || "—",
+      secondary: d.itemsText || "產品訂單",
+      plan: "紀念產品",
+      status: "待付款（草稿）",
+      kind: "product",
+      income: 0,
+      expense: 0,
+      date: d.createdAt.slice(0, 10),
     });
   }
   // 將跨服務的 RSL 編號合併為一個專案列；沒有 RSL 的舊資料仍獨立保留。

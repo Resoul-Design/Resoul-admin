@@ -1,7 +1,8 @@
+import { loadSouvenirDrafts } from "@/lib/souvenir-drafts";
 import { PageHeader } from "../_page-header";
 import { createClient } from "@/lib/supabase/server";
 import type { ProductOrderRow } from "@/lib/product-orders";
-import { shopDomain, shopifyGraphQL } from "@/lib/shopify";
+import { shopDomain } from "@/lib/shopify";
 import { canonicalProjectNo } from "@/lib/order-label";
 import { getStaff, hasModule } from "@/lib/auth";
 import { syncProductOrders } from "./actions";
@@ -20,67 +21,34 @@ const FUL: Record<string, string> = {
   PARTIALLY_FULFILLED: "部分出貨", RESTOCKED: "已退貨入庫",
 };
 
-type DraftsResponse = {
-  draftOrders: {
-    nodes: {
-      id: string;
-      name: string;
-      createdAt: string;
-      invoiceUrl: string | null;
-      totalPriceSet: { shopMoney: { amount: string; currencyCode: string } };
-      customAttributes: { key: string; value: string | null }[];
-      lineItems: { nodes: { title: string; quantity: number }[] };
-    }[];
-  };
-};
-
-// 後台「＋ 新增訂單」建立、客人未付款的紀念品草稿（付款後會變成正式訂單並由同步列出）
-const DRAFTS_QUERY = `{
-  draftOrders(first: 50, sortKey: UPDATED_AT, reverse: true, query: "tag:'Memorial Product' AND -status:completed") {
-    nodes {
-      id name createdAt invoiceUrl
-      totalPriceSet { shopMoney { amount currencyCode } }
-      customAttributes { key value }
-      lineItems(first: 20) { nodes { title quantity } }
-    }
-  }
-}`;
-
+// 未付款的紀念品草稿（付款後會變成正式訂單並由同步列出），排在最前
 async function loadDraftRows(): Promise<OrderRow[]> {
-  try {
-    const res = await shopifyGraphQL<DraftsResponse>(DRAFTS_QUERY);
-    const host = shopDomain().replace(/^https?:\/\//, "").replace(/\/+$/, "");
-    return res.draftOrders.nodes.map((d) => {
-      const attr = (k: string) => d.customAttributes.find((a) => a.key.toLowerCase() === k)?.value?.trim() || "";
-      const owner = attr("owner");
-      const phone = attr("phone");
-      const digits = phone.replace(/\D/g, "");
-      const wa = digits && d.invoiceUrl
-        ? `https://wa.me/${digits.startsWith("852") ? digits : `852${digits}`}?text=${encodeURIComponent(`${owner || ""}你好，以下是你的 Resoul 紀念品訂單 ${d.name} 付款連結：\n${d.invoiceUrl}\n如有任何疑問，隨時搵我哋。`)}`
-        : null;
-      return {
-        id: d.id,
-        orderName: d.name,
-        projectNo: canonicalProjectNo(attr("project no")),
-        date: d.createdAt.slice(0, 10),
-        customer: owner,
-        phone,
-        items: d.lineItems.nodes.map((it) => `${it.title}×${it.quantity}`).join("、") || "—",
-        fin: "PENDING",
-        finLabel: "待付款",
-        fulLabel: "草稿",
-        amount: Number(d.totalPriceSet.shopMoney.amount),
-        currency: d.totalPriceSet.shopMoney.currencyCode,
-        cancelled: false,
-        printHref: "",
-        whatsapp: wa,
-        editUrl: `https://${host}/admin/draft_orders/${d.id.split("/").pop()}`,
-        invoiceUrl: d.invoiceUrl || undefined,
-      };
-    });
-  } catch {
-    return [];
-  }
+  const drafts = await loadSouvenirDrafts();
+  return drafts.map((d) => {
+    const digits = d.phone.replace(/\D/g, "");
+    const wa = digits && d.invoiceUrl
+      ? `https://wa.me/${digits.startsWith("852") ? digits : `852${digits}`}?text=${encodeURIComponent(`${d.owner}你好，以下是你的 Resoul 紀念品訂單 ${d.name} 付款連結：\n${d.invoiceUrl}\n如有任何疑問，隨時搵我哋。`)}`
+      : null;
+    return {
+      id: d.id,
+      orderName: d.name,
+      projectNo: d.projectNo || "—",
+      date: d.createdAt.slice(0, 10),
+      customer: d.owner,
+      phone: d.phone,
+      items: d.itemsText || "—",
+      fin: "PENDING",
+      finLabel: "待付款",
+      fulLabel: "草稿",
+      amount: d.amount,
+      currency: d.currency,
+      cancelled: false,
+      printHref: "",
+      whatsapp: wa,
+      editUrl: d.adminUrl,
+      invoiceUrl: d.invoiceUrl || undefined,
+    };
+  });
 }
 
 export default async function OrdersPage({ searchParams }: {
