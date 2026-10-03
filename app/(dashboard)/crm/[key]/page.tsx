@@ -86,7 +86,7 @@ export default async function CustomerPage({
   const supabase = await createClient();
   const admin = createAdminClient();
   const [{ data }, { data: pickupData }] = await Promise.all([
-    supabase.from("cremation_bookings").select("id, case_no, owner_name, contact, pet_name, pet_type, plan, status, service_date, service_time, amount, payment_amount, payment_status, payment_ref, shopify_order_name, notes, source, created_at").order("created_at", { ascending: false }).limit(1000),
+    createAdminClient().from("cremation_bookings").select("id, case_no, owner_name, contact, pet_name, pet_type, plan, status, service_date, service_time, amount, payment_amount, payment_status, payment_ref, shopify_order_name, notes, source, created_at").order("created_at", { ascending: false }).limit(1000),
     admin.from("deposit_bookings").select("id, owner_name, contact, pet_name, status, service_date, service_time, payment_amount, payment_status, shopify_order_name, notes, created_at").order("created_at", { ascending: false }).limit(1000),
   ]);
 

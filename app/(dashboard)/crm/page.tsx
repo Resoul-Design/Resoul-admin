@@ -1,6 +1,5 @@
 import { PageHeader } from "../_page-header";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export const dynamic = "force-dynamic";
@@ -28,10 +27,9 @@ type Customer = {
 };
 
 export default async function CrmPage() {
-  const supabase = await createClient();
   const admin = createAdminClient();
   const [{ data }, { data: pickupData }] = await Promise.all([
-    supabase.from("cremation_bookings").select("owner_name, contact, pet_name, plan, status, service_date, amount, payment_amount, created_at").order("created_at", { ascending: false }).limit(1000),
+    createAdminClient().from("cremation_bookings").select("owner_name, contact, pet_name, plan, status, service_date, amount, payment_amount, created_at").order("created_at", { ascending: false }).limit(1000),
     admin.from("deposit_bookings").select("owner_name, contact, pet_name, status, service_date, payment_amount, created_at").order("created_at", { ascending: false }).limit(1000),
   ]);
   const bookings: Booking[] = [

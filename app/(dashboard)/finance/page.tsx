@@ -62,7 +62,7 @@ export default async function FinancePage({
   const selMonth = sp.fm && /^\d{4}-\d{2}$/.test(sp.fm) ? sp.fm : curKey;
 
   const [bkRes, ordersRes, ppRes, peRes, depRes] = await Promise.all([
-    supabase
+    createAdminClient()
       .from("cremation_bookings")
       .select("id, case_no, pet_name, owner_name, plan, status, service_date, amount, cost, payment_amount, payment_status, paid_at, created_at, shopify_order_name")
       .order("service_date", { ascending: false, nullsFirst: false })

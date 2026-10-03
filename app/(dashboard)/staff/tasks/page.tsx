@@ -1,3 +1,4 @@
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { createTask, updateTaskStatus, deleteTask } from "../actions";
 import { canonicalProjectNo } from "@/lib/order-label";
@@ -36,7 +37,7 @@ export default async function TasksPage({
   const [tasksRes, staffRes, bookingsRes] = await Promise.all([
     supabase.from("tasks").select("*").order("created_at", { ascending: false }).limit(300),
     supabase.from("staff").select("id, name, email").eq("active", true),
-    supabase
+    createAdminClient()
       .from("cremation_bookings")
       .select("id, pet_name, case_no, owner_name")
       .not("status", "in", "(completed,cancelled)")

@@ -1,3 +1,4 @@
+import { createAdminClient } from "@/lib/supabase/admin";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { addEntry, deleteEntry } from "../actions";
@@ -37,7 +38,7 @@ export default async function ProjectDetailPage({
   const supabase = await createClient();
 
   const [bkRes, peRes] = await Promise.all([
-    supabase
+    createAdminClient()
       .from("cremation_bookings")
       .select("id, case_no, pet_name, owner_name, contact, plan, status, service_date, amount, payment_amount, payment_status, payment_ref, shopify_order_name, paid_at, notes, source")
       .eq("id", id)

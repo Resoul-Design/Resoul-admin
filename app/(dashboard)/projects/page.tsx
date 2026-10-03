@@ -64,7 +64,7 @@ export default async function ProjectsPage() {
   const admin = createAdminClient();
 
   const [bkRes, peRes, poRes, depRes] = await Promise.all([
-    supabase
+    createAdminClient()
       .from("cremation_bookings")
       .select("id, case_no, pet_name, owner_name, plan, status, service_date, created_at, amount, payment_amount, payment_status, shopify_order_name, notes, source")
       .order("created_at", { ascending: false })

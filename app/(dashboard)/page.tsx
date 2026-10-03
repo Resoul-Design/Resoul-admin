@@ -131,7 +131,7 @@ export default async function OverviewPage() {
   // 輕量查詢：狀態分佈用聚合 count（不拉全部資料）；列表只取最近 6 筆
   const statusCountsP = Promise.all(
     BOOKING_STATUS.map((s) =>
-      supabase.from("cremation_bookings").select("id", { count: "exact", head: true }).eq("status", s.key)
+      createAdminClient().from("cremation_bookings").select("id", { count: "exact", head: true }).eq("status", s.key)
     )
   );
   const [
@@ -141,8 +141,8 @@ export default async function OverviewPage() {
     Promise.all([
       supabase.from("posts").select("*", { count: "exact", head: true }).eq("status", "held"),
       supabase.from("posts").select("name, body, crisis_flag, context, created_at").eq("status", "held").order("created_at", { ascending: false }).limit(4),
-      supabase.from("cremation_bookings").select("owner_name, pet_name, plan, status, service_date, created_at").order("created_at", { ascending: false }).limit(6),
-      supabase.from("cremation_bookings").select("id", { count: "exact", head: true }).eq("service_date", today),
+      createAdminClient().from("cremation_bookings").select("owner_name, pet_name, plan, status, service_date, created_at").order("created_at", { ascending: false }).limit(6),
+      createAdminClient().from("cremation_bookings").select("id", { count: "exact", head: true }).eq("service_date", today),
       supabase.from("project_entries").select("amount").eq("kind", "income").gte("entry_date", monthStart),
       getOrdersSinceCached(since),
       getProductsCountCached(),

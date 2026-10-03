@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { moduleGuardResponse } from "@/lib/auth";
 import { toCsv, csvResponse } from "@/lib/csv";
 import { canonicalProjectNo, projectNoFromNotes } from "@/lib/order-label";
@@ -12,8 +12,7 @@ export async function GET(request: Request) {
   const keys = category === "vet" ? ["vet_assessments", "reports"] : category === "cremation" ? ["bookings", "reports"] : ["reports"];
   const denied = await moduleGuardResponse(...keys);
   if (denied) return denied;
-  const supabase = await createClient();
-  const { data } = await supabase
+  const { data } = await createAdminClient()
     .from("cremation_bookings")
     .select(
       "case_no, created_at, owner_name, contact, pet_name, pet_type, plan, service_date, service_time, pickup_address, status, source, amount, cost, payment_status, payment_amount, payment_currency, shopify_order_name, shopify_order_id, paid_at, payment_ref, notes"

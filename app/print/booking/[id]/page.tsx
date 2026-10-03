@@ -1,3 +1,4 @@
+import { createAdminClient } from "@/lib/supabase/admin";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getStaff } from "@/lib/auth";
@@ -48,7 +49,7 @@ export default async function BookingDocPage({
 
   const supabase = await createClient();
   const [{ data: b }, { data: entriesData }] = await Promise.all([
-    supabase.from("cremation_bookings").select("*").eq("id", id).maybeSingle(),
+    createAdminClient().from("cremation_bookings").select("*").eq("id", id).maybeSingle(),
     supabase
       .from("project_entries")
       .select("kind, description, amount")
