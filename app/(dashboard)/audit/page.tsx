@@ -108,6 +108,12 @@ function describe(l: Log, names: Names): string {
       return `修改回覆知識庫範本${quote(d)}`;
     case "delete_reply_snippet":
       return "刪除一則回覆知識庫範本";
+    case "create_blog_category":
+      return `新增文章分類${quote(d)}`;
+    case "update_blog_categories":
+      return `儲存文章分類：${d}`;
+    case "delete_blog_category":
+      return `刪除文章分類${quote(d)}`;
     case "create_staff": {
       const [email, role] = parts;
       return `新增員工 ${email || ""}（${role === "admin" ? "管理員" : "員工"}）`;
