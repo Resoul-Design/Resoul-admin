@@ -8,7 +8,8 @@ import { FOLLOW_UP_ACTION, FOLLOW_UP_LABEL, FOLLOW_UP_ORDER, followUpKind } from
 import { EditDepositInline } from "./_edit";
 import { RowActions, type RowAction } from "../_row-actions";
 import Link from "next/link";
-import { Fragment } from "react";
+import { Fragment, Suspense } from "react";
+import { DepositsToolbar } from "./_toolbar";
 import { FollowUpInline, type FollowUpItem } from "./_followup";
 
 export const dynamic = "force-dynamic";
@@ -141,8 +142,8 @@ function depositActions(r: DepositRow, fu: FollowUpItem | undefined, staffName: 
   return list;
 }
 
-export default async function DepositsPage({ searchParams }: { searchParams: Promise<{ followup?: string; q?: string }> }) {
-  const { followup, q } = await searchParams;
+export default async function DepositsPage({ searchParams }: { searchParams: Promise<{ followup?: string; q?: string; status?: string }> }) {
+  const { followup, q, status: statusParam } = await searchParams;
   const supabase = createAdminClient();
   const baseColumns =
     "id, created_at, owner_name, contact, pet_name, pet_type, plan, service_date, service_time, pickup_address, notes, status, payment_ref, payment_status, payment_amount, payment_currency, shopify_order_name, shopify_order_id, paid_at";
@@ -182,24 +183,20 @@ export default async function DepositsPage({ searchParams }: { searchParams: Pro
   const query = (q || "").trim();
   const queryText = query.toLowerCase();
   const queryDigits = /^[\d\s()+-]{4,}$/.test(query) ? query.replace(/\D/g, "").replace(/^852(?=\d{8}$)/, "") : "";
-  const visibleRows = query
-    ? listRows.filter((r) =>
-        [r.owner_name, r.pet_name, r.payment_ref, r.shopify_order_name, r.notes].some((v) => (v || "").toLowerCase().includes(queryText)) ||
-        (!!queryDigits && (r.contact || "").replace(/\D/g, "").includes(queryDigits)))
-    : listRows;
+  // 狀態篩選（?status=）：各狀態或「未付款」
+  const statusFilter = statusParam && (STATUS_LABEL[statusParam] || statusParam === "unpaid") ? statusParam : "";
+  const visibleRows = listRows.filter((r) => {
+    if (statusFilter === "unpaid" ? r.payment_status === "paid" || r.status === "cancelled" : statusFilter && r.status !== statusFilter) return false;
+    if (!query) return true;
+    return [r.owner_name, r.pet_name, r.payment_ref, r.shopify_order_name, r.notes].some((v) => (v || "").toLowerCase().includes(queryText)) ||
+      (!!queryDigits && (r.contact || "").replace(/\D/g, "").includes(queryDigits));
+  });
 
   return (
     <div>
       <PageHeader title="接送服務">
         {staff && hasModule(staff, ["deposits"]) && <NewBookingOrder mode="deposit" products={depositCatalog.products} catalogError={depositCatalog.error} staffName={staffName} />}
       </PageHeader>
-
-      {query && (
-        <div className="mb-4 flex flex-wrap items-center gap-2 rounded-xl border border-[var(--line)] bg-[var(--card)] px-4 py-2.5 text-sm">
-          <span>搜尋「{query}」：{visibleRows.length} 筆</span>
-          <Link href={onlyFollowUp ? "/deposits?followup=1" : "/deposits"} className="text-[var(--gold)] hover:underline">清除搜尋</Link>
-        </div>
-      )}
 
       <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
         測試期間：「💬 WhatsApp 客人」只會開啟預填訊息草稿，<b>請勿按下傳送鍵，或向客人發送任何訊息</b>。
@@ -234,11 +231,15 @@ export default async function DepositsPage({ searchParams }: { searchParams: Pro
         </div>
       ))}
 
-      <div className="mb-2 text-xs text-[var(--soft)]">共 {visibleRows.length} 筆</div>
+      <Suspense fallback={null}>
+        <DepositsToolbar query={query} status={statusFilter} />
+      </Suspense>
+
+      <div className="mb-2 text-xs text-[var(--soft)]">共 {visibleRows.length} 筆{query || statusFilter ? "（已篩選）" : ""}</div>
 
       {visibleRows.length === 0 ? (
         <div className="rounded-2xl border border-[var(--line)] bg-[var(--card)] p-10 text-center text-[var(--soft)]">
-          {error ? "暫時無法顯示接送服務。" : "暫無接送服務記錄。"}
+          {error ? "暫時無法顯示接送服務。" : query || statusFilter ? "沒有符合的記錄。" : "暫無接送服務記錄。"}
         </div>
       ) : (
         <>
