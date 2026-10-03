@@ -155,14 +155,15 @@ export async function createBookingOrder(_prev: BookingOrderState, data: FormDat
         }
       : {
           owner_name: ownerName, contact, pet_name: petName || null, pet_type: petType || null,
-          plan: planKey || variant.product.title, service_date: serviceDate || null, service_time: serviceTime || null,
+          // cremation_bookings.service_time 為 time 類型，只接受 14:00 等時間；希望時段文字已寫入 notes（列表由 notes 讀取）
+          plan: planKey || variant.product.title, service_date: serviceDate || null, service_time: null,
           pickup_address: address || null, notes, source: "admin:cremation", status: "new",
           payment_ref: paymentRef, payment_status: "pending", payment_amount: price, payment_currency: "HKD",
         };
   const { error: insertError } = await supabase.from(table).insert(row);
   if (insertError) {
     console.error("[booking_order_insert]", insertError.message);
-    return { error: "未能建立預約記錄，請稍後再試。" };
+    return { error: `未能建立預約記錄：${insertError.message}` };
   }
 
   const refAttributes = [
