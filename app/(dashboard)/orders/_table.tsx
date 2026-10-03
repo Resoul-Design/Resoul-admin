@@ -1,5 +1,6 @@
 "use client";
 
+import { WHATSAPP_CONFIRM } from "../_testing-notice";
 import { csvCell } from "@/lib/csv";
 import { Fragment, useMemo, useState } from "react";
 import { RowActions, type RowAction } from "../_row-actions";
@@ -27,7 +28,7 @@ export type OrderRow = {
 // 「操作」視窗內的功能（與接送服務、火化預約一致）
 function rowActions(r: OrderRow): RowAction[] {
   const list: RowAction[] = [];
-  if (r.whatsapp && !r.cancelled) list.push({ kind: "link", key: "wa", label: r.invoiceUrl ? "💬 WhatsApp 傳付款連結" : "💬 WhatsApp 客人", href: r.whatsapp, whatsapp: true });
+  if (r.whatsapp && !r.cancelled) list.push({ kind: "link", key: "wa", label: r.invoiceUrl ? "💬 WhatsApp 傳付款連結" : "💬 WhatsApp 客人", href: r.whatsapp, whatsapp: true, confirm: WHATSAPP_CONFIRM });
   if (r.invoiceUrl) list.push({ kind: "link", key: "pay", label: "💳 開啟付款頁", href: r.invoiceUrl });
   list.push({ kind: "link", key: "edit", label: r.invoiceUrl ? "✏️ 編輯（開啟 Shopify 草稿）" : "✏️ 編輯（開啟 Shopify 訂單）", href: r.editUrl });
   return list;

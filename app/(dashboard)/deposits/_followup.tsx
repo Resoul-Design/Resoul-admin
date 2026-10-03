@@ -1,5 +1,6 @@
 "use client";
 
+import { WHATSAPP_CONFIRM } from "../_testing-notice";
 import { useState, useTransition } from "react";
 import {
   FOLLOW_UP_LABEL,
@@ -123,7 +124,7 @@ function FollowUpPanel({ item, staffName, onDone }: { item: FollowUpItem; staffN
         )}
         {item.kind !== "reminded_unpaid" && (
           wa && (!payKind || link) ? (
-            <a href={wa} target="_blank" rel="noopener noreferrer" className={btn + " text-green-700"}>💬 開啟 WhatsApp</a>
+            <a href={wa} target="_blank" rel="noopener noreferrer" onClick={(e) => { if (WHATSAPP_CONFIRM && !window.confirm(WHATSAPP_CONFIRM)) e.preventDefault(); }} className={btn + " text-green-700"}>💬 開啟 WhatsApp</a>
           ) : (
             <span className={btn + " cursor-not-allowed opacity-50"}>💬 開啟 WhatsApp</span>
           )

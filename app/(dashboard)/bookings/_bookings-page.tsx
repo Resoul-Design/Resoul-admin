@@ -1,3 +1,4 @@
+import { TestingNotice } from "../_testing-notice";
 import { PageHeader } from "../_page-header";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getStaff, hasModule } from "@/lib/auth";
@@ -239,9 +240,7 @@ export async function BookingsPage({ mode, query = "" }: { mode: "cremation" | "
         {cremationCatalog && <NewBookingOrder mode="cremation" products={cremationCatalog.products} catalogError={cremationCatalog.error} staffName={staffName} />}
       </PageHeader>
 
-      <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-        ⚠️ 測試期間：「💬 WhatsApp 客人」只會開啟預填訊息草稿，<b>請勿按下傳送鍵，或向客人發送任何訊息</b>。正式啟用後，可於程式中移除此限制。
-      </div>
+      <TestingNotice />
 
       {error && (
         <div className="mb-4 text-sm text-red-600">

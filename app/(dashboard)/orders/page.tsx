@@ -1,3 +1,4 @@
+import { TestingNotice } from "../_testing-notice";
 import { loadSouvenirDrafts } from "@/lib/souvenir-drafts";
 import { PageHeader } from "../_page-header";
 import { createClient } from "@/lib/supabase/server";
@@ -108,6 +109,8 @@ export default async function OrdersPage({ searchParams }: {
             </button>
           </form>
       </PageHeader>
+
+      <TestingNotice />
 
       {params.synced && <div className="mb-4 rounded-lg border border-green-300 bg-green-50 px-4 py-3 text-sm text-green-800">已同步 {params.synced} 張產品訂單到 Supabase。</div>}
       {params.sync_error && <div className="mb-4 rounded-lg border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700">同步失敗：{params.sync_error}</div>}

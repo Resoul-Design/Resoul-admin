@@ -1,3 +1,4 @@
+import { TestingNotice, WHATSAPP_CONFIRM } from "../_testing-notice";
 import { PageHeader } from "../_page-header";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { shopDomain } from "@/lib/shopify";
@@ -135,7 +136,7 @@ function whatsappUrl(row: DepositRow) {
 function depositActions(r: DepositRow, fu: FollowUpItem | undefined, staffName: string, cal: string | null, invoice: string | null, wa: string | null): RowAction[] {
   const list: RowAction[] = [];
   if (fu) list.push({ kind: "panel", key: "followup", label: `🔔 ${FOLLOW_UP_ACTION[fu.kind]}（${FOLLOW_UP_LABEL[fu.kind]}）`, title: "訂金跟進", alert: true, node: <FollowUpInline item={fu} staffName={staffName} /> });
-  if (wa) list.push({ kind: "link", key: "wa", label: "💬 WhatsApp 客人", href: wa, whatsapp: true });
+  if (wa) list.push({ kind: "link", key: "wa", label: "💬 WhatsApp 客人", href: wa, whatsapp: true, confirm: WHATSAPP_CONFIRM });
   if (cal) list.push({ kind: "link", key: "cal", label: "📅 加入日曆", href: cal });
   if (invoice) list.push({ kind: "link", key: "invoice", label: "🧾 發票（Shopify 訂單）", href: invoice });
   list.push({ kind: "panel", key: "edit", label: "✏️ 編輯資料", title: "編輯接送服務", node: <EditDepositInline booking={r} /> });
@@ -198,9 +199,7 @@ export default async function DepositsPage({ searchParams }: { searchParams: Pro
         {staff && hasModule(staff, ["deposits"]) && <NewBookingOrder mode="deposit" products={depositCatalog.products} catalogError={depositCatalog.error} staffName={staffName} />}
       </PageHeader>
 
-      <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-        測試期間：「💬 WhatsApp 客人」只會開啟預填訊息草稿，<b>請勿按下傳送鍵，或向客人發送任何訊息</b>。
-      </div>
+      <TestingNotice />
 
       {error && (
         <div className="mb-4 text-sm text-red-600">

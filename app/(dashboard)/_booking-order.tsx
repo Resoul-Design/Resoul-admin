@@ -1,5 +1,6 @@
 "use client";
 
+import { WHATSAPP_CONFIRM } from "./_testing-notice";
 import { isBackdropPress } from "./_modal";
 import { useActionState, useEffect, useMemo, useState } from "react";
 import type { DraftCatalogProduct } from "@/lib/catalog";
@@ -114,7 +115,7 @@ function BookingOrderForm({
           <div className="mt-2 text-xs text-[var(--soft)]">預約已加入列表（待付款）；客人付款後會自動標記為已付款。</div>
         </div>
         <div className="mt-4 flex flex-wrap gap-2">
-          {wa && <a href={wa} target="_blank" rel="noopener noreferrer" className={btn + " text-green-700"}>💬 WhatsApp 傳付款連結</a>}
+          {wa && <a href={wa} target="_blank" rel="noopener noreferrer" onClick={(e) => { if (WHATSAPP_CONFIRM && !window.confirm(WHATSAPP_CONFIRM)) e.preventDefault(); }} className={btn + " text-green-700"}>💬 WhatsApp 傳付款連結</a>}
           <button
             type="button"
             className={btn}
