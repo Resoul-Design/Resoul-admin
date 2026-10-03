@@ -83,7 +83,18 @@ export default async function ArticlesPage() {
     <div>
       <PageHeader title="文章記錄" />
 
-      <section className="mb-8 rounded-2xl border border-[var(--line)] bg-[var(--card)] p-5">
+      {/* 文章分類：平時收起，按「管理文章分類」才展開 */}
+      <details className="group mb-6">
+        <summary className="flex cursor-pointer list-none flex-wrap items-center gap-3 [&::-webkit-details-marker]:hidden">
+          <span className="inline-flex items-center gap-2 rounded-lg border border-[var(--line)] bg-[var(--card)] px-3 py-2 text-sm hover:bg-[var(--cream)]">
+            管理文章分類{catRes.error ? "" : `（${categories.length} 個）`}
+            <span className="text-xs text-[var(--soft)] transition-transform group-open:rotate-90">▸</span>
+          </span>
+          {!catRes.error && strayTags.length > 0 && (
+            <span className="text-xs text-amber-700">有 {strayTags.length} 個 Shopify 標籤未設為分類</span>
+          )}
+        </summary>
+      <section className="mt-3 rounded-2xl border border-[var(--line)] bg-[var(--card)] p-5">
         <h2 className="mb-3 text-base font-semibold">文章分類</h2>
         {catRes.error ? (
           <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
@@ -139,6 +150,7 @@ export default async function ArticlesPage() {
           </>
         )}
       </section>
+      </details>
 
       {err && (
         <div className="rounded-2xl border border-red-300 bg-[var(--card)] p-6 text-sm text-red-600">
