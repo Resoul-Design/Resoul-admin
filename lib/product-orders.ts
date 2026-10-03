@@ -84,6 +84,10 @@ export type ShopifyGraphQLOrder = {
 export const phoneKey = (value?: string | null) =>
   (value || "").replace(/\D/g, "").slice(-8);
 
+// 客戶檔案識別鍵：電話尾 8 位（「9123 4567」與「+85291234567」視為同一人）；無電話時用名稱
+export const customerKey = (contact?: string | null, name?: string | null) =>
+  phoneKey(contact) || (name || "未知").trim() || "未知";
+
 function firstPhone(values: (string | null | undefined)[]) {
   return values.find((value) => phoneKey(value)) || null;
 }

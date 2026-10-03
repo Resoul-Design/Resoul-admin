@@ -2,7 +2,7 @@ import { loadSouvenirDrafts } from "@/lib/souvenir-drafts";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { phoneKey, type ProductOrderRow } from "@/lib/product-orders";
+import { customerKey, phoneKey, type ProductOrderRow } from "@/lib/product-orders";
 import { canonicalProjectNo, projectNoFromNotes } from "@/lib/order-label";
 
 export const dynamic = "force-dynamic";
@@ -92,15 +92,13 @@ export default async function CustomerPage({
     admin.from("deposit_bookings").select("id, owner_name, contact, pet_name, status, service_date, service_time, payment_amount, payment_status, shopify_order_name, notes, created_at").order("created_at", { ascending: false }).limit(1000),
   ]);
 
-  // 以「聯絡 || 主人名」為客戶識別鍵，與客戶檔案列表一致
-  const allBookings = ((data ?? []) as Booking[]).filter(
-    (b) => (b.contact || b.owner_name || "未知").trim() === key
-  );
+  // 客戶識別鍵與客戶檔案列表一致（電話尾 8 位，無電話用名稱）；舊連結以原始聯絡文字亦可配對
+  const sameCustomer = (contact: string | null, name: string | null) =>
+    customerKey(contact, name) === key || (contact || name || "未知").trim() === key;
+  const allBookings = ((data ?? []) as Booking[]).filter((b) => sameCustomer(b.contact, b.owner_name));
   const vetBookings = allBookings.filter((b) => (b.source || "").includes("euthanasia"));
   const bookings = allBookings.filter((b) => !(b.source || "").includes("euthanasia"));
-  const pickups = ((pickupData ?? []) as Deposit[]).filter(
-    (b) => (b.contact || b.owner_name || "未知").trim() === key
-  );
+  const pickups = ((pickupData ?? []) as Deposit[]).filter((b) => sameCustomer(b.contact, b.owner_name));
 
   const name = allBookings.find((b) => b.owner_name)?.owner_name || pickups.find((b) => b.owner_name)?.owner_name || key || "客戶";
   const contact = allBookings.find((b) => b.contact)?.contact || pickups.find((b) => b.contact)?.contact || key;
