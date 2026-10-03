@@ -33,6 +33,7 @@ type Deposit = {
 
 const STATUS_LABEL: Record<string, string> = {
   new: "新收到",
+  contacted: "已聯絡",
   scheduled: "已排期",
   pickup: "已接送",
   cremating: "火化中",
@@ -49,6 +50,8 @@ type Row = {
   key: string;
   href: string;
   projectNo: string;
+  owner: string;
+  pet: string;
   primary: string;
   secondary: string;
   plan: string;
@@ -99,6 +102,8 @@ export default async function ProjectsPage() {
       key: "d:" + d.id,
       href: "/deposits",
       projectNo: canonicalProjectNo(d.shopify_order_name, projectNoFromNotes(d.notes)),
+      owner: d.owner_name || "",
+      pet: d.pet_name || "",
       primary: d.pet_name || "—",
       secondary: d.owner_name || "—",
       plan: "接送服務",
@@ -121,6 +126,8 @@ export default async function ProjectsPage() {
       key: "b:" + b.id,
       href: `/projects/${b.id}`,
       projectNo: canonicalProjectNo(b.shopify_order_name, projectNoFromNotes(b.notes)),
+      owner: b.owner_name || "",
+      pet: b.pet_name || "",
       primary: b.pet_name || "—",
       secondary: b.owner_name || "—",
       plan: vet ? "獸醫評估" : b.plan || "火化服務",
@@ -143,6 +150,8 @@ export default async function ProjectsPage() {
       key: "o:" + o.shopify_order_id,
       href: `/projects/order/${o.shopify_order_id.split("/").pop()}`,
       projectNo: canonicalProjectNo(o.order_name, projectNoFromItems(o.line_items)),
+      owner: o.customer_name || "",
+      pet: "",
       primary: o.customer_name || "—",
       secondary: items || "產品訂單",
       plan: "紀念產品",
@@ -159,6 +168,8 @@ export default async function ProjectsPage() {
       key: "draft:" + d.id,
       href: `/orders?q=${encodeURIComponent(d.name)}`,
       projectNo: d.projectNo || "—",
+      owner: d.owner || "",
+      pet: "",
       primary: d.owner || "—",
       secondary: d.itemsText || "產品訂單",
       plan: "紀念產品",
@@ -183,6 +194,8 @@ export default async function ProjectsPage() {
     const first = items[0];
     const unique = (values: string[]) => Array.from(new Set(values.filter(Boolean)));
     const names = unique(items.map((item) => item.primary));
+    const owners = unique(items.map((item) => item.owner));
+    const pets = unique(items.map((item) => item.pet));
     const secondary = unique(items.map((item) => item.secondary));
     const plans = unique(items.map((item) => item.plan));
     const statuses = unique(items.map((item) => item.status));
@@ -190,6 +203,8 @@ export default async function ProjectsPage() {
       ...first,
       key: `project:${projectNo}`,
       href: `/projects/group/${encodeURIComponent(projectNo)}`,
+      owner: owners.join("、"),
+      pet: pets.join("、"),
       primary: names.join("、"),
       secondary: secondary.join("、"),
       plan: plans.join("、"),

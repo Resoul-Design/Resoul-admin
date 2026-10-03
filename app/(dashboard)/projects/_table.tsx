@@ -8,6 +8,8 @@ export type ProjectRow = {
   key: string;
   href: string;
   projectNo: string;
+  owner: string;
+  pet: string;
   primary: string;
   secondary: string;
   plan: string;
@@ -38,6 +40,8 @@ export function ProjectsTable({ rows }: { rows: ProjectRow[] }) {
       if (!kw) return true;
       return (
         r.projectNo.toLowerCase().includes(kw) ||
+        r.owner.toLowerCase().includes(kw) ||
+        r.pet.toLowerCase().includes(kw) ||
         r.primary.toLowerCase().includes(kw) ||
         r.secondary.toLowerCase().includes(kw) ||
         r.plan.toLowerCase().includes(kw)
@@ -51,9 +55,9 @@ export function ProjectsTable({ rows }: { rows: ProjectRow[] }) {
   const reset = () => setPage(1);
 
   function exportCsv() {
-    const header = ["專案編號", "名稱", "主人／內容", "類別", "狀態", "收入", "支出", "淨額"];
+    const header = ["專案編號", "主人", "寵物", "類別", "內容", "狀態", "收入", "支出", "淨額"];
     const lines = filtered.map((r) =>
-      [r.projectNo, r.primary, r.secondary, r.plan, r.status, r.income, r.expense, r.income - r.expense].map(csvCell).join(",")
+      [r.projectNo, r.owner, r.pet, r.plan, r.secondary, r.status, r.income, r.expense, r.income - r.expense].map(csvCell).join(",")
     );
     const csv = "﻿" + [header.join(","), ...lines].join("\r\n");
     const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
@@ -70,7 +74,7 @@ export function ProjectsTable({ rows }: { rows: ProjectRow[] }) {
         <input
           value={q}
           onChange={(e) => { setQ(e.target.value); reset(); }}
-          placeholder="搜尋 專案編號 / 名稱 / 主人 / 方案…"
+          placeholder="搜尋 專案編號 / 主人 / 寵物 / 方案…"
           className="min-w-[200px] flex-1 rounded-lg border border-[var(--line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--gold)]"
         />
         <select value={kind} onChange={(e) => { setKind(e.target.value); reset(); }} className="rounded-lg border border-[var(--line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--gold)]">
@@ -93,13 +97,12 @@ export function ProjectsTable({ rows }: { rows: ProjectRow[] }) {
         <div className="rounded-2xl border border-[var(--line)] bg-[var(--card)] p-10 text-center text-[var(--soft)]">沒有符合的專案。</div>
       ) : (
         <><div className="hidden md:block rounded-2xl border border-[var(--line)] bg-[var(--card)] overflow-x-auto">
-          <table className="w-full text-sm min-w-[880px]">
+          <table className="w-full text-sm min-w-[760px]">
             <thead>
-              <tr className="bg-[var(--head)] text-left text-[var(--soft)]">
+              <tr className="bg-[var(--head)] text-left text-[var(--soft)] whitespace-nowrap">
                 <th className="px-4 py-3 font-medium">專案編號</th>
-                <th className="px-4 py-3 font-medium">名稱</th>
-                <th className="px-4 py-3 font-medium">主人／內容</th>
-                <th className="px-4 py-3 font-medium">類別</th>
+                <th className="px-4 py-3 font-medium">主人</th>
+                <th className="px-4 py-3 font-medium">寵物</th>
                 <th className="px-4 py-3 font-medium">狀態</th>
                 <th className="px-4 py-3 font-medium text-right">收入</th>
                 <th className="px-4 py-3 font-medium text-right">支出</th>
@@ -109,18 +112,17 @@ export function ProjectsTable({ rows }: { rows: ProjectRow[] }) {
             </thead>
             <tbody>
               {shown.map((r) => (
-                <tr key={r.key} className="border-t border-[var(--line)]">
+                <tr key={r.key} className="border-t border-[var(--line)] align-top">
                   <td className="px-4 py-3 whitespace-nowrap text-[var(--gold)]">{r.projectNo}</td>
-                  <td className="px-4 py-3">{r.primary}</td>
-                  <td className="px-4 py-3 text-[var(--soft)]">{r.secondary}</td>
-                  <td className="px-4 py-3 whitespace-nowrap text-[var(--soft)]">{r.plan}</td>
-                  <td className="px-4 py-3 whitespace-nowrap">
+                  <td className="px-4 py-3">{r.owner || "—"}</td>
+                  <td className="px-4 py-3">{r.pet || "—"}</td>
+                  <td className="px-4 py-3">
                     <span className="text-xs px-2 py-0.5 rounded-full bg-[var(--cream)] text-[var(--soft)]">{r.status}</span>
                   </td>
-                  <td className="px-4 py-3 text-right tabular-nums">{money(r.income)}</td>
-                  <td className="px-4 py-3 text-right tabular-nums text-[var(--soft)]">{money(r.expense)}</td>
-                  <td className="px-4 py-3 text-right tabular-nums font-medium">{money(r.income - r.expense)}</td>
-                  <td className="px-4 py-3 text-right">
+                  <td className="px-4 py-3 text-right tabular-nums whitespace-nowrap">{money(r.income)}</td>
+                  <td className="px-4 py-3 text-right tabular-nums whitespace-nowrap text-[var(--soft)]">{money(r.expense)}</td>
+                  <td className="px-4 py-3 text-right tabular-nums whitespace-nowrap font-medium">{money(r.income - r.expense)}</td>
+                  <td className="px-4 py-3 text-right whitespace-nowrap">
                     <Link href={r.href} className="text-xs text-[var(--gold)] hover:underline">{r.records ? `查看 ${r.records.length} 筆 →` : "管理 →"}</Link>
                   </td>
                 </tr>
@@ -136,8 +138,7 @@ export function ProjectsTable({ rows }: { rows: ProjectRow[] }) {
                 <span className="font-medium text-[var(--gold)]">{r.projectNo}</span>
                 <span className="text-xs px-2 py-0.5 rounded-full bg-[var(--cream)] text-[var(--soft)]">{r.status}</span>
               </div>
-              <div className="mt-1 text-sm">{r.primary}{r.secondary ? `　·　${r.secondary}` : ""}</div>
-              <div className="mt-0.5 text-xs text-[var(--soft)]">{r.plan}</div>
+              <div className="mt-1 text-sm">{[r.owner, r.pet].filter(Boolean).join("　·　") || "—"}</div>
               <div className="mt-2 flex items-center gap-4 text-xs">
                 <span>收入 <span className="tabular-nums">{money(r.income)}</span></span>
                 <span className="text-[var(--soft)]">支出 <span className="tabular-nums">{money(r.expense)}</span></span>
