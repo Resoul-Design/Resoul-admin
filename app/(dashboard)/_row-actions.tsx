@@ -1,5 +1,6 @@
 "use client";
 
+import { isBackdropPress } from "./_modal";
 import { createContext, useContext, useEffect, useState, type MouseEvent, type ReactNode } from "react";
 
 // 視窗內功能（跟進、編輯）完成後呼叫，以關閉整個操作視窗
@@ -52,7 +53,7 @@ export function RowActions({ heading, sub, alertLabel, actions }: { heading: str
         {alertLabel ? `🔔 ${alertLabel}` : "操作"} ▾
       </button>
       {open && (
-        <div className="fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-black/30 px-4 py-8" onClick={close}>
+        <div className="fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-black/30 px-4 py-8" onMouseDown={(e) => isBackdropPress(e) && close()}>
           <div
             role="dialog"
             aria-modal="true"

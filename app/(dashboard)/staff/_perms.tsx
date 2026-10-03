@@ -1,5 +1,6 @@
 "use client";
 
+import { isBackdropPress } from "../_modal";
 import { useState } from "react";
 import { MODULES } from "@/lib/modules";
 import { updateStaffPermissions } from "./actions";
@@ -35,7 +36,7 @@ export function PermsButton({
       {open && (
         <div
           className="fixed inset-0 z-50 bg-black/30 grid place-items-center px-4 py-8 overflow-y-auto"
-          onClick={() => setOpen(false)}
+          onMouseDown={(e) => isBackdropPress(e) && setOpen(false)}
         >
           <div
             className="bg-[var(--card)] rounded-2xl border border-[var(--line)] p-6 w-full max-w-md my-auto"

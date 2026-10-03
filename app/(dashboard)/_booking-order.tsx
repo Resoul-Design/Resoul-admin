@@ -1,5 +1,6 @@
 "use client";
 
+import { isBackdropPress } from "./_modal";
 import { useActionState, useEffect, useMemo, useState } from "react";
 import type { DraftCatalogProduct } from "@/lib/catalog";
 import { TIME_SLOTS, whatsappLink } from "@/lib/deposit-followup";
@@ -11,7 +12,8 @@ import {
   type BookingOrderState,
 } from "./_booking-order-actions";
 
-const input = "mt-1 w-full rounded-lg border border-[var(--line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--gold)]";
+const input = "mt-1 w-full rounded-lg border border-[var(--line)] bg-white px-3 py-1.5 text-sm outline-none focus:border-[var(--gold)]";
+const label = "block text-xs text-[var(--soft)]";
 const btn = "rounded-lg border border-[var(--line)] px-3 py-2 text-sm hover:bg-[var(--cream)] disabled:opacity-50";
 
 const variantName = (title: string) => (title === "Default Title" ? "標準款" : title);
@@ -49,12 +51,12 @@ export function NewBookingOrder({
         ＋ 新增訂單
       </button>
       {open && (
-        <div className="fixed inset-0 z-50 overflow-y-auto bg-black/45 p-3 sm:p-6" onMouseDown={(e) => e.target === e.currentTarget && setOpen(false)}>
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-black/45 p-3 sm:p-6" onMouseDown={(e) => isBackdropPress(e) && setOpen(false)}>
           <div className="flex min-h-full items-start justify-center sm:items-center">
-            <div role="dialog" aria-modal="true" aria-label="新增訂單" className="my-3 w-full max-w-3xl rounded-xl border border-[var(--line)] bg-[var(--card)] p-4 shadow-xl sm:my-6 sm:p-6">
+            <div role="dialog" aria-modal="true" aria-label="新增訂單" className="w-full max-w-4xl rounded-xl border border-[var(--line)] bg-[var(--card)] p-4 shadow-xl sm:p-5">
               <div className="mb-3 flex items-center justify-between gap-3">
                 <h2 className="text-lg font-semibold">{mode === "deposit" ? "新增接送訂金訂單" : "新增火化預約訂單"}</h2>
-                <button type="button" onClick={() => setOpen(false)} aria-label="關閉" className={btn}>關閉</button>
+                <button type="button" onClick={() => setOpen(false)} aria-label="關閉" className="text-xl leading-none text-[var(--soft)] hover:text-[var(--ink)]">✕</button>
               </div>
               <BookingOrderForm
                 key={formKey}
@@ -152,48 +154,53 @@ function BookingOrderForm({
   }
 
   return (
-    <form action={createAction} className="space-y-4 text-sm">
+    <form action={createAction} className="space-y-3 text-sm">
       <input type="hidden" name="mode" value={mode} />
       {catalogError && <p className="text-red-700" role="alert">{catalogError}</p>}
       {state.error && <p className="text-red-700" role="alert">{state.error}</p>}
 
-      <div className="grid gap-3 sm:grid-cols-2">
-        <label className="block">產品
+      <div className="grid gap-x-3 gap-y-2.5 sm:grid-cols-2 lg:grid-cols-3">
+        <label className={label}>產品
           <select value={product?.id || ""} onChange={(e) => chooseProduct(e.target.value)} disabled={!products.length} className={input}>
             {products.map((p) => <option key={p.id} value={p.id}>{p.title}</option>)}
           </select>
         </label>
-        <label className="block">{mode === "cremation" ? "體重／款式" : "款式"}
+        <label className={label}>{mode === "cremation" ? "體重／款式" : "款式"}
           <select name="variantId" value={variant?.id || ""} onChange={(e) => setVariantId(e.target.value)} disabled={!product} className={input}>
             {(product?.variants || []).map((v) => (
               <option key={v.id} value={v.id}>{variantName(v.title)}{v.price ? ` · ${hkd(v.price)}` : ""}</option>
             ))}
           </select>
         </label>
-      </div>
-      {variant?.price && <div className="rounded-lg bg-[var(--head)] px-3 py-2">收費：<b>{hkd(variant.price)}</b><span className="ml-2 text-xs text-[var(--soft)]">以 Shopify 付款頁為準</span></div>}
+        <div className={label}>收費（以 Shopify 付款頁為準）
+          <div className="mt-1 rounded-lg bg-[var(--head)] px-3 py-1.5 text-sm font-semibold text-[var(--ink)]">{variant?.price ? hkd(variant.price) : "—"}</div>
+        </div>
 
-      <div className="grid gap-3 sm:grid-cols-2">
-        <label className="block">主人稱呼 *<input required name="ownerName" maxLength={100} placeholder="例如：陳小姐" className={input} /></label>
-        <label className="block">電話 / WhatsApp *<input required name="contact" maxLength={40} placeholder="8 位香港電話" className={input} /></label>
-        <label className="block">電郵（選填，可由 Shopify 寄付款連結）<input type="email" name="email" maxLength={254} className={input} /></label>
-        <label className="block">專案編號（回訪客人選填，新客人留空自動產生）<input name="projectNo" maxLength={40} placeholder="RSL-260924-ABC123" className={input} /></label>
-        <label className="block">毛孩名字<input name="petName" maxLength={100} className={input} /></label>
-        <label className="block">種類<input name="petType" maxLength={80} placeholder="例如：貓、狗" className={input} /></label>
-        <label className="block">希望日期<input type="date" name="serviceDate" className={input} /></label>
-        <label className="block">希望時段
+        <label className={label}>主人稱呼 *<input required name="ownerName" maxLength={100} placeholder="例如：陳小姐" className={input} /></label>
+        <label className={label}>電話 / WhatsApp *<input required name="contact" maxLength={40} placeholder="8 位香港電話" className={input} /></label>
+        <label className={label}>電郵（選填）<input type="email" name="email" maxLength={254} placeholder="可由 Shopify 寄付款連結" className={input} /></label>
+
+        <label className={label}>毛孩名字<input name="petName" maxLength={100} className={input} /></label>
+        <label className={label}>種類<input name="petType" maxLength={80} placeholder="例如：貓、狗" className={input} /></label>
+        <label className={label}>專案編號（回訪客人）<input name="projectNo" maxLength={40} placeholder="新客人留空自動產生" className={input} /></label>
+
+        <label className={label}>希望日期<input type="date" name="serviceDate" className={input} /></label>
+        <label className={label}>希望時段
           <select name="serviceTime" defaultValue="" className={input}>
             <option value="">待確認</option>
             {TIME_SLOTS.map((s) => <option key={s.zh} value={s.zh}>{s.label}</option>)}
           </select>
         </label>
-        <label className="block sm:col-span-2">接送地址<input name="address" maxLength={300} className={input} /></label>
-        <label className="block sm:col-span-2">內部備註（選填）<textarea name="note" maxLength={1000} rows={2} className={input} /></label>
+        <label className={label}>接送地址<input name="address" maxLength={300} className={input} /></label>
+
+        <label className={label + " sm:col-span-2 lg:col-span-3"}>內部備註（選填）<textarea name="note" maxLength={1000} rows={2} className={input} /></label>
       </div>
 
-      <button type="submit" disabled={creating || !variant} className="rounded-lg bg-[var(--gold)] px-4 py-2 font-medium text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50">
-        {creating ? "建立中…" : "建立訂單及付款連結"}
-      </button>
+      <div className="flex justify-end">
+        <button type="submit" disabled={creating || !variant} className="rounded-lg bg-[var(--gold)] px-4 py-2 font-medium text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50">
+          {creating ? "建立中…" : "建立訂單及付款連結"}
+        </button>
+      </div>
     </form>
   );
 }

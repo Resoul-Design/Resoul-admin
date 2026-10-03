@@ -1,5 +1,6 @@
 "use client";
 
+import { isBackdropPress } from "../_modal";
 import { useActionState, useEffect, useMemo, useState } from "react";
 import {
   createSouvenirDraftOrder,
@@ -51,20 +52,16 @@ export function NewSouvenirOrder({
       {open && (
         <div
           className="fixed inset-0 z-50 overflow-y-auto bg-black/45 p-3 sm:p-6"
-          onMouseDown={(event) => {
-            if (event.target === event.currentTarget) setOpen(false);
-          }}
+          onMouseDown={(event) => isBackdropPress(event) && setOpen(false)}
         >
           <div className="flex min-h-full items-start justify-center sm:items-center">
-            <div role="dialog" aria-modal="true" aria-label="新增 Shopify 草稿訂單" className="my-3 w-full max-w-5xl rounded-xl border border-[var(--line)] bg-[var(--card)] p-4 shadow-xl sm:my-6 sm:p-6">
-              <div className="mb-3 flex justify-end">
-                <button type="button" onClick={() => setOpen(false)} aria-label="關閉新增訂單" className="rounded-lg border border-[var(--line)] px-3 py-1.5 text-sm hover:bg-[var(--cream)]">關閉</button>
-              </div>
+            <div role="dialog" aria-modal="true" aria-label="新增 Shopify 草稿訂單" className="w-full max-w-5xl rounded-xl border border-[var(--line)] bg-[var(--card)] p-4 shadow-xl sm:p-5">
               <DraftOrderForm
                 key={formKey}
                 products={products}
                 catalogError={catalogError}
                 onCreateAnother={() => setFormKey((value) => value + 1)}
+                onClose={() => setOpen(false)}
               />
             </div>
           </div>
@@ -78,11 +75,14 @@ function DraftOrderForm({
   products,
   catalogError,
   onCreateAnother,
+  onClose,
 }: {
   products: DraftCatalogProduct[];
   catalogError: string;
   onCreateAnother: () => void;
+  onClose: () => void;
 }) {
+  const closeBtn = <button type="button" onClick={onClose} aria-label="關閉" className="shrink-0 text-xl leading-none text-[var(--soft)] hover:text-[var(--ink)]">✕</button>;
   // 三步揀選：產品類型 → 產品 → 款式
   const productTypes = useMemo(() => {
     const counts = new Map<string, number>();
@@ -141,9 +141,9 @@ function DraftOrderForm({
   const draft = draftState.draft;
   if (draft) {
     return (
-      <section className="mt-5 border-y border-[var(--line)] py-5" aria-live="polite">
+      <section aria-live="polite">
         <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
+          <div className="min-w-0 flex-1">
             <h2 className="text-lg font-semibold">草稿訂單已建立 · {draft.name}</h2>
             <p className="mt-1 text-sm text-[var(--soft)]">
               {draft.customerName} · {draft.email} · {money(Number(draft.amount), draft.currency)}
@@ -153,6 +153,7 @@ function DraftOrderForm({
           <a href={draft.adminUrl} target="_blank" rel="noopener noreferrer" className="rounded-lg border border-[var(--line)] px-3 py-2 text-sm hover:bg-[var(--cream)]">
             查看 Shopify 草稿 ↗
           </a>
+          {closeBtn}
         </div>
 
         <div className="mt-4 flex flex-wrap items-center gap-2">
@@ -197,33 +198,34 @@ function DraftOrderForm({
   }
 
   return (
-    <section className="mt-5 border-y border-[var(--line)] py-5" aria-labelledby="new-souvenir-order-title">
-      <div className="mb-4 flex items-start justify-between gap-3">
+    <section aria-labelledby="new-souvenir-order-title">
+      <div className="mb-3 flex items-start justify-between gap-3">
         <div>
           <h2 id="new-souvenir-order-title" className="text-lg font-semibold">新增 Shopify 草稿訂單</h2>
-          <p className="mt-1 text-sm text-[var(--soft)]">草稿建立後不會自動寄信；你可以檢查付款頁，再選擇寄給客人。</p>
+          <p className="text-xs text-[var(--soft)]">建立後不會自動寄信，可先檢查付款頁再寄給客人。</p>
         </div>
+        {closeBtn}
       </div>
 
       {catalogError && <p className="mb-4 text-sm text-red-700" role="alert">{catalogError}</p>}
       {draftState.error && <p className="mb-4 text-sm text-red-700" role="alert">{draftState.error}</p>}
 
-      <form action={createAction} className="space-y-5">
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <form action={createAction} className="space-y-4">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
           <label className="block text-sm">主人名稱
-            <input required name="customerName" maxLength={120} className="mt-1 w-full rounded-lg border border-[var(--line)] bg-white px-3 py-2 outline-none focus:border-[var(--gold)]" />
+            <input required name="customerName" maxLength={120} className="mt-1 w-full rounded-lg border border-[var(--line)] bg-white px-3 py-1.5 outline-none focus:border-[var(--gold)]" />
           </label>
           <label className="block text-sm">客人電郵（付款通知）
-            <input required type="email" name="email" maxLength={254} autoComplete="email" className="mt-1 w-full rounded-lg border border-[var(--line)] bg-white px-3 py-2 outline-none focus:border-[var(--gold)]" />
+            <input required type="email" name="email" maxLength={254} autoComplete="email" className="mt-1 w-full rounded-lg border border-[var(--line)] bg-white px-3 py-1.5 outline-none focus:border-[var(--gold)]" />
           </label>
           <label className="block text-sm">電話
-            <input name="phone" maxLength={40} autoComplete="tel" className="mt-1 w-full rounded-lg border border-[var(--line)] bg-white px-3 py-2 outline-none focus:border-[var(--gold)]" />
+            <input name="phone" maxLength={40} autoComplete="tel" className="mt-1 w-full rounded-lg border border-[var(--line)] bg-white px-3 py-1.5 outline-none focus:border-[var(--gold)]" />
           </label>
           <label className="block text-sm">專案編號（選填）
-            <input name="projectNo" placeholder="RSL-260924-ABC123" className="mt-1 w-full rounded-lg border border-[var(--line)] bg-white px-3 py-2 outline-none focus:border-[var(--gold)]" />
+            <input name="projectNo" placeholder="RSL-260924-ABC123" className="mt-1 w-full rounded-lg border border-[var(--line)] bg-white px-3 py-1.5 outline-none focus:border-[var(--gold)]" />
           </label>
-          <label className="block text-sm sm:col-span-2 lg:col-span-4">寵物名稱（選填）
-            <input name="petName" maxLength={120} className="mt-1 w-full rounded-lg border border-[var(--line)] bg-white px-3 py-2 outline-none focus:border-[var(--gold)]" />
+          <label className="block text-sm">寵物名稱（選填）
+            <input name="petName" maxLength={120} className="mt-1 w-full rounded-lg border border-[var(--line)] bg-white px-3 py-1.5 outline-none focus:border-[var(--gold)]" />
           </label>
         </div>
 
@@ -231,7 +233,7 @@ function DraftOrderForm({
           <h3 className="text-sm font-medium">商品</h3>
           <div className="mt-2 flex flex-wrap items-end gap-2">
             <label className="w-full text-sm sm:w-44">產品類型
-              <select value={selectedType} onChange={(event) => chooseType(event.target.value)} disabled={!products.length} className="mt-1 w-full rounded-lg border border-[var(--line)] bg-white px-3 py-2 outline-none focus:border-[var(--gold)]">
+              <select value={selectedType} onChange={(event) => chooseType(event.target.value)} disabled={!products.length} className="mt-1 w-full rounded-lg border border-[var(--line)] bg-white px-3 py-1.5 outline-none focus:border-[var(--gold)]">
                 <option value="all">全部類型（{products.length}）</option>
                 {productTypes.map(([type, count]) => (
                   <option key={type} value={type}>{type}（{count}）</option>
@@ -239,14 +241,14 @@ function DraftOrderForm({
               </select>
             </label>
             <label className="min-w-[200px] flex-1 text-sm">產品
-              <select value={selectedProduct?.id || ""} onChange={(event) => chooseProduct(event.target.value)} disabled={!filteredProducts.length} className="mt-1 w-full rounded-lg border border-[var(--line)] bg-white px-3 py-2 outline-none focus:border-[var(--gold)]">
+              <select value={selectedProduct?.id || ""} onChange={(event) => chooseProduct(event.target.value)} disabled={!filteredProducts.length} className="mt-1 w-full rounded-lg border border-[var(--line)] bg-white px-3 py-1.5 outline-none focus:border-[var(--gold)]">
                 {filteredProducts.map((product) => (
                   <option key={product.id} value={product.id}>{product.title}</option>
                 ))}
               </select>
             </label>
             <label className="min-w-[200px] flex-1 text-sm">款式
-              <select value={selectedVariantId} onChange={(event) => setSelectedVariantId(event.target.value)} disabled={!selectedProduct} className="mt-1 w-full rounded-lg border border-[var(--line)] bg-white px-3 py-2 outline-none focus:border-[var(--gold)]">
+              <select value={selectedVariantId} onChange={(event) => setSelectedVariantId(event.target.value)} disabled={!selectedProduct} className="mt-1 w-full rounded-lg border border-[var(--line)] bg-white px-3 py-1.5 outline-none focus:border-[var(--gold)]">
                 {(selectedProduct?.variants || []).map((variant) => (
                   <option key={variant.id} value={variant.id}>
                     {variant.title === "Default Title" ? "標準款" : variant.title}
@@ -257,7 +259,7 @@ function DraftOrderForm({
               </select>
             </label>
             <label className="w-24 text-sm">數量
-              <input type="number" min={1} max={99} value={quantity} onChange={(event) => setQuantity(Number(event.target.value))} className="mt-1 w-full rounded-lg border border-[var(--line)] bg-white px-3 py-2 outline-none focus:border-[var(--gold)]" />
+              <input type="number" min={1} max={99} value={quantity} onChange={(event) => setQuantity(Number(event.target.value))} className="mt-1 w-full rounded-lg border border-[var(--line)] bg-white px-3 py-1.5 outline-none focus:border-[var(--gold)]" />
             </label>
             <button type="button" onClick={addLine} disabled={!selectedVariantId || lines.length >= 20} className="rounded-lg border border-[var(--line)] px-3 py-2 text-sm hover:bg-[var(--cream)] disabled:opacity-50">加入商品</button>
           </div>
@@ -287,12 +289,14 @@ function DraftOrderForm({
         </div>
 
         <label className="block text-sm">內部備註（選填）
-          <textarea name="note" maxLength={1000} rows={2} className="mt-1 w-full rounded-lg border border-[var(--line)] bg-white px-3 py-2 outline-none focus:border-[var(--gold)]" />
+          <textarea name="note" maxLength={1000} rows={2} className="mt-1 w-full rounded-lg border border-[var(--line)] bg-white px-3 py-1.5 outline-none focus:border-[var(--gold)]" />
         </label>
         <input type="hidden" name="lineItems" value={JSON.stringify(lines)} />
-        <button type="submit" disabled={creating || !lines.length} className="rounded-lg bg-[var(--gold)] px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50">
-          {creating ? "建立中…" : "建立草稿訂單"}
-        </button>
+        <div className="flex justify-end">
+          <button type="submit" disabled={creating || !lines.length} className="rounded-lg bg-[var(--gold)] px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50">
+            {creating ? "建立中…" : "建立草稿訂單"}
+          </button>
+        </div>
       </form>
     </section>
   );
