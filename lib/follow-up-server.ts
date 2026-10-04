@@ -16,16 +16,20 @@ type MarkRow = {
   payment_link: string | null;
 };
 
-// 讀取跟進記錄；未執行 migration_follow_ups.sql 時 ready=false
+// 讀取跟進記錄；未執行 migration_follow_ups.sql 時 ready=false。
+// 只有處理過的記錄才有跟進記錄，數量少，故一次讀取該類全部再按 refs 篩選
+// （不用 .in() 把大量 ID 放進網址，避免記錄多時網址過長被拒）
 export async function loadMarks(entity: FollowEntity, refs: string[]): Promise<{ ready: boolean; map: Map<string, FollowMark> }> {
   const map = new Map<string, FollowMark>();
+  const wanted = new Set(refs);
   const { data, error } = await createAdminClient()
     .from("follow_up_marks")
     .select("ref, reminded_at, reminder_count, contacted_at, closed_at, payment_link")
     .eq("entity", entity)
-    .in("ref", refs.length ? refs : ["-"]);
+    .limit(10000);
   if (error) return { ready: false, map };
   for (const r of (data || []) as MarkRow[]) {
+    if (!wanted.has(r.ref)) continue;
     map.set(r.ref, {
       remindedAt: r.reminded_at,
       reminderCount: Number(r.reminder_count || 0),

@@ -138,30 +138,36 @@ function describe(l: Log, names: Names): string {
   }
 }
 
+// 以 .in() 分批查詢（每批 100 個 ID），避免記錄多時網址過長
+async function selectIn<T>(table: string, columns: string, ids: string[]): Promise<T[]> {
+  if (!ids.length) return [];
+  const admin = createAdminClient();
+  const chunks: string[][] = [];
+  for (let i = 0; i < ids.length; i += 100) chunks.push(ids.slice(i, i + 100));
+  const results = await Promise.all(chunks.map((c) => admin.from(table).select(columns).in("id", c)));
+  return results.flatMap((r) => (r.data || []) as T[]);
+}
+
 // 批次查回各記錄的顯示名稱；已刪除的記錄會查不到，描述時略去名稱
 async function loadNames(logs: Log[]): Promise<Names> {
   const ids = (entity: string) => [...new Set(logs.filter((l) => l.entity === entity && l.entity_id).map((l) => l.entity_id!))];
   const names: Names = new Map();
-  const admin = createAdminClient();
   const label = (...bits: (string | null | undefined)[]) => bits.filter((b) => b && b !== "—").join("・");
-
+  type B = { id: string; owner_name: string | null; pet_name: string | null; case_no: string | null; notes: string | null };
+  type Dp = { id: string; owner_name: string | null; pet_name: string | null; notes: string | null };
   const [bookings, deposits, staff, posts] = await Promise.all([
-    ids("cremation_bookings").length
-      ? admin.from("cremation_bookings").select("id, owner_name, pet_name, case_no, notes").in("id", ids("cremation_bookings"))
-      : null,
-    ids("deposit_bookings").length
-      ? admin.from("deposit_bookings").select("id, owner_name, pet_name, notes").in("id", ids("deposit_bookings"))
-      : null,
-    ids("staff").length ? admin.from("staff").select("id, name, email").in("id", ids("staff")) : null,
-    ids("posts").length ? admin.from("posts").select("id, pet_name, name").in("id", ids("posts")) : null,
+    selectIn<B>("cremation_bookings", "id, owner_name, pet_name, case_no, notes", ids("cremation_bookings")),
+    selectIn<Dp>("deposit_bookings", "id, owner_name, pet_name, notes", ids("deposit_bookings")),
+    selectIn<{ id: string; name: string | null; email: string }>("staff", "id, name, email", ids("staff")),
+    selectIn<{ id: string; pet_name: string | null; name: string | null }>("posts", "id, pet_name, name", ids("posts")),
   ]);
-  for (const b of bookings?.data || []) {
+  for (const b of bookings) {
     const no = canonicalProjectNo(b.case_no, projectNoFromNotes(b.notes));
     names.set(b.id, label(b.owner_name, b.pet_name, no));
   }
-  for (const b of deposits?.data || []) names.set(b.id, label(b.owner_name, b.pet_name, projectNoFromNotes(b.notes)));
-  for (const s of staff?.data || []) names.set(s.id, s.name || s.email);
-  for (const p of posts?.data || []) names.set(p.id, label(p.pet_name, p.name));
+  for (const b of deposits) names.set(b.id, label(b.owner_name, b.pet_name, projectNoFromNotes(b.notes)));
+  for (const s of staff) names.set(s.id, s.name || s.email);
+  for (const p of posts) names.set(p.id, label(p.pet_name, p.name));
   return names;
 }
 
@@ -178,10 +184,7 @@ export default async function AuditPage() {
   // 操作人：顯示員工姓名（未設姓名時顯示電郵）
   const actorIds = [...new Set(logs.map((l) => l.actor_id).filter(Boolean))] as string[];
   const actors = new Map<string, string>();
-  if (actorIds.length) {
-    const { data: rows } = await createAdminClient().from("staff").select("id, name").in("id", actorIds);
-    for (const s of rows || []) if (s.name) actors.set(s.id, s.name);
-  }
+  for (const s of await selectIn<{ id: string; name: string | null }>("staff", "id, name", actorIds)) if (s.name) actors.set(s.id, s.name);
   const actorName = (l: Log) => (l.actor_id && actors.get(l.actor_id)) || l.actor_email || "—";
 
   return (
