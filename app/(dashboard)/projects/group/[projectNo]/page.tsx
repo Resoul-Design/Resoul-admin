@@ -120,7 +120,7 @@ export default async function ProjectGroupPage({ params }: { params: Promise<{ p
       status: d.status || "",
       payment: d.payment_status || "",
       amount: d.payment_status === "paid" ? Number(d.payment_amount || 0) : 0,
-      href: "/deposits",
+      href: `/projects/deposit/${d.id}`,
     });
   }
   for (const b of bookingRes.data || []) {
@@ -170,7 +170,7 @@ export default async function ProjectGroupPage({ params }: { params: Promise<{ p
       status: "DRAFT",
       payment: "PENDING",
       amount: 0,
-      href: `/orders?q=${encodeURIComponent(d.name)}`,
+      href: `/projects/draft/${d.id.split("/").pop()}`,
     });
   }
 

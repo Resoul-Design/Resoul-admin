@@ -98,9 +98,11 @@ export default async function ProjectsPage() {
 
   const rows: Row[] = [];
   for (const d of deposits) {
+    const a = byOrder[`deposit:${d.id}`] || { income: 0, expense: 0 };
+    const paid = d.payment_status === "paid" && d.status !== "cancelled" ? Number(d.payment_amount || 0) : 0;
     rows.push({
       key: "d:" + d.id,
-      href: "/deposits",
+      href: `/projects/deposit/${d.id}`,
       projectNo: canonicalProjectNo(d.shopify_order_name, projectNoFromNotes(d.notes)),
       owner: d.owner_name || "",
       pet: d.pet_name || "",
@@ -109,8 +111,8 @@ export default async function ProjectsPage() {
       plan: "接送服務",
       status: STATUS_LABEL[d.status] || d.status,
       kind: "pickup",
-      income: d.payment_status === "paid" ? Number(d.payment_amount || 0) : 0,
-      expense: 0,
+      income: a.income > 0 ? a.income : paid,
+      expense: a.expense,
       date: d.service_date || d.created_at?.slice(0, 10) || "",
     });
   }
@@ -166,7 +168,7 @@ export default async function ProjectsPage() {
   for (const d of await draftsP) {
     rows.push({
       key: "draft:" + d.id,
-      href: `/orders?q=${encodeURIComponent(d.name)}`,
+      href: `/projects/draft/${d.id.split("/").pop()}`,
       projectNo: d.projectNo || "—",
       owner: d.owner || "",
       pet: "",

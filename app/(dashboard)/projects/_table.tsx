@@ -97,13 +97,12 @@ export function ProjectsTable({ rows }: { rows: ProjectRow[] }) {
         <div className="rounded-2xl border border-[var(--line)] bg-[var(--card)] p-10 text-center text-[var(--soft)]">沒有符合的專案。</div>
       ) : (
         <><div className="hidden md:block rounded-2xl border border-[var(--line)] bg-[var(--card)] overflow-x-auto">
-          <table className="w-full text-sm min-w-[760px]">
+          <table className="w-full text-sm min-w-[680px]">
             <thead>
               <tr className="bg-[var(--head)] text-left text-[var(--soft)] whitespace-nowrap">
                 <th className="px-4 py-3 font-medium">專案編號</th>
                 <th className="px-4 py-3 font-medium">主人</th>
                 <th className="px-4 py-3 font-medium">寵物</th>
-                <th className="px-4 py-3 font-medium">狀態</th>
                 <th className="px-4 py-3 font-medium text-right">收入</th>
                 <th className="px-4 py-3 font-medium text-right">支出</th>
                 <th className="px-4 py-3 font-medium text-right">淨額</th>
@@ -116,9 +115,6 @@ export function ProjectsTable({ rows }: { rows: ProjectRow[] }) {
                   <td className="px-4 py-3 whitespace-nowrap text-[var(--gold)]">{r.projectNo}</td>
                   <td className="px-4 py-3">{r.owner || "—"}</td>
                   <td className="px-4 py-3">{r.pet || "—"}</td>
-                  <td className="px-4 py-3">
-                    <span className="text-xs px-2 py-0.5 rounded-full bg-[var(--cream)] text-[var(--soft)]">{r.status}</span>
-                  </td>
                   <td className="px-4 py-3 text-right tabular-nums whitespace-nowrap">{money(r.income)}</td>
                   <td className="px-4 py-3 text-right tabular-nums whitespace-nowrap text-[var(--soft)]">{money(r.expense)}</td>
                   <td className="px-4 py-3 text-right tabular-nums whitespace-nowrap font-medium">{money(r.income - r.expense)}</td>
@@ -136,7 +132,6 @@ export function ProjectsTable({ rows }: { rows: ProjectRow[] }) {
             <div key={r.key} className="rounded-2xl border border-[var(--line)] bg-[var(--card)] p-4">
               <div className="flex items-center justify-between gap-2">
                 <span className="font-medium text-[var(--gold)]">{r.projectNo}</span>
-                <span className="text-xs px-2 py-0.5 rounded-full bg-[var(--cream)] text-[var(--soft)]">{r.status}</span>
               </div>
               <div className="mt-1 text-sm">{[r.owner, r.pet].filter(Boolean).join("　·　") || "—"}</div>
               <div className="mt-2 flex items-center gap-4 text-xs">

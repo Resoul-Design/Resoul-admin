@@ -15,7 +15,7 @@ export async function addEntry(formData: FormData) {
   const entry_date =
     String(formData.get("entry_date") || "") ||
     new Date().toISOString().slice(0, 10);
-  // 需連結到一個專案：火化預約（booking_id）或產品訂單（order_ref）
+  // 需連結到一個專案：火化預約（booking_id）或產品訂單／接送服務（order_ref；接送為 deposit:<id>）
   if ((!booking_id && !order_ref) || !["income", "expense"].includes(kind) || !description) return;
 
   const supabase = await createClient();
@@ -40,7 +40,8 @@ export async function addEntry(formData: FormData) {
   await logAudit("add_entry", "project_entries", booking_id || order_ref, `${kind} ${amount}｜${description}`);
 
   if (booking_id) revalidatePath(`/projects/${booking_id}`);
-  if (order_ref) revalidatePath(`/projects/order/${order_ref.split("/").pop()}`);
+  if (order_ref.startsWith("deposit:")) revalidatePath(`/projects/deposit/${order_ref.slice(8)}`);
+  else if (order_ref) revalidatePath(`/projects/order/${order_ref.split("/").pop()}`);
   revalidatePath("/projects");
   revalidatePath("/finance");
 }
@@ -65,7 +66,8 @@ export async function deleteEntry(formData: FormData) {
   await logAudit("delete_entry", "project_entries", id, booking_id || order_ref || null);
 
   if (booking_id) revalidatePath(`/projects/${booking_id}`);
-  if (order_ref) revalidatePath(`/projects/order/${order_ref.split("/").pop()}`);
+  if (order_ref.startsWith("deposit:")) revalidatePath(`/projects/deposit/${order_ref.slice(8)}`);
+  else if (order_ref) revalidatePath(`/projects/order/${order_ref.split("/").pop()}`);
   revalidatePath("/projects");
   revalidatePath("/finance");
 }
