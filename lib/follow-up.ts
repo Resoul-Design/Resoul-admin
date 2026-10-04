@@ -70,6 +70,28 @@ export function followKind(it: FollowItem, now = new Date()): FollowUpKind | nul
   return new Date(it.createdAt).getTime() < hkTodayStart(now) ? "unpaid_next_day" : null;
 }
 
+// 已提醒、等候客人回應期間的提示（例如「已提醒 10/3 · 10/5 起致電跟進」）；四個列表共用
+export function waitingNote(remindedAt: string, now = new Date(), contacted = false): string | null {
+  const reminded = Date.parse(remindedAt);
+  if (!Number.isFinite(reminded)) return null;
+  const due = reminded + REMIND_WAIT_MS;
+  if (now.getTime() >= due) return null;
+  const md = (ms: number) => {
+    const d = new Date(ms + HK_OFFSET_MS);
+    return `${d.getUTCMonth() + 1}/${d.getUTCDate()}`;
+  };
+  return `${contacted ? "已聯絡" : "已提醒"} ${md(reminded)} · ${md(due)} 起致電跟進`;
+}
+
+export function followWaitingNote(it: FollowItem, now = new Date()): string | null {
+  const m = it.mark;
+  if (!m.remindedAt || m.closedAt) return null;
+  if (it.status === "cancelled" || it.status === "completed") return null;
+  if (it.paymentStatus === "paid" || it.paymentStatus === "refunded") return null;
+  if (it.entity === "vet" && it.status !== "new") return null;
+  return waitingNote(m.remindedAt, now, it.entity === "vet");
+}
+
 // 需要付款連結的類別（獸醫評估不收費）
 export function followNeedsLink(entity: FollowEntity, kind: FollowUpKind) {
   return entity !== "vet" && (kind === "payment_failed" || kind === "unpaid_next_day");

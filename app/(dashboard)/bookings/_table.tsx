@@ -43,6 +43,7 @@ export type BookingRow = {
   english: boolean;
   progress: ProgressData | null; // null：獸醫評估或未執行進度 migration
   followUp: FollowEntry | null; // 需要跟進時的資料（四類跟進）
+  followWaiting: string | null; // 已提醒、等候期間的提示
 };
 
 const PAGE = 25;
@@ -242,7 +243,7 @@ export function BookingsTable({
                       <div className="px-4 whitespace-nowrap">{paymentReady ? <span className={"inline-block px-2 py-0.5 rounded-full text-xs " + r.paymentClass}>{r.paymentLabel}</span> : <span className="text-[var(--faint)] text-xs">待 migration</span>}</div>
                       <div className="px-4 whitespace-nowrap"><span className={"inline-block whitespace-nowrap px-2 py-0.5 rounded-full text-xs " + r.statusClass}>{r.statusLabel}</span></div>
                     </div>
-                    <div className="mt-1.5 flex justify-end px-4"><RowActions heading={r.owner || "—"} sub={r.invoiceNo} alertLabel={r.followUp ? followAction(r.followUp.item.entity, r.followUp.kind) : undefined} actions={rowActions(r, staffName)} /></div>
+                    <div className="mt-1.5 flex items-center justify-end gap-3 px-4">{r.followWaiting && <span className="text-xs text-[var(--soft)]">{r.followWaiting}</span>}<RowActions heading={r.owner || "—"} sub={r.invoiceNo} alertLabel={r.followUp ? followAction(r.followUp.item.entity, r.followUp.kind) : undefined} actions={rowActions(r, staffName)} /></div>
                   </td>
                 </tr>
                 </Fragment>
@@ -286,7 +287,8 @@ export function BookingsTable({
                 <dt>建立時間</dt>
                 <dd>{r.created || "—"}</dd>
               </dl>
-              <div className="mt-3 flex justify-end border-t border-[var(--line)] pt-3">
+              <div className="mt-3 flex items-center justify-end gap-3 border-t border-[var(--line)] pt-3">
+                {r.followWaiting && <span className="text-xs text-[var(--soft)]">{r.followWaiting}</span>}
                 <RowActions heading={r.owner || "—"} sub={r.invoiceNo} alertLabel={r.followUp ? followAction(r.followUp.item.entity, r.followUp.kind) : undefined} actions={rowActions(r, staffName)} />
               </div>
             </div>

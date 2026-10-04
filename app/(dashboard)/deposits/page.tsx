@@ -1,4 +1,5 @@
 import { TestingNotice, WHATSAPP_CONFIRM } from "../_testing-notice";
+import { waitingNote } from "@/lib/follow-up";
 import { PageHeader } from "../_page-header";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { shopDomain } from "@/lib/shopify";
@@ -177,6 +178,12 @@ export default async function DepositsPage({ searchParams }: { searchParams: Pro
         })
         .sort((a, b) => FOLLOW_UP_ORDER.indexOf(a.kind) - FOLLOW_UP_ORDER.indexOf(b.kind) || a.created_at.localeCompare(b.created_at));
   const followUpById = new Map(followUps.map((f) => [f.id, f]));
+  // 已提醒、等候客人付款期間的提示
+  const waitingFor = (r: DepositRow) =>
+    !followUpNotReady && r.reminded_at && !r.follow_up_closed_at && !followUpById.has(r.id) &&
+    !["cancelled", "completed"].includes(r.status) && !["paid", "refunded"].includes(r.payment_status || "pending")
+      ? waitingNote(r.reminded_at)
+      : null;
   // 「只顯示要跟進」：按跟進優先次序排列
   const onlyFollowUp = followup === "1" && !followUpNotReady;
   const listRows = onlyFollowUp ? followUps.map((f) => rows.find((r) => r.id === f.id)!).filter(Boolean) : rows;
@@ -303,7 +310,7 @@ export default async function DepositsPage({ searchParams }: { searchParams: Pro
                             </span>
                           </div>
                         </div>
-                        <div className="mt-1.5 flex justify-end px-4"><RowActions heading={r.owner_name || "—"} sub={project || undefined} alertLabel={fu ? FOLLOW_UP_ACTION[fu.kind] : undefined} actions={depositActions(r, fu, staffName, cal, invoice, wa)} /></div>
+                        <div className="mt-1.5 flex items-center justify-end gap-3 px-4">{waitingFor(r) && <span className="text-xs text-[var(--soft)]">{waitingFor(r)}</span>}<RowActions heading={r.owner_name || "—"} sub={project || undefined} alertLabel={fu ? FOLLOW_UP_ACTION[fu.kind] : undefined} actions={depositActions(r, fu, staffName, cal, invoice, wa)} /></div>
                       </td>
                     </tr>
                     </Fragment>
@@ -358,7 +365,8 @@ export default async function DepositsPage({ searchParams }: { searchParams: Pro
                     <dt>建立時間</dt>
                     <dd>{fmtCreated(r.created_at)}</dd>
                   </dl>
-                  <div className="mt-3 flex justify-end border-t border-[var(--line)] pt-3">
+                  <div className="mt-3 flex items-center justify-end gap-3 border-t border-[var(--line)] pt-3">
+                {waitingFor(r) && <span className="text-xs text-[var(--soft)]">{waitingFor(r)}</span>}
                     <RowActions heading={r.owner_name || "—"} sub={project || undefined} alertLabel={fu ? FOLLOW_UP_ACTION[fu.kind] : undefined} actions={depositActions(r, fu, staffName, cal, invoice, wa)} />
                   </div>
                 </div>

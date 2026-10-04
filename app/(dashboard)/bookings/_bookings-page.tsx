@@ -224,6 +224,7 @@ export async function BookingsPage({ mode, query = "", onlyFollow = false }: { m
       booking: b,
       english: /-en$/.test(b.source || ""),
       followUp: follow.result.get(b.id) || null,
+      followWaiting: follow.waiting.get(b.id) || null,
       progress: progressReady && !vet
         ? {
             picked_up_at: pg.picked_up_at ?? null,

@@ -28,6 +28,7 @@ export type OrderRow = {
   editUrl: string;
   invoiceUrl?: string; // 有值＝未付款的 Shopify 草稿訂單
   followUp?: FollowEntry | null; // 需要跟進時的資料（四類跟進）
+  followWaiting?: string | null; // 已提醒、等候期間的提示
 };
 
 // 「操作」視窗內的功能（與接送服務、火化預約一致）
@@ -182,7 +183,7 @@ export function OrdersTable({ rows, initialQuery = "", staffName = "同事", fol
                   </div>
                   <div className="px-4 whitespace-nowrap"><span className={"inline-block rounded-full px-2 py-0.5 text-xs " + fulClass(r.fulLabel)}>{r.fulLabel}</span></div>
                 </div>
-                <div className="mt-1.5 flex justify-end px-4"><RowActions heading={r.customer || "—"} sub={r.orderName} alertLabel={r.followUp ? followAction(r.followUp.item.entity, r.followUp.kind) : undefined} actions={rowActions(r, staffName)} /></div>
+                <div className="mt-1.5 flex items-center justify-end gap-3 px-4">{r.followWaiting && <span className="text-xs text-[var(--soft)]">{r.followWaiting}</span>}<RowActions heading={r.customer || "—"} sub={r.orderName} alertLabel={r.followUp ? followAction(r.followUp.item.entity, r.followUp.kind) : undefined} actions={rowActions(r, staffName)} /></div>
               </td>
             </tr>
             </Fragment>
@@ -222,7 +223,8 @@ export function OrdersTable({ rows, initialQuery = "", staffName = "同事", fol
             <dt>建立時間</dt>
             <dd>{r.date || "—"}</dd>
           </dl>
-          <div className="mt-3 flex justify-end border-t border-[var(--line)] pt-3">
+          <div className="mt-3 flex items-center justify-end gap-3 border-t border-[var(--line)] pt-3">
+                {r.followWaiting && <span className="text-xs text-[var(--soft)]">{r.followWaiting}</span>}
             <RowActions heading={r.customer || "—"} sub={r.orderName} alertLabel={r.followUp ? followAction(r.followUp.item.entity, r.followUp.kind) : undefined} actions={rowActions(r, staffName)} />
           </div>
         </div>

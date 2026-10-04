@@ -3,7 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { canonicalProjectNo, projectNoFromItems, projectNoFromNotes } from "@/lib/order-label";
 import { loadSouvenirDrafts } from "@/lib/souvenir-drafts";
 import type { ProductOrderRow } from "@/lib/product-orders";
-import { EMPTY_MARK, followKind, type FollowEntity, type FollowItem, type FollowMark, type FollowUpKind } from "@/lib/follow-up";
+import { EMPTY_MARK, followKind, followWaitingNote, type FollowEntity, type FollowItem, type FollowMark, type FollowUpKind } from "@/lib/follow-up";
 
 export type FollowEntry = { item: FollowItem; kind: FollowUpKind };
 
@@ -83,14 +83,17 @@ export function bookingFollowItem(b: BookingForFollow, mark: FollowMark = EMPTY_
 export async function bookingFollowUps(bookings: BookingForFollow[], entity: "cremation" | "vet") {
   const { ready, map } = await loadMarks(entity, bookings.map((b) => b.id));
   const result = new Map<string, FollowEntry>();
-  if (!ready) return { ready, result };
+  const waiting = new Map<string, string>();
+  if (!ready) return { ready, result, waiting };
   const now = new Date();
   for (const b of bookings) {
     const item = bookingFollowItem(b, map.get(b.id) || EMPTY_MARK);
     const kind = followKind(item, now);
     if (kind) result.set(b.id, { item, kind });
+    const note = kind ? null : followWaitingNote(item, now);
+    if (note) waiting.set(b.id, note);
   }
-  return { ready, result };
+  return { ready, result, waiting };
 }
 
 const FIN_TO_PAY: Record<string, FollowItem["paymentStatus"]> = {
@@ -109,8 +112,15 @@ export async function productFollowUps(orders: ProductOrderRow[]) {
   const refs = [...orders.map((o) => o.shopify_order_id), ...drafts.map((d) => d.id)];
   const { ready, map } = await loadMarks("product", refs);
   const result = new Map<string, FollowEntry>();
-  if (!ready) return { ready, result };
+  const waiting = new Map<string, string>();
+  if (!ready) return { ready, result, waiting };
   const now = new Date();
+  const add = (ref: string, item: FollowItem) => {
+    const kind = followKind(item, now);
+    if (kind) result.set(ref, { item, kind });
+    const note = kind ? null : followWaitingNote(item, now);
+    if (note) waiting.set(ref, note);
+  };
   for (const o of orders) {
     const fulfilled = (o.fulfillment_status || "").toUpperCase() === "FULFILLED";
     const item: FollowItem = {
@@ -130,8 +140,7 @@ export async function productFollowUps(orders: ProductOrderRow[]) {
       english: false,
       mark: map.get(o.shopify_order_id) || EMPTY_MARK,
     };
-    const kind = followKind(item, now);
-    if (kind) result.set(o.shopify_order_id, { item, kind });
+    add(o.shopify_order_id, item);
   }
   for (const d of drafts) {
     const mark = map.get(d.id) || EMPTY_MARK;
@@ -152,8 +161,7 @@ export async function productFollowUps(orders: ProductOrderRow[]) {
       english: false,
       mark: { ...mark, paymentLink: mark.paymentLink || d.invoiceUrl || null },
     };
-    const kind = followKind(item, now);
-    if (kind) result.set(d.id, { item, kind });
+    add(d.id, item);
   }
-  return { ready, result };
+  return { ready, result, waiting };
 }
