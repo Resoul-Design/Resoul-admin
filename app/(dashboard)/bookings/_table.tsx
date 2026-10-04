@@ -260,7 +260,7 @@ export function BookingsTable({
                 <span className={"px-2 py-0.5 rounded-full text-xs " + r.statusClass}>{r.statusLabel}</span>
               </div>
               {/* 卡片格式與「接送服務」一致：基本資料 → 日期／付款／金額灰底區 → 建立時間 → 操作 */}
-              <dl className="mt-3 grid grid-cols-[76px_minmax(0,1fr)] gap-x-3 gap-y-1.5 text-sm">
+              <dl className="mt-3 grid grid-cols-[6.5rem_minmax(0,1fr)] [&>dt]:whitespace-nowrap gap-x-3 gap-y-1.5 text-sm">
                 <dt className="text-[var(--soft)]">主人 · 電話</dt>
                 <dd className="min-w-0"><div className="truncate">{r.owner || "—"}</div><div className="text-xs text-[var(--soft)]">{r.contact ? "📞 " + r.contact : "—"}</div></dd>
                 <dt className="text-[var(--soft)]">寵物</dt>
@@ -283,7 +283,7 @@ export function BookingsTable({
                   <div className="mt-0.5 font-medium tabular-nums text-sm text-[var(--ink)]">{r.amountText || "—"}</div>
                 </div>
               </div>
-              <dl className="mt-3 grid grid-cols-[76px_minmax(0,1fr)] gap-x-3 text-xs text-[var(--soft)]">
+              <dl className="mt-3 grid grid-cols-[6.5rem_minmax(0,1fr)] [&>dt]:whitespace-nowrap gap-x-3 text-xs text-[var(--soft)]">
                 <dt>建立時間</dt>
                 <dd>{r.created || "—"}</dd>
               </dl>
