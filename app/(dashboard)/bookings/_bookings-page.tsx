@@ -1,4 +1,5 @@
 import { TestingNotice } from "../_testing-notice";
+import { bookingFollowUps } from "@/lib/follow-up-server";
 import { PageHeader } from "../_page-header";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getStaff, hasModule } from "@/lib/auth";
@@ -134,7 +135,7 @@ function isVet(source?: string | null) {
   return (source || "").indexOf("euthanasia") >= 0;
 }
 
-export async function BookingsPage({ mode, query = "" }: { mode: "cremation" | "vet"; query?: string }) {
+export async function BookingsPage({ mode, query = "", onlyFollow = false }: { mode: "cremation" | "vet"; query?: string; onlyFollow?: boolean }) {
   const staff = await getStaff();
   if (!staff) redirect("/login");
   const staffName = staff.name?.trim() || staff.email.split("@")[0] || "同事";
@@ -175,6 +176,8 @@ export async function BookingsPage({ mode, query = "" }: { mode: "cremation" | "
   const bookings = allBookings.filter((booking) =>
     mode === "vet" ? isVet(booking.source) : !isVet(booking.source)
   );
+
+  const follow = await bookingFollowUps(bookings, mode === "vet" ? "vet" : "cremation");
 
   const tableRows: BookingRow[] = bookings.map((b) => {
     // 專案編號僅限跨服務沿用的 RSL 編號；Shopify 訂單號屬付款發票。
@@ -220,6 +223,7 @@ export async function BookingsPage({ mode, query = "" }: { mode: "cremation" | "
         : null,
       booking: b,
       english: /-en$/.test(b.source || ""),
+      followUp: follow.result.get(b.id) || null,
       progress: progressReady && !vet
         ? {
             picked_up_at: pg.picked_up_at ?? null,
@@ -264,7 +268,7 @@ export async function BookingsPage({ mode, query = "" }: { mode: "cremation" | "
           {mode === "vet" ? "暫無獸醫評估記錄。" : "暫無火化預約記錄。"}
         </div>
       ) : (
-        <BookingsTable key={query} rows={tableRows} paymentReady={paymentColumnsReady} sourceMode={mode} initialQuery={query} staffName={staffName} />
+        <BookingsTable key={query + (onlyFollow ? ":f" : "")} rows={tableRows} paymentReady={paymentColumnsReady} sourceMode={mode} initialQuery={query} staffName={staffName} followReady={follow.ready} initialOnlyFollow={onlyFollow} />
       )}
     </div>
   );

@@ -1,4 +1,5 @@
 import { TestingNotice } from "../_testing-notice";
+import { productFollowUps } from "@/lib/follow-up-server";
 import { loadSouvenirDrafts } from "@/lib/souvenir-drafts";
 import { PageHeader } from "../_page-header";
 import { createClient } from "@/lib/supabase/server";
@@ -53,7 +54,7 @@ async function loadDraftRows(): Promise<OrderRow[]> {
 }
 
 export default async function OrdersPage({ searchParams }: {
-  searchParams: Promise<{ synced?: string; sync_error?: string; q?: string }>;
+  searchParams: Promise<{ synced?: string; sync_error?: string; q?: string; followup?: string }>;
 }) {
   const params = await searchParams;
   const supabase = await createClient();
@@ -97,7 +98,10 @@ export default async function OrdersPage({ searchParams }: {
   });
 
   const draftRows = await draftsP;
-  const allRows = [...draftRows, ...rows];
+  // 四類跟進（與接送服務一致）：未付款草稿、已付款未出貨等
+  const follow = await productFollowUps(orders);
+  const allRows = [...draftRows, ...rows].map((r) => ({ ...r, followUp: follow.result.get(r.id) || null }));
+  const staffName = staff?.name?.trim() || staff?.email?.split("@")[0] || "同事";
 
   return (
     <div>
@@ -117,7 +121,7 @@ export default async function OrdersPage({ searchParams }: {
       {error && <div className="rounded-lg border border-red-300 bg-[var(--card)] p-6 text-sm text-red-600">讀取 Supabase 失敗：{error.message}<div className="mt-2 text-[var(--soft)]">請先執行 db/migration_product_orders.sql。</div></div>}
       {!error && allRows.length === 0 && <div className="rounded-lg border border-[var(--line)] bg-[var(--card)] p-10 text-center text-[var(--soft)]">暫無產品訂單。請按「同步 Shopify 訂單」匯入舊記錄。</div>}
 
-      {allRows.length > 0 && <OrdersTable key={params.q || ""} rows={allRows} initialQuery={params.q || ""} />}
+      {allRows.length > 0 && <OrdersTable key={(params.q || "") + (params.followup === "1" ? ":f" : "")} rows={allRows} initialQuery={params.q || ""} staffName={staffName} followReady={follow.ready} initialOnlyFollow={params.followup === "1"} />}
     </div>
   );
 }

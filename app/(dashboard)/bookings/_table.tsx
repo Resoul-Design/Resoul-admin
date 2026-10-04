@@ -1,5 +1,9 @@
 "use client";
 
+import { FollowUpPanel } from "../_follow-up-panel";
+import { FollowUpBar } from "../_follow-up-bar";
+import { FOLLOW_UP_ORDER, followAction, followLabel } from "@/lib/follow-up";
+import type { FollowEntry } from "@/lib/follow-up-server";
 import { csvCell } from "@/lib/csv";
 import { Fragment, useMemo, useState } from "react";
 import { EditBookingInline, type BookingData } from "./_edit";
@@ -38,6 +42,7 @@ export type BookingRow = {
   booking: BookingData & { created_at: string; notes?: string | null };
   english: boolean;
   progress: ProgressData | null; // null：獸醫評估或未執行進度 migration
+  followUp: FollowEntry | null; // 需要跟進時的資料（四類跟進）
 };
 
 const PAGE = 25;
@@ -60,6 +65,17 @@ const SOURCE_FILTER = [
 // 「操作」視窗內的功能
 function rowActions(r: BookingRow, staffName: string): RowAction[] {
   const list: RowAction[] = [];
+  if (r.followUp) {
+    const { item, kind } = r.followUp;
+    list.push({
+      kind: "panel",
+      key: "followup",
+      label: `🔔 ${followAction(item.entity, kind)}（${followLabel(item.entity, kind)}）`,
+      title: "跟進",
+      alert: true,
+      node: <FollowUpPanel item={item} kind={kind} staffName={staffName} />,
+    });
+  }
   if (r.sourceKey === "cremation") {
     list.push({
       kind: "panel",
@@ -96,14 +112,19 @@ export function BookingsTable({
   sourceMode,
   initialQuery = "",
   staffName = "同事",
+  followReady = true,
+  initialOnlyFollow = false,
 }: {
   rows: BookingRow[];
   paymentReady: boolean;
   sourceMode?: "cremation" | "vet";
   initialQuery?: string;
   staffName?: string;
+  followReady?: boolean;
+  initialOnlyFollow?: boolean;
 }) {
   const [q, setQ] = useState(initialQuery);
+  const [onlyFollow, setOnlyFollow] = useState(initialOnlyFollow);
   const [status, setStatus] = useState("all");
   const [source, setSource] = useState("all");
   const [page, setPage] = useState(1);
@@ -115,9 +136,11 @@ export function BookingsTable({
       if (sourceMode && r.sourceKey !== sourceMode) return false;
       if (!sourceMode && source !== "all" && r.sourceKey !== source) return false;
       if (kw && !r.search.includes(kw)) return false;
+      if (onlyFollow && !r.followUp) return false;
       return true;
-    });
-  }, [rows, q, status, source, sourceMode]);
+    }).sort((a, b) => onlyFollow ? FOLLOW_UP_ORDER.indexOf(a.followUp!.kind) - FOLLOW_UP_ORDER.indexOf(b.followUp!.kind) : 0);
+  }, [rows, q, status, source, sourceMode, onlyFollow]);
+  const followCount = rows.filter((r) => r.followUp && (!sourceMode || r.sourceKey === sourceMode)).length;
 
   const pages = Math.max(1, Math.ceil(filtered.length / PAGE));
   const cur = Math.min(page, pages);
@@ -161,6 +184,8 @@ export function BookingsTable({
         <button onClick={exportCsv} className="rounded-lg border border-[var(--line)] px-3 py-2 text-sm hover:bg-[var(--cream)]">匯出 CSV</button>
       </div>
 
+      <FollowUpBar ready={followReady} count={followCount} only={onlyFollow} onToggle={() => { setOnlyFollow((v) => !v); reset(); }} />
+
       <div className="mb-2 text-xs text-[var(--soft)]">共 {filtered.length} 筆{q || status !== "all" || (!sourceMode && source !== "all") ? "（已篩選）" : ""}</div>
 
       {shown.length === 0 ? (
@@ -191,7 +216,7 @@ export function BookingsTable({
             <tbody>
               {shown.map((r) => (
                 <Fragment key={r.id}>
-                <tr className="border-t border-[var(--line)] align-top">
+                <tr className={"border-t border-[var(--line)] align-top" + (r.followUp ? " bg-amber-50/70" : "")}>
                   <td className="px-4 py-3 text-[var(--soft)] whitespace-nowrap">{r.created}</td>
                   <td className="px-4 py-3">
                     {r.invoiceNo ? (
@@ -217,7 +242,7 @@ export function BookingsTable({
                       <div className="px-4 whitespace-nowrap">{paymentReady ? <span className={"inline-block px-2 py-0.5 rounded-full text-xs " + r.paymentClass}>{r.paymentLabel}</span> : <span className="text-[var(--faint)] text-xs">待 migration</span>}</div>
                       <div className="px-4 whitespace-nowrap"><span className={"inline-block whitespace-nowrap px-2 py-0.5 rounded-full text-xs " + r.statusClass}>{r.statusLabel}</span></div>
                     </div>
-                    <div className="mt-1.5 flex justify-end px-4"><RowActions heading={r.owner || "—"} sub={r.invoiceNo} actions={rowActions(r, staffName)} /></div>
+                    <div className="mt-1.5 flex justify-end px-4"><RowActions heading={r.owner || "—"} sub={r.invoiceNo} alertLabel={r.followUp ? followAction(r.followUp.item.entity, r.followUp.kind) : undefined} actions={rowActions(r, staffName)} /></div>
                   </td>
                 </tr>
                 </Fragment>
@@ -228,7 +253,7 @@ export function BookingsTable({
 
         <div className="space-y-3 lg:hidden">
           {shown.map((r) => (
-            <div key={r.id} className="rounded-2xl border border-[var(--line)] bg-[var(--card)] p-4">
+            <div key={r.id} className={"rounded-2xl border p-4 " + (r.followUp ? "border-amber-300 bg-amber-50/70" : "border-[var(--line)] bg-[var(--card)]")}>
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0"><div className="text-xs text-[var(--soft)]">專案編號</div><div className="break-words font-medium text-[var(--gold)]">{r.invoiceNo || "（未有編號）"}</div></div>
                 <span className={"px-2 py-0.5 rounded-full text-xs " + r.statusClass}>{r.statusLabel}</span>
@@ -262,7 +287,7 @@ export function BookingsTable({
                 <dd>{r.created || "—"}</dd>
               </dl>
               <div className="mt-3 flex justify-end border-t border-[var(--line)] pt-3">
-                <RowActions heading={r.owner || "—"} sub={r.invoiceNo} actions={rowActions(r, staffName)} />
+                <RowActions heading={r.owner || "—"} sub={r.invoiceNo} alertLabel={r.followUp ? followAction(r.followUp.item.entity, r.followUp.kind) : undefined} actions={rowActions(r, staffName)} />
               </div>
             </div>
           ))}

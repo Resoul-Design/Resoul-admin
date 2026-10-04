@@ -4,6 +4,8 @@ import { getOrdersSinceCached, getProductsCountCached } from "@/lib/revenue";
 import { getStaff, hasModule } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { followUpKind, type FollowUpRow } from "@/lib/deposit-followup";
+import { bookingFollowUps, productFollowUps, type BookingForFollow } from "@/lib/follow-up-server";
+import type { ProductOrderRow } from "@/lib/product-orders";
 import { Clock } from "./_clock";
 import { DashboardAutoRefresh } from "./_auto-refresh";
 
@@ -160,6 +162,35 @@ export default async function OverviewPage() {
     depositFollowUps = ((deposits ?? []) as FollowUpRow[]).filter((d) => followUpKind(d, now) !== null).length;
   }
 
+  // 火化、獸醫、紀念品跟進（同一套四類邏輯；按權限計算）
+  const canCrem = !!staff && hasModule(staff, ["bookings"]);
+  const canVet = !!staff && hasModule(staff, ["vet_assessments"]);
+  const canOrders = !!staff && hasModule(staff, ["orders"]);
+  const [bkFollowRes, poFollowRes] = await Promise.all([
+    canCrem || canVet
+      ? createAdminClient()
+          .from("cremation_bookings")
+          .select("id, created_at, owner_name, contact, pet_name, service_date, service_time, status, payment_status, payment_amount, plan, notes, case_no, source")
+          .not("status", "in", "(cancelled,completed)")
+          .limit(1000)
+      : Promise.resolve({ data: [] }),
+    canOrders ? createAdminClient().from("product_orders").select("*").is("cancelled_at", null).limit(1000) : Promise.resolve({ data: [] }),
+  ]);
+  const followBookings = (bkFollowRes.data || []) as BookingForFollow[];
+  const isVetBooking = (b: BookingForFollow) => (b.source || "").includes("euthanasia");
+  const [cremFollow, vetFollow, productFollow] = await Promise.all([
+    canCrem ? bookingFollowUps(followBookings.filter((b) => !isVetBooking(b)), "cremation").then((r) => r.result.size) : 0,
+    canVet ? bookingFollowUps(followBookings.filter(isVetBooking), "vet").then((r) => r.result.size) : 0,
+    canOrders ? productFollowUps((poFollowRes.data || []) as ProductOrderRow[]).then((r) => r.result.size) : 0,
+  ]);
+  const followLinks = [
+    { label: "接送服務", count: depositFollowUps, href: "/deposits?followup=1" },
+    { label: "火化預約", count: cremFollow, href: "/bookings?followup=1" },
+    { label: "獸醫評估", count: vetFollow, href: "/vet-assessments?followup=1" },
+    { label: "紀念品訂單", count: productFollow, href: "/orders?followup=1" },
+  ].filter((l) => l.count > 0);
+  const followTotal = followLinks.reduce((n, l) => n + l.count, 0);
+
   // 訂單營業額（分頁抓取 + 5 分鐘快取）
   const shopErr = ordersRes.ok ? "" : ordersRes.error || "error";
   const revByMonth: Record<string, number> = {};
@@ -241,16 +272,21 @@ export default async function OverviewPage() {
         </Link>
       )}
 
-      {/* 接送訂金跟進入口 */}
-      {depositFollowUps > 0 && (
-        <Link
-          href="/deposits"
-          className="mb-6 flex items-center gap-3 rounded-2xl border border-amber-300 bg-amber-50 px-5 py-4 transition hover:bg-amber-100"
-        >
-          <span className="text-2xl">🔔</span>
-          <div className="min-w-0 flex-1 font-semibold text-amber-800">有 {depositFollowUps} 張接送訂金要跟進</div>
-          <span className="shrink-0 rounded-lg bg-[var(--gold)] px-3 py-1.5 text-sm font-medium text-white">查看 →</span>
-        </Link>
+      {/* 今日要跟進（接送、火化、獸醫、紀念品） */}
+      {followTotal > 0 && (
+        <div className="mb-6 rounded-2xl border border-amber-300 bg-amber-50 px-5 py-4">
+          <div className="flex items-center gap-3">
+            <span className="text-2xl">🔔</span>
+            <div className="font-semibold text-amber-800">今日有 {followTotal} 項要跟進</div>
+          </div>
+          <div className="mt-3 flex flex-wrap gap-2 text-sm">
+            {followLinks.map((l) => (
+              <Link key={l.href} href={l.href} className="rounded-lg border border-amber-200 bg-white px-3 py-1.5 hover:bg-amber-100">
+                {l.label} <b className="text-amber-800">{l.count}</b> →
+              </Link>
+            ))}
+          </div>
+        </div>
       )}
 
       {/* KPI 圖標大數字 */}

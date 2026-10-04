@@ -160,7 +160,7 @@ export async function createBookingOrder(_prev: BookingOrderState, data: FormDat
           pickup_address: address || null, notes, source: "admin:cremation", status: "new",
           payment_ref: paymentRef, payment_status: "pending", payment_amount: price, payment_currency: "HKD",
         };
-  const { error: insertError } = await supabase.from(table).insert(row);
+  const { data: inserted, error: insertError } = await supabase.from(table).insert(row).select("id").single();
   if (insertError) {
     console.error("[booking_order_insert]", insertError.message);
     return { error: `未能建立預約記錄：${insertError.message}` };
@@ -192,6 +192,11 @@ export async function createBookingOrder(_prev: BookingOrderState, data: FormDat
         .from("deposit_bookings")
         .update({ payment_link: draft.invoiceUrl, payment_link_at: new Date().toISOString(), payment_draft_id: draft.id })
         .eq("payment_ref", paymentRef);
+    } else if (inserted?.id) {
+      // 火化付款跟進會重用此付款連結（未執行 migration_follow_ups.sql 時略過）
+      await supabase
+        .from("follow_up_marks")
+        .upsert({ entity: "cremation", ref: inserted.id, payment_link: draft.invoiceUrl, payment_link_at: new Date().toISOString(), payment_draft_id: draft.id }, { onConflict: "entity,ref" });
     }
     await logAudit(mode === "deposit" ? "create_deposit_order" : "create_cremation_order", table, null, `${projectNo}｜${productLabel}｜${draft.name}`);
     revalidatePath(mode === "deposit" ? "/deposits" : "/bookings");

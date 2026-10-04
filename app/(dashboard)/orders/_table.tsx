@@ -1,5 +1,9 @@
 "use client";
 
+import { FollowUpPanel } from "../_follow-up-panel";
+import { FollowUpBar } from "../_follow-up-bar";
+import { FOLLOW_UP_ORDER, followAction, followLabel } from "@/lib/follow-up";
+import type { FollowEntry } from "@/lib/follow-up-server";
 import { WHATSAPP_CONFIRM } from "../_testing-notice";
 import { csvCell } from "@/lib/csv";
 import { Fragment, useMemo, useState } from "react";
@@ -23,11 +27,23 @@ export type OrderRow = {
   whatsapp: string | null;
   editUrl: string;
   invoiceUrl?: string; // 有值＝未付款的 Shopify 草稿訂單
+  followUp?: FollowEntry | null; // 需要跟進時的資料（四類跟進）
 };
 
 // 「操作」視窗內的功能（與接送服務、火化預約一致）
-function rowActions(r: OrderRow): RowAction[] {
+function rowActions(r: OrderRow, staffName: string): RowAction[] {
   const list: RowAction[] = [];
+  if (r.followUp) {
+    const { item, kind } = r.followUp;
+    list.push({
+      kind: "panel",
+      key: "followup",
+      label: `🔔 ${followAction(item.entity, kind)}（${followLabel(item.entity, kind)}）`,
+      title: "跟進",
+      alert: true,
+      node: <FollowUpPanel item={item} kind={kind} staffName={staffName} />,
+    });
+  }
   if (r.whatsapp && !r.cancelled) list.push({ kind: "link", key: "wa", label: r.invoiceUrl ? "💬 WhatsApp 傳付款連結" : "💬 WhatsApp 客人", href: r.whatsapp, whatsapp: true, confirm: WHATSAPP_CONFIRM });
   if (r.invoiceUrl) list.push({ kind: "link", key: "pay", label: "💳 開啟付款頁", href: r.invoiceUrl });
   list.push({ kind: "link", key: "edit", label: r.invoiceUrl ? "✏️ 編輯（開啟 Shopify 草稿）" : "✏️ 編輯（開啟 Shopify 訂單）", href: r.editUrl });
@@ -58,8 +74,9 @@ const STATUS_OPTS = [
   { key: "PARTIALLY_REFUNDED", label: "部分退款" },
 ];
 
-export function OrdersTable({ rows, initialQuery = "" }: { rows: OrderRow[]; initialQuery?: string }) {
+export function OrdersTable({ rows, initialQuery = "", staffName = "同事", followReady = true, initialOnlyFollow = false }: { rows: OrderRow[]; initialQuery?: string; staffName?: string; followReady?: boolean; initialOnlyFollow?: boolean }) {
   const [q, setQ] = useState(initialQuery);
+  const [onlyFollow, setOnlyFollow] = useState(initialOnlyFollow);
   const [status, setStatus] = useState("all");
   const [page, setPage] = useState(1);
 
@@ -67,6 +84,7 @@ export function OrdersTable({ rows, initialQuery = "" }: { rows: OrderRow[]; ini
     const kw = q.trim().toLowerCase();
     return rows.filter((r) => {
       if (status === "cancelled" ? !r.cancelled : status !== "all" && (r.cancelled || r.fin !== status)) return false;
+      if (onlyFollow && !r.followUp) return false;
       if (!kw) return true;
       return (
         r.orderName.toLowerCase().includes(kw) ||
@@ -75,8 +93,9 @@ export function OrdersTable({ rows, initialQuery = "" }: { rows: OrderRow[]; ini
         r.phone.toLowerCase().includes(kw) ||
         r.items.toLowerCase().includes(kw)
       );
-    });
-  }, [rows, q, status]);
+    }).sort((a, b) => onlyFollow ? FOLLOW_UP_ORDER.indexOf(a.followUp!.kind) - FOLLOW_UP_ORDER.indexOf(b.followUp!.kind) : 0);
+  }, [rows, q, status, onlyFollow]);
+  const followCount = rows.filter((r) => r.followUp).length;
 
   const pages = Math.max(1, Math.ceil(filtered.length / PAGE));
   const cur = Math.min(page, pages);
@@ -120,6 +139,8 @@ export function OrdersTable({ rows, initialQuery = "" }: { rows: OrderRow[]; ini
         <button onClick={exportCsv} className="rounded-lg border border-[var(--line)] px-3 py-2 text-sm hover:bg-[var(--cream)]">匯出 CSV</button>
       </div>
 
+      <FollowUpBar ready={followReady} count={followCount} only={onlyFollow} onToggle={() => { setOnlyFollow((v) => !v); setPage(1); }} />
+
       <div className="mb-2 text-xs text-[var(--soft)]">共 {filtered.length} 張{q || status !== "all" ? "（已篩選）" : ""}</div>
 
       {/* 桌面表格：欄位格式與「接送服務」一致，操作放在第二行金額至出貨下方 */}
@@ -139,7 +160,7 @@ export function OrdersTable({ rows, initialQuery = "" }: { rows: OrderRow[]; ini
           </thead>
           <tbody>{shown.map((r) => (
             <Fragment key={r.id}>
-            <tr className={"border-t border-[var(--line)] align-top " + (r.cancelled ? "opacity-60" : "")}>
+            <tr className={"border-t border-[var(--line)] align-top " + (r.cancelled ? "opacity-60" : "") + (r.followUp ? " bg-amber-50/70" : "")}>
               <td className="px-4 py-3 whitespace-nowrap text-[var(--soft)]">{r.date}</td>
               <td className="px-4 py-3">
                 <span className="font-medium text-[var(--gold)]">{r.orderName}</span>
@@ -161,7 +182,7 @@ export function OrdersTable({ rows, initialQuery = "" }: { rows: OrderRow[]; ini
                   </div>
                   <div className="px-4 whitespace-nowrap"><span className={"inline-block rounded-full px-2 py-0.5 text-xs " + fulClass(r.fulLabel)}>{r.fulLabel}</span></div>
                 </div>
-                <div className="mt-1.5 flex justify-end px-4"><RowActions heading={r.customer || "—"} sub={r.orderName} actions={rowActions(r)} /></div>
+                <div className="mt-1.5 flex justify-end px-4"><RowActions heading={r.customer || "—"} sub={r.orderName} alertLabel={r.followUp ? followAction(r.followUp.item.entity, r.followUp.kind) : undefined} actions={rowActions(r, staffName)} /></div>
               </td>
             </tr>
             </Fragment>
@@ -171,7 +192,7 @@ export function OrdersTable({ rows, initialQuery = "" }: { rows: OrderRow[]; ini
 
       {/* 手機卡片：格式與接送服務一致（編號 → 基本資料 → 付款／金額灰底區 → 建立時間 → 操作） */}
       <div className="space-y-3 lg:hidden">{shown.map((r) => (
-        <div key={r.id} className={"rounded-2xl border border-[var(--line)] bg-[var(--card)] p-4 " + (r.cancelled ? "opacity-60" : "")}>
+        <div key={r.id} className={"rounded-2xl border p-4 " + (r.followUp ? "border-amber-300 bg-amber-50/70 " : "border-[var(--line)] bg-[var(--card)] ") + (r.cancelled ? "opacity-60" : "")}>
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0"><div className="text-xs text-[var(--soft)]">訂單編號</div><div className="break-words font-medium text-[var(--gold)]">{r.orderName}</div></div>
             <span className={"whitespace-nowrap rounded-full px-2 py-0.5 text-xs " + fulClass(r.fulLabel)}>{r.fulLabel}</span>
@@ -202,7 +223,7 @@ export function OrdersTable({ rows, initialQuery = "" }: { rows: OrderRow[]; ini
             <dd>{r.date || "—"}</dd>
           </dl>
           <div className="mt-3 flex justify-end border-t border-[var(--line)] pt-3">
-            <RowActions heading={r.customer || "—"} sub={r.orderName} actions={rowActions(r)} />
+            <RowActions heading={r.customer || "—"} sub={r.orderName} alertLabel={r.followUp ? followAction(r.followUp.item.entity, r.followUp.kind) : undefined} actions={rowActions(r, staffName)} />
           </div>
         </div>
       ))}</div>
