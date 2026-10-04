@@ -1,5 +1,6 @@
 "use server";
 
+import { createDraftWithCustomer } from "@/lib/shopify-customer";
 import { randomBytes, randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { getStaff, hasModule } from "@/lib/auth";
@@ -179,7 +180,7 @@ export async function createBookingOrder(_prev: BookingOrderState, data: FormDat
   };
 
   try {
-    const res = await shopifyGraphQL<DraftResponse>(DRAFT_MUTATION, { input });
+    const res = await createDraftWithCustomer<DraftResponse>(DRAFT_MUTATION, input, { name: ownerName, phone: contact, email });
     const payload = res.draftOrderCreate;
     if (payload.userErrors.length || !payload.draftOrder?.invoiceUrl) {
       await supabase.from(table).delete().eq("payment_ref", paymentRef);

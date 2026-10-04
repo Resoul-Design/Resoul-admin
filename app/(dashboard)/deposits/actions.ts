@@ -1,5 +1,6 @@
 "use server";
 
+import { createDraftWithCustomer } from "@/lib/shopify-customer";
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { logAudit } from "@/lib/audit";
@@ -72,7 +73,7 @@ export async function createDepositPaymentLink(id: string): Promise<{ link?: str
   const supabase = createAdminClient();
   const { data: row, error } = await supabase
     .from("deposit_bookings")
-    .select("id, owner_name, pet_name, notes, status, payment_ref, payment_status, payment_link, payment_link_at")
+    .select("id, owner_name, contact, pet_name, notes, status, payment_ref, payment_status, payment_link, payment_link_at")
     .eq("id", id)
     .maybeSingle();
   if (error) return { error: followUpColumnMissing(error.message) ? FOLLOW_UP_MISSING : "讀取記錄失敗，請稍後再試。" };
@@ -100,7 +101,7 @@ export async function createDepositPaymentLink(id: string): Promise<{ link?: str
       customAttributes: refAttributes,
       lineItems: [{ variantId, quantity: 1, customAttributes: refAttributes }],
     };
-    const result = await shopifyGraphQL<DepositDraftResponse>(DEPOSIT_DRAFT_MUTATION, { input });
+    const result = await createDraftWithCustomer<DepositDraftResponse>(DEPOSIT_DRAFT_MUTATION, input, { name: row.owner_name, phone: row.contact });
     const payload = result.draftOrderCreate;
     if (payload.userErrors.length) return { error: payload.userErrors.map((e) => e.message).join("；") };
     if (!payload.draftOrder?.invoiceUrl) return { error: "Shopify 沒有回傳付款連結，請稍後再試。" };

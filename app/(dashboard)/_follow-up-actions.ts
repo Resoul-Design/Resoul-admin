@@ -1,11 +1,11 @@
 "use server";
 
+import { createDraftWithCustomer } from "@/lib/shopify-customer";
 import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireModule } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
-import { shopifyGraphQL } from "@/lib/shopify";
 import { canonicalProjectNo, projectNoFromNotes } from "@/lib/order-label";
 import { loadSouvenirDrafts } from "@/lib/souvenir-drafts";
 import { loadCatalog } from "@/lib/catalog";
@@ -146,7 +146,7 @@ export async function createFollowPaymentLink(entity: FollowEntity, ref: string)
     lineItems: [lineItem],
   };
   try {
-    const res = await shopifyGraphQL<DraftResponse>(DRAFT_MUTATION, { input });
+    const res = await createDraftWithCustomer<DraftResponse>(DRAFT_MUTATION, input, { name: b.owner_name, phone: b.contact });
     const payload = res.draftOrderCreate;
     if (payload.userErrors.length) return { error: payload.userErrors.map((e) => e.message).join("；") + "（如持續失敗，請在 Shopify 為此預約建立付款連結）" };
     if (!payload.draftOrder?.invoiceUrl) return { error: "Shopify 沒有回傳付款連結，請稍後再試。" };
