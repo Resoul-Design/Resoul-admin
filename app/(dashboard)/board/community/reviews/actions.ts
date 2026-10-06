@@ -89,13 +89,13 @@ export async function saveAllReviews(data: FormData) {
   revalidatePath("/board/community/reviews");
 }
 
-export async function deleteReview(data: FormData) {
+// 刪除評價：以 ID 直接呼叫（見 _delete-button.tsx）
+export async function deleteReviewById(id: string): Promise<{ error?: string }> {
   await requireAdmin();
-  const id = field(data, "id");
-  if (!id) return;
+  if (!/^[0-9a-f-]{36}$/i.test(String(id || ""))) return { error: "評價編號無效。" };
   const { error } = await createAdminClient().from("google_reviews").delete().eq("id", id);
-  if (error) throw new Error(`刪除失敗：${error.message}`);
+  if (error) return { error: `刪除失敗：${error.message}` };
   await logAudit("delete_google_review", "google_reviews", id);
   revalidatePath("/board/community/reviews");
-  redirect("/board/community/reviews");
+  return {};
 }

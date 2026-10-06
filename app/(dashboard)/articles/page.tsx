@@ -1,7 +1,8 @@
 import { PageHeader } from "../_page-header";
 import { shopifyGraphQL } from "@/lib/shopify";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { addCategory, deleteCategory, saveCategories } from "./actions";
+import { addCategory, deleteCategoryById, saveCategories } from "./actions";
+import { DeleteButton } from "../_delete-button";
 
 export const dynamic = "force-dynamic";
 
@@ -126,7 +127,7 @@ export default async function ArticlesPage() {
                           顯示
                         </label>
                         <span className={"text-sm " + (n ? "text-[var(--ink)]" : "text-amber-700")}>{n ? `${n} 篇` : "未有文章"}</span>
-                        <button formAction={deleteCategory} formNoValidate name="delete_id" value={c.id} className="justify-self-end rounded-lg px-2 py-1.5 text-sm text-red-700 hover:bg-red-50">刪除</button>
+                        <span className="justify-self-end"><DeleteButton id={c.id} action={deleteCategoryById} confirmText={`確定刪除分類「${c.tag}」？網站會即時不再顯示此分類（Shopify 文章標籤不受影響）。`} className="rounded-lg px-2 py-1.5 text-sm text-red-700 hover:bg-red-50 disabled:opacity-50" /></span>
                       </div>
                     );
                   })}

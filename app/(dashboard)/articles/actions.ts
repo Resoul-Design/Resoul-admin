@@ -62,14 +62,15 @@ export async function saveCategories(data: FormData) {
   done();
 }
 
-export async function deleteCategory(data: FormData) {
+// 刪除分類：以 ID 直接呼叫（見 _delete-button.tsx）
+export async function deleteCategoryById(id: string): Promise<{ error?: string }> {
   await requireModule("articles");
-  const id = field(data, "delete_id");
-  if (!/^[0-9a-f-]{36}$/i.test(id)) return;
+  if (!/^[0-9a-f-]{36}$/i.test(String(id || ""))) return { error: "分類編號無效。" };
   const admin = createAdminClient();
   const { data: row } = await admin.from("blog_categories").select("tag").eq("id", id).maybeSingle();
   const { error } = await admin.from("blog_categories").delete().eq("id", id);
-  if (error) throw new Error(`刪除失敗：${error.message}`);
+  if (error) return { error: `刪除失敗：${error.message}` };
   await logAudit("delete_blog_category", "blog_categories", id, row?.tag || null);
   done();
+  return {};
 }

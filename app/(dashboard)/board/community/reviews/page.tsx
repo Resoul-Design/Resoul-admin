@@ -3,7 +3,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getStaff, hasModule } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { deleteReview, saveAllReviews, saveReview } from "./actions";
+import { deleteReviewById, saveAllReviews, saveReview } from "./actions";
+import { DeleteButton } from "../../../_delete-button";
 import { BulkReviewsForm } from "./_bulk-form";
 
 export const dynamic = "force-dynamic";
@@ -75,7 +76,7 @@ export default async function GoogleReviewsAdminPage() {
                     <div className="flex items-center justify-between gap-3"><h2 className="font-medium">{review.display_name}</h2><span className={"text-xs " + (review.is_published ? "text-green-700" : "text-[var(--soft)]")}>{review.is_published ? "網站顯示中" : "已隱藏"}</span></div>
                     <ReviewFields review={review} prefix={`${review.id}:`} />
                     <div className="flex justify-end">
-                      <button name="id" value={review.id} formAction={deleteReview} formNoValidate className="rounded-lg px-3 py-2 text-sm text-red-700 hover:bg-red-50">刪除評價</button>
+                      <DeleteButton id={review.id} action={deleteReviewById} label="刪除評價" confirmText={`確定刪除「${review.display_name}」這則評價？刪除後無法復原。`} />
                     </div>
                   </section>
                 ))}
