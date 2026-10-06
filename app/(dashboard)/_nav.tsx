@@ -34,6 +34,7 @@ export const GROUPS: Group[] = [
     children: [
       { label: "主人評價及故事分享", href: "/board/community" },
       { label: "文章記錄", href: "/articles" },
+      { label: "網站內容", href: "/site-content" },
     ],
   },
   {

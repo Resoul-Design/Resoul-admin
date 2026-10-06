@@ -1,0 +1,607 @@
+{
+  "prices.cremation": {
+    "rows": [
+      {
+        "zh": "1 kg 以下",
+        "en": "Under 1 kg",
+        "prices": [
+          1800,
+          2800,
+          3800
+        ]
+      },
+      {
+        "zh": "1.1–5 kg",
+        "en": "1.1–5 kg",
+        "prices": [
+          2600,
+          3600,
+          4600
+        ]
+      },
+      {
+        "zh": "5.1–10 kg",
+        "en": "5.1–10 kg",
+        "prices": [
+          2800,
+          3800,
+          4800
+        ]
+      },
+      {
+        "zh": "10.1–15 kg",
+        "en": "10.1–15 kg",
+        "prices": [
+          3000,
+          4000,
+          5000
+        ]
+      },
+      {
+        "zh": "15.1–20 kg",
+        "en": "15.1–20 kg",
+        "prices": [
+          3200,
+          4200,
+          5200
+        ]
+      },
+      {
+        "zh": "20.1–30 kg",
+        "en": "20.1–30 kg",
+        "prices": [
+          3500,
+          4500,
+          5500
+        ]
+      }
+    ]
+  },
+  "prices.vet": {
+    "rows": [
+      {
+        "zh": "0 – 10 kg",
+        "en": "0 – 10 kg",
+        "dayFrom": 3490,
+        "dayTo": 4340,
+        "nightFrom": 3800,
+        "nightTo": 4650
+      },
+      {
+        "zh": "10 – 20 kg",
+        "en": "10 – 20 kg",
+        "dayFrom": 3690,
+        "dayTo": 4590,
+        "nightFrom": 4000,
+        "nightTo": 4900
+      },
+      {
+        "zh": "20 – 30 kg",
+        "en": "20 – 30 kg",
+        "dayFrom": 3990,
+        "dayTo": 4990,
+        "nightFrom": 4300,
+        "nightTo": 5300
+      },
+      {
+        "zh": "30 – 40 kg",
+        "en": "30 – 40 kg",
+        "dayFrom": 4390,
+        "dayTo": 5590,
+        "nightFrom": 4700,
+        "nightTo": 5900
+      },
+      {
+        "zh": "40 – 50 kg",
+        "en": "40 – 50 kg",
+        "dayFrom": 4890,
+        "dayTo": 6290,
+        "nightFrom": 5200,
+        "nightTo": 6600
+      },
+      {
+        "zh": "50 – 60 kg",
+        "en": "50 – 60 kg",
+        "dayFrom": 5490,
+        "dayTo": 7090,
+        "nightFrom": 5800,
+        "nightTo": 7400
+      },
+      {
+        "zh": "60 kg 以上",
+        "en": "Over 60 kg",
+        "dayFrom": null,
+        "dayTo": null,
+        "nightFrom": null,
+        "nightTo": null
+      }
+    ]
+  },
+  "prices.grief": {
+    "rows": [
+      {
+        "zh": "離別後關懷訊息及電子指南",
+        "en": "Aftercare message and digital guide",
+        "priceZh": "免費",
+        "priceEn": "Free"
+      },
+      {
+        "zh": "與我們傾訴／初步需要了解",
+        "en": "Talk to us / initial needs check",
+        "priceZh": "免費",
+        "priceEn": "Free"
+      },
+      {
+        "zh": "合資格輔導員個別面談 50 分鐘",
+        "en": "Qualified counsellor session (50 min)",
+        "priceZh": "HK$380 至 580",
+        "priceEn": "HK$380–580"
+      },
+      {
+        "zh": "註冊輔導／臨床心理學家 50 分鐘",
+        "en": "Registered counselling / clinical psychologist (50 min)",
+        "priceZh": "約 HK$1,100 至 1,600（由專業人士確認）",
+        "priceEn": "Approx. HK$1,100–1,600, confirmed by the professional"
+      }
+    ]
+  },
+  "keepsakes": {
+    "items": [
+      {
+        "icon": "🏺",
+        "zh": "骨灰龕及木製骨灰盒",
+        "en": "Urns and wooden ash boxes",
+        "descZh": "多款造型骨灰龕，亦可訂製專屬木雕骨灰盒及音樂盒。",
+        "descEn": "A range of urn designs, plus custom wood-carved ash boxes and music boxes."
+      },
+      {
+        "icon": "💎",
+        "zh": "骨灰裸石及晶石",
+        "en": "Cremation gemstones and crystals",
+        "descZh": "以骨灰製成的永恆裸石、伴光晶石、晶塔及平安伴扣。",
+        "descEn": "Gemstones, companion crystals, memory towers and keepsake pendants made with ashes."
+      },
+      {
+        "icon": "✨",
+        "zh": "毛髮寶石飾物",
+        "en": "Fur gemstone jewellery",
+        "descZh": "以毛孩毛髮製成的寶石手鍊、頸鍊、戒指及耳環。",
+        "descEn": "Bracelets, necklaces, rings and earrings with a gemstone made from your pet's fur."
+      },
+      {
+        "icon": "🐾",
+        "zh": "鼻紋及腳印純銀飾物",
+        "en": "Nose and paw print silver jewellery",
+        "descZh": "925 純銀鼻紋、腳印頸鏈／手鏈／戒指，以及手繪寵物飾物。",
+        "descEn": "925 silver nose-print and paw-print necklaces, bracelets and rings, plus hand-painted pet accessories."
+      },
+      {
+        "icon": "🔮",
+        "zh": "琉璃及光影系列",
+        "en": "Liuli glass and Halo series",
+        "descZh": "手工琉璃飾物、紀念琉璃球及光影水晶球，讓思念帶點光。",
+        "descEn": "Handcrafted liuli glass pieces, memorial glass orbs and Halo crystal globes."
+      },
+      {
+        "icon": "🖼️",
+        "zh": "腳印、相框及陶瓷紀念品",
+        "en": "Paw prints, frames and ceramics",
+        "descZh": "腳印鼻紋相框、陶瓷杯碟、銅製掌印及寵物銅像。",
+        "descEn": "Paw and nose print frames, ceramic cups and plates, bronze paw impressions and pet portraits."
+      }
+    ]
+  },
+  "shop.categories": {
+    "items": [
+      {
+        "key": "urn",
+        "img": "images/cat-urn.jpg",
+        "icon": "🏺",
+        "zh": "骨灰盅",
+        "en": "Urns",
+        "descZh": "以精緻骨灰盅，安放牠的一生。",
+        "descEn": "A fine urn to hold a whole life.",
+        "tags": [
+          "骨灰龕",
+          "urn"
+        ],
+        "keywords": [
+          "骨灰",
+          "甕",
+          "盅",
+          "龕",
+          "urn"
+        ]
+      },
+      {
+        "key": "stone",
+        "img": "images/cat-stone.jpg",
+        "icon": "💠",
+        "zh": "永念晶石及伴光晶石",
+        "en": "Memory & light stones",
+        "descZh": "將思念凝聚成一顆隨身的光。",
+        "descEn": "Longing, held in a stone you can carry.",
+        "tags": [
+          "晶石"
+        ],
+        "keywords": [
+          "晶石",
+          "stone",
+          "crystal"
+        ]
+      },
+      {
+        "key": "bronze",
+        "img": "images/cat-bronze.jpg",
+        "icon": "🪙",
+        "zh": "永恆銅印紀念系列",
+        "en": "Eternal bronze prints",
+        "descZh": "以銅印留住牠獨一無二的印記。",
+        "descEn": "Their unique mark, kept in bronze.",
+        "tags": [
+          "銅印"
+        ],
+        "keywords": [
+          "銅印",
+          "bronze"
+        ]
+      },
+      {
+        "key": "print",
+        "img": "images/cat-print.jpg",
+        "icon": "🐾",
+        "zh": "掌印、鼻印及毛髮紀念",
+        "en": "Paw, nose & fur keepsakes",
+        "descZh": "把最熟悉的觸感，好好保存下來。",
+        "descEn": "Keep the most familiar touch close.",
+        "tags": [
+          "掌印",
+          "鼻印",
+          "毛髮"
+        ],
+        "keywords": [
+          "掌印",
+          "鼻印",
+          "毛髮",
+          "paw",
+          "nose",
+          "fur"
+        ]
+      },
+      {
+        "key": "jewel",
+        "img": "images/cat-jewel.jpg",
+        "icon": "📿",
+        "zh": "飾物及日常隨身紀念",
+        "en": "Jewellery & everyday keepsakes",
+        "descZh": "在忙碌的日子，仍能輕輕碰到牠。",
+        "descEn": "Reach for them, even on busy days.",
+        "tags": [
+          "飾物"
+        ],
+        "keywords": [
+          "飾物",
+          "琉璃",
+          "頸鏈",
+          "手鏈",
+          "吊墜",
+          "jewel",
+          "necklace",
+          "pendant",
+          "bracelet"
+        ]
+      },
+      {
+        "key": "gift",
+        "img": "images/cat-gift.jpg",
+        "icon": "🎁",
+        "zh": "禮物及悲傷關懷用品",
+        "en": "Gifts & grief-care items",
+        "descZh": "給自己或同路人，一份溫柔的陪伴。",
+        "descEn": "Gentle comfort, for you or a friend.",
+        "tags": [
+          "關懷"
+        ],
+        "keywords": [
+          "禮物",
+          "關懷",
+          "gift",
+          "care",
+          "comfort"
+        ]
+      },
+      {
+        "key": "home",
+        "img": "images/cat-home-img-2882.jpg",
+        "icon": "🏡",
+        "zh": "家居安放",
+        "en": "Home resting",
+        "descZh": "在家中留一個角落，讓牠仍是家的一部分。",
+        "descEn": "Keep a corner at home, so they remain part of it.",
+        "tags": [
+          "家居安放"
+        ],
+        "keywords": [
+          "家居安放",
+          "擺放",
+          "相框",
+          "home resting"
+        ]
+      },
+      {
+        "key": "all",
+        "img": "images/cat-hall.jpg",
+        "icon": "🕯️",
+        "zh": "寵物紀念牆",
+        "en": "Pet Memorial Hall",
+        "descZh": "走進 RESOUL 的紀念空間，細看每一件紀念之物。",
+        "descEn": "Step into RESOUL's memorial space and see every keepsake.",
+        "tags": [],
+        "keywords": []
+      }
+    ]
+  },
+  "faq.cremation": {
+    "groups": [
+      {
+        "icon": "",
+        "zh": "剛離世後",
+        "en": "When your pet has just passed",
+        "items": [
+          {
+            "qZh": "小動物離開後，我應該如何處理才是正確？",
+            "qEn": "What should I do after my pet passes away?",
+            "aZh": "請在家裡較安靜的地方，為小動物安排一個舒服的箱子休息，鋪上牠喜愛的毛巾。約兩小時後身體會硬化，可輕輕擺好睡姿並蓋上毛巾。調控室溫，夏天可開冷氣，並在頭部和腹部放置冰袋，旁邊擺放玩具、食物和照片。之後儘快致電 Resoul 24 小時熱線 6476 2951，職員會於兩小時內上門接寵物回去梳洗。期間主人可為牠梳毛、擦拭遺體，或依宗教儀式祈福。",
+            "aEn": "In a quiet spot at home, arrange a comfortable box for your pet with a towel they loved. After about two hours the body stiffens; you can gently position them and cover them. Control the room temperature (air-con in summer), place ice packs near the head and belly, and add toys, food and photos. Then call the Resoul 24-hour line 6476 2951 as soon as possible; staff arrive within two hours to bring your pet in for grooming. You may groom or wipe them, or offer blessings."
+          },
+          {
+            "qZh": "Resoul 是否提供 24 小時接收服務？有沒有地點限制？",
+            "qEn": "Is pickup available 24 hours? Any location limits?",
+            "aZh": "Resoul 提供 24 小時寵物接送服務，家中或全港所有獸醫診所都可以。服務費已包含所有地區接送（愉景灣另收 HK$300，唐樓樓梯另收附加費）。主人可預先與我們溝通寵物狀況，以加快接送。",
+            "aEn": "Resoul offers 24-hour pickup, from home or any vet clinic in Hong Kong. The fee covers all-district pickup (Discovery Bay +HK$300; walk-up building stairs incur a surcharge). Share your pet's condition in advance to speed things up."
+          },
+          {
+            "qZh": "Resoul 接收的寵物包括什麼類型？",
+            "qEn": "Which types of pets does Resoul accept?",
+            "aZh": "貓、狗、兔、倉鼠、小鳥或其他動物，Resoul 都歡迎——牠們都是大家心中的寶貝。",
+            "aEn": "Cats, dogs, rabbits, hamsters, birds and other animals — Resoul welcomes them all; they are all treasured."
+          }
+        ]
+      },
+      {
+        "icon": "",
+        "zh": "告別儀式與火化",
+        "en": "Farewell ceremony and cremation",
+        "items": [
+          {
+            "qZh": "我很想多陪陪牠，可否延長悼念時間？",
+            "qEn": "I'd like more time with them — can the memorial be extended?",
+            "aZh": "可以。但由於每隻寵物身體狀況不同，請提早與職員商討可行性。",
+            "aEn": "Yes. As each pet's condition differs, please discuss feasibility with our staff in advance."
+          },
+          {
+            "qZh": "我是否可以親自按掣及陪伴整個火化過程？",
+            "qEn": "Can I press the button and be with them through the cremation?",
+            "aZh": "可以親自按掣送別寵物，按掣後需離開工作間到休息區等候。整個過程約兩小時，之後可立刻帶寵物回家。全程都有拍攝記錄，確保過程透明準確。",
+            "aEn": "You may press the button to send your pet off, then wait in the lounge. The process takes about two hours, after which you can take your pet home. It is fully recorded for transparency and accuracy."
+          },
+          {
+            "qZh": "我能帶什麼物品陪小動物進火化嗎？",
+            "qEn": "What items can I place with my pet for cremation?",
+            "aZh": "適量食物、零食、紙製品及鮮花都可以；但不建議塑膠，因為會影響骨灰品質。",
+            "aEn": "A modest amount of food, treats, paper items and fresh flowers are fine; plastic is not recommended as it affects the ashes' quality."
+          }
+        ]
+      },
+      {
+        "icon": "",
+        "zh": "骨灰與紀念",
+        "en": "Ashes and keepsakes",
+        "items": [
+          {
+            "qZh": "骨灰取件有時限嗎？",
+            "qEn": "Is there a deadline to collect the ashes?",
+            "aZh": "建議主人於一星期內儘快接回。主人亦可授權親人，或安排速遞協助。",
+            "aEn": "We suggest collecting within a week. You may authorise a family member, or arrange a courier."
+          },
+          {
+            "qZh": "我能否保留寵物毛髮作為紀念？",
+            "qEn": "Can I keep some fur as a keepsake?",
+            "aZh": "當然可以。主人可提前告知我們保留梳洗時的毛髮製作紀念品，或在悼念儀式中親自為牠梳毛留下毛髮。",
+            "aEn": "Of course. Let us know in advance to keep the fur from grooming for a keepsake, or gently collect it yourself during the ceremony."
+          }
+        ]
+      },
+      {
+        "icon": "",
+        "zh": "時間與付款",
+        "en": "Timing and payment",
+        "items": [
+          {
+            "qZh": "我可以更改火化時間嗎？",
+            "qEn": "Can I change the cremation time?",
+            "aZh": "可以免費更改一次，但需提前 48 小時通知。",
+            "aEn": "One free change is allowed with 48 hours' notice."
+          },
+          {
+            "qZh": "Resoul 是否能提供即日火化服務？",
+            "qEn": "Can Resoul offer same-day cremation?",
+            "aZh": "如當日有空缺位置，我們會儘量為您安排；實際情況需按當天預約時間而定。",
+            "aEn": "If there's an opening that day, we'll do our best to arrange it; it depends on the day's bookings."
+          },
+          {
+            "qZh": "訂金與支付方式？",
+            "qEn": "Deposit and payment methods?",
+            "aZh": "需預先繳付 HK$1800 訂金，餘額於紀念儀式當天繳付。接受現金、易辦事、Payme、FPS 及信用卡。",
+            "aEn": "A HK$1,800 deposit is required in advance, with the balance paid on the ceremony day. We accept cash, EPS, Payme, FPS and credit card."
+          }
+        ]
+      }
+    ]
+  },
+  "faq.euthanasia": {
+    "groups": [
+      {
+        "icon": "",
+        "zh": "RESOUL 的角色",
+        "en": "RESOUL's role",
+        "items": [
+          {
+            "qZh": "RESOUL 是否直接提供上門安樂服務？",
+            "qEn": "Does RESOUL provide the home euthanasia itself?",
+            "aZh": "不是。RESOUL 提供行政協調及獸醫轉介，按主人要求協助聯絡獨立註冊獸醫；所有藥物及醫療程序均由註冊獸醫依法處理。",
+            "aEn": "No. RESOUL provides administrative coordination and veterinary referral at the owner's request; all medication and veterinary procedures are handled lawfully by the registered veterinary surgeon."
+          },
+          {
+            "qZh": "獸醫與 RESOUL 費用是否同一張單？",
+            "qEn": "Are the vet and RESOUL fees on one bill?",
+            "aZh": "獸醫專業服務與 RESOUL 善終服務屬不同服務，會清楚分項說明，並按實際合作及付款安排提供相應收據。",
+            "aEn": "The vet's professional service and RESOUL's farewell service are separate, itemised clearly, with receipts issued per the actual arrangement."
+          }
+        ]
+      },
+      {
+        "icon": "",
+        "zh": "獸醫評估與決定",
+        "en": "Veterinary assessment",
+        "items": [
+          {
+            "qZh": "誰決定是否適合進行安樂程序？",
+            "qEn": "Who decides whether euthanasia is appropriate?",
+            "aZh": "只有到場的獨立註冊獸醫可按每隻動物的個別健康狀況、病歷、生活質素及專業判斷作出建議，RESOUL 不會影響或取代獸醫的專業判斷。",
+            "aEn": "Only the attending independent registered vet can advise, based on each animal's individual health condition, history, quality of life and professional judgment. RESOUL does not influence or replace the vet's professional judgment."
+          },
+          {
+            "qZh": "獸醫到場後可否決定不進行？",
+            "qEn": "Can the vet decide not to proceed?",
+            "aZh": "可以。若獸醫認為仍需檢查、紓緩治療、轉院或情況不適合，獸醫可以不進行相關程序。",
+            "aEn": "Yes. If the vet feels further examination, palliative care, referral or a different course is needed, they may choose not to proceed."
+          },
+          {
+            "qZh": "可否使用我原有的主診獸醫？",
+            "qEn": "Can I use my own primary vet?",
+            "aZh": "可以。若主診獸醫可提供上門服務，RESOUL 可與主人及診所協調其後接送；如未有合適獸醫，我們亦可協助查詢合作夥伴。",
+            "aEn": "Yes. If your primary vet offers home visits, RESOUL can coordinate the pick-up that follows; if none is available, we can help check partner vets."
+          }
+        ]
+      },
+      {
+        "icon": "",
+        "zh": "銜接接送與陪伴",
+        "en": "Pickup and family presence",
+        "items": [
+          {
+            "qZh": "何時應該預約接送？",
+            "qEn": "When should I arrange pick-up?",
+            "aZh": "如已知道獸醫預約時間，建議同步預留接送，減少程序完成後臨時尋找服務及等待。",
+            "aEn": "If you already know the vet appointment time, reserving pick-up at the same time reduces last-minute searching and waiting afterwards."
+          },
+          {
+            "qZh": "家人和其他寵物可以陪伴嗎？",
+            "qEn": "Can family and other pets be present?",
+            "aZh": "一般可由主人與獸醫事前商議；應以毛孩安全、環境安靜及獸醫能順利工作為先。",
+            "aEn": "Usually this can be discussed with the vet beforehand; the pet's safety, a quiet environment and the vet's work come first."
+          }
+        ]
+      }
+    ]
+  },
+  "faq.support": {
+    "groups": [
+      {
+        "icon": "🌫️",
+        "zh": "剛面對失去，不知所措",
+        "en": "Just faced loss, feeling lost",
+        "items": [
+          {
+            "qZh": "我現在很混亂，可以先做甚麼？",
+            "qEn": "I'm overwhelmed right now — what can I do first?",
+            "aZh": "可以先停下來，讓自己呼吸一下，寫下此刻最掛念的一句話，再慢慢整理告別與紀念安排。你不需要一次想清楚所有事。",
+            "aEn": "Pause first, let yourself breathe, write down the one thing you miss most, then slowly sort out farewell and memorial arrangements. You don't have to figure everything out at once."
+          }
+        ]
+      },
+      {
+        "icon": "🌧️",
+        "zh": "自責、麻木與難過",
+        "en": "Self-blame, numbness & sorrow",
+        "items": [
+          {
+            "qZh": "我一直忍不住流淚，是不是很沒用？",
+            "qEn": "I can't stop crying — am I useless?",
+            "aZh": "眼淚是想念的一種語言，並不代表你軟弱。哭得出來，其實是給自己一個釋放的出口，慢慢來，不用急著好起來。",
+            "aEn": "Tears are a language of longing; they don't mean you're weak. Being able to cry gives you a release. Take your time — there's no rush to feel better."
+          },
+          {
+            "qZh": "我總覺得是我的錯，如果當時再早一點……",
+            "qEn": "I keep feeling it was my fault — if only I'd been earlier…",
+            "aZh": "很多主人都會這樣想。也許可以先記得，你當時是在有限資訊下盡力作決定；這份心疼，正說明你有多在乎牠。",
+            "aEn": "Many owners feel this way. Perhaps remember first that you made decisions with limited information and did your best; this ache shows how much you cared."
+          },
+          {
+            "qZh": "我好像沒甚麼感覺，是不是很無情？",
+            "qEn": "I don't seem to feel much — am I heartless?",
+            "aZh": "麻木也是哀傷的一部分，有時心會先替你按下暫停。給自己多一點時間，感覺會慢慢回來，你並沒有做錯甚麼。",
+            "aEn": "Numbness is part of grief too; sometimes the heart presses pause for you. Give yourself more time and the feelings will slowly return. You did nothing wrong."
+          }
+        ]
+      },
+      {
+        "icon": "🕯️",
+        "zh": "想念與紀念",
+        "en": "Longing & remembrance",
+        "items": [
+          {
+            "qZh": "我很掛念牠的氣味和習慣。",
+            "qEn": "I miss their smell and their habits.",
+            "aZh": "這些細微的記憶，正好說明你們有多親近。可以保留一兩件牠的物件，需要時輕輕拿出來，讓想念有一個安放的位置。",
+            "aEn": "These small memories show just how close you were. Keep one or two of their belongings and gently take them out when needed, so the longing has a place to rest."
+          },
+          {
+            "qZh": "紀念日或看見牠的東西，就特別難受。",
+            "qEn": "Anniversaries or seeing their things hurt the most.",
+            "aZh": "這些時刻特別重，是很正常的。你可以為自己預備一個溫柔的方式去記住牠，例如點一支蠟燭、寫下幾句話，慢慢陪自己走過。",
+            "aEn": "Those moments feel especially heavy, and that's normal. Prepare a gentle way to remember them — light a candle, write a few words — and slowly walk yourself through it."
+          },
+          {
+            "qZh": "紀念產品在這裡扮演甚麼角色？",
+            "qEn": "What role do keepsakes play here?",
+            "aZh": "它讓主人在日常中保留一個溫柔的位置，安放照片、飾物與那些仍然重要的回憶，讓想念有地方可以停靠。",
+            "aEn": "They keep a gentle place in daily life for photos, jewellery and the memories that still matter, so the longing has somewhere to settle."
+          }
+        ]
+      },
+      {
+        "icon": "🌱",
+        "zh": "慢慢向前，尋找支持",
+        "en": "Moving forward slowly, finding support",
+        "items": [
+          {
+            "qZh": "我應該再養一隻嗎？",
+            "qEn": "Should I get another pet?",
+            "aZh": "這個決定沒有時間表，也沒有對錯。等你準備好再慢慢考慮；新的陪伴不會取代牠，只是另一段故事的開始。",
+            "aEn": "This decision has no timetable and no right or wrong. Consider it slowly when you're ready; a new companion won't replace them — it's simply the start of another story."
+          },
+          {
+            "qZh": "我可以怎樣跟小朋友解釋？",
+            "qEn": "How can I explain this to my child?",
+            "aZh": "可以用簡單、誠實的語言，容許他們難過和發問。一起記住毛孩開心的時刻，會幫大家慢慢接受這件事。",
+            "aEn": "Use simple, honest words, and allow them to be sad and to ask questions. Remembering the happy moments together helps everyone slowly come to terms with it."
+          },
+          {
+            "qZh": "這種難過持續了很久，我需要找專業幫助嗎？",
+            "qEn": "This sadness has lasted a long time — do I need professional help?",
+            "aZh": "尋求專業幫助不代表你「有問題」，而是願意好好照顧自己。如果難過持續很久、影響到日常生活，可以聯絡香港心理衞生會（2528 0196）或撒瑪利亞防止自殺會 24 小時熱線（2389 2222）。",
+            "aEn": "Seeking professional help doesn't mean something is \"wrong\" with you; it means you're willing to care for yourself. If the sadness lasts a long time and affects daily life, contact the Mental Health Association of HK (2528 0196) or The Samaritan Befrienders Hong Kong 24-hour hotline (2389 2222)."
+          }
+        ]
+      }
+    ]
+  },
+  "notice": {
+    "enabled": false,
+    "zh": "",
+    "en": "",
+    "link": ""
+  }
+}

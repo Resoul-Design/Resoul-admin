@@ -10,6 +10,7 @@ export const MODULES: ModuleDef[] = [
   { key: "replies", label: "回覆助手", href: "/replies" },
   { key: "board_community", label: "主人評價及故事分享", href: "/board/community" },
   { key: "articles", label: "文章記錄", href: "/articles" },
+  { key: "site_content", label: "網站內容", href: "/site-content" },
   { key: "staff", label: "員工管理", href: "/staff" },
   { key: "roster", label: "排更表", href: "/staff/roster" },
   { key: "tasks", label: "任務指派", href: "/staff/tasks" },

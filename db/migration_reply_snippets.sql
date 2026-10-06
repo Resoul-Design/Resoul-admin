@@ -4,6 +4,7 @@
 -- 說明：
 --   • reply_snippets：後台「回覆助手」使用的回覆範本／知識庫，中英對照，同事可在後台編輯。
 --   • 可用代號：{稱呼} {毛孩} {日期} {時段} {專案編號} {同事} {網站}，插入時自動填入。
+--   • 收費代號：{風之旅起價} {雲之旅起價} {星之旅起價} {火化收費表} {獸醫收費表} {情緒支援收費表}，自動填入後台「網站內容」的收費（2026-10-06）。
 --   • 初稿內容按網站 2026-10-01 的收費、流程、火化須知及常見問題整理；收費或安排有變時請在後台同步修改。
 --   • 初稿以 slug 識別，重複執行不會覆蓋同事已修改的內容。
 --   • 只經後台伺服器（service_role）讀寫；不開放 anon／authenticated 直接存取。
@@ -45,66 +46,40 @@ $$If you have any questions, feel free to reach us anytime — we're here 24 hou
 
 ('price_journeys', '收費', '火化三個旅程',
 $$我哋有三個火化旅程，收費按毛孩實際體重計算：
-・風之旅：HK$1,800 起（私人接送、個別火化同基本骨灰安排）
-・雲之旅：HK$2,800 起（完整私人告別儀式同指定紀念項目）
-・星之旅：HK$3,800 起（深度個人化告別同進階紀念選擇）
+・風之旅：{風之旅起價} 起（私人接送、個別火化同基本骨灰安排）
+・雲之旅：{雲之旅起價} 起（完整私人告別儀式同指定紀念項目）
+・星之旅：{星之旅起價} 起（深度個人化告別同進階紀念選擇）
 詳細比較可以睇：{網站}/cremation#plans$$,
 $$We offer three cremation journeys, priced by your pet's actual weight:
-• Breeze: from HK$1,800 (private pick-up, individual cremation and a simple ashes arrangement)
-• Cloud: from HK$2,800 (a complete private farewell ceremony with selected memorial items)
-• Star: from HK$3,800 (a deeply personalised farewell with advanced memorial options)
+• Breeze: from {風之旅起價} (private pick-up, individual cremation and a simple ashes arrangement)
+• Cloud: from {雲之旅起價} (a complete private farewell ceremony with selected memorial items)
+• Star: from {星之旅起價} (a deeply personalised farewell with advanced memorial options)
 Full comparison: {網站}/cremation-en#plans$$, 10),
 
 ('price_weight', '收費', '按體重收費表',
 $$按體重收費（風之旅／雲之旅／星之旅）：
-1 kg 以下：HK$1,800／2,800／3,800
-1.1–5 kg：HK$2,600／3,600／4,600
-5.1–10 kg：HK$2,800／3,800／4,800
-10.1–15 kg：HK$3,000／4,000／5,000
-15.1–20 kg：HK$3,200／4,200／5,200
-20.1–30 kg：HK$3,500／4,500／5,500
-30 kg 以上請同我哋確認收費。$$,
+{火化收費表}
+表以外嘅體重請同我哋確認收費。$$,
 $$Fees by weight (Breeze / Cloud / Star):
-Under 1 kg: HK$1,800 / 2,800 / 3,800
-1.1–5 kg: HK$2,600 / 3,600 / 4,600
-5.1–10 kg: HK$2,800 / 3,800 / 4,800
-10.1–15 kg: HK$3,000 / 4,000 / 5,000
-15.1–20 kg: HK$3,200 / 4,200 / 5,200
-20.1–30 kg: HK$3,500 / 4,500 / 5,500
-For pets over 30 kg, please check with us for the fee.$$, 20),
+{火化收費表}
+For weights not listed, please check with us for the fee.$$, 20),
 
-('price_vet', '收費', '上門獸醫評估及安樂參考收費',
+('price_vet', '收費', '上門安樂死參考收費',
 $$上門評估及安樂善終嘅參考收費（已包括獸醫上門診症同注射針劑）：
-0–10 kg：日間 HK$3,490–4,340／晚間 HK$3,800–4,650
-10–20 kg：日間 HK$3,690–4,590／晚間 HK$4,000–4,900
-20–30 kg：日間 HK$3,990–4,990／晚間 HK$4,300–5,300
-30–40 kg：日間 HK$4,390–5,590／晚間 HK$4,700–5,900
-40–50 kg：日間 HK$4,890–6,290／晚間 HK$5,200–6,600
-50–60 kg：日間 HK$5,490–7,090／晚間 HK$5,800–7,400
-60 kg 以上會個別報價。（日間：中午 12 時至晚上 8 時；晚間：晚上 8 時至午夜 12 時）
+{獸醫收費表}
+（日間：中午 12 時至晚上 8 時；晚間：晚上 8 時至午夜 12 時）
 實際費用同鎮靜安排由獨立註冊獸醫評估及確認，火化同紀念品另計。$$,
 $$Reference fees for a home assessment and euthanasia (including the vet's home visit and the injection):
-0–10 kg: day HK$3,490–4,340 / evening HK$3,800–4,650
-10–20 kg: day HK$3,690–4,590 / evening HK$4,000–4,900
-20–30 kg: day HK$3,990–4,990 / evening HK$4,300–5,300
-30–40 kg: day HK$4,390–5,590 / evening HK$4,700–5,900
-40–50 kg: day HK$4,890–6,290 / evening HK$5,200–6,600
-50–60 kg: day HK$5,490–7,090 / evening HK$5,800–7,400
-Over 60 kg: quoted individually. (Day: 12 noon–8 pm; evening: 8 pm–midnight)
+{獸醫收費表}
+(Day: 12 noon–8 pm; evening: 8 pm–midnight)
 Final fees and sedation are assessed and confirmed by the independent registered vet; cremation and keepsakes are charged separately.$$, 30),
 
 ('price_grief', '收費', '情緒支援收費',
-$$情緒支援的收費：
-・離別後關懷訊息及電子指南：免費
-・與我們傾訴／初步需要了解：免費
-・合資格輔導員個別面談 50 分鐘：HK$380 至 580
-・註冊輔導／臨床心理學家 50 分鐘：約 HK$1,100 至 1,600（由專業人士確認）
+$$情緒支援嘅收費：
+{情緒支援收費表}
 實際服務內容、資格同收費會喺預約前確認。詳情可以睇：{網站}/referral#pricing$$,
 $$Grief support fees:
-• Aftercare message and digital guide: free
-• Talk to us / initial needs check: free
-• Qualified counsellor session (50 min): HK$380–580
-• Registered counselling / clinical psychologist (50 min): approx. HK$1,100–1,600, confirmed by the professional
+{情緒支援收費表}
 Service details, qualifications and fees are confirmed before booking. Details: {網站}/referral-en#pricing$$, 40),
 
 ('pay_methods', '付款', '訂金及付款方法',

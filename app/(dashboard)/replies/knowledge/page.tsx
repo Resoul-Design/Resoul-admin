@@ -2,6 +2,7 @@ import { PageHeader, headerLinkClass } from "../../_page-header";
 import Link from "next/link";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { REPLY_CATEGORIES, REPLY_TOKENS, type ReplySnippet } from "@/lib/reply";
+import { PRICE_TOKENS } from "@/lib/site-content";
 import { deleteSnippet, saveSnippet } from "../actions";
 import { ConfirmDelete } from "./_confirm";
 
@@ -24,7 +25,7 @@ function SnippetFields({ snippet }: { snippet?: ReplySnippet }) {
       </div>
       <label className="block text-sm">中文回覆<textarea name="zh" rows={5} defaultValue={snippet?.zh} className={inputClass + " mt-1 leading-6"} /></label>
       <label className="block text-sm">英文回覆<textarea name="en" rows={5} defaultValue={snippet?.en} className={inputClass + " mt-1 leading-6"} /></label>
-      <p className="text-xs leading-5 text-[var(--soft)]">可用代號（插入時自動填入客人資料）：{REPLY_TOKENS.join("　")}。收費或安排有變時，請同步修改此處及網站。</p>
+      <p className="text-xs leading-5 text-[var(--soft)]">可用代號（插入時自動填入客人資料）：{REPLY_TOKENS.join("　")}。<br />收費代號（自動填入「網站內容」的最新收費）：{PRICE_TOKENS.join("　")}。收費請在「網站內容」修改；其他安排有變時，請同步修改此處及網站。</p>
       <label className="flex items-center gap-2 text-sm">
         <input type="checkbox" name="active" value="true" defaultChecked={snippet?.active ?? true} className="h-4 w-4 accent-[var(--gold)]" />
         在回覆助手顯示

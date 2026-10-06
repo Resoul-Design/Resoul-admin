@@ -13,6 +13,7 @@ import {
   type ReplyRecord,
   type ReplySnippet,
 } from "@/lib/reply";
+import type { PriceTokens } from "@/lib/site-content";
 
 const input = "w-full rounded-lg border border-[var(--line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--gold)]";
 const panel = "rounded-2xl border border-[var(--line)] bg-[var(--card)] p-4 sm:p-5";
@@ -27,12 +28,14 @@ export function ReplyAssistant({
   records,
   staffName,
   siteUrl,
+  prices,
   initialRef,
 }: {
   snippets: ReplySnippet[];
   records: ReplyRecord[];
   staffName: string;
   siteUrl: string;
+  prices: PriceTokens;
   initialRef: string;
 }) {
   const initial = records.find((r) => r.ref === initialRef) || null;
@@ -49,7 +52,7 @@ export function ReplyAssistant({
   const [search, setSearch] = useState("");
   const [copied, setCopied] = useState(false);
 
-  const ctx: FillContext = { record, ownerName, staffName, siteUrl, lang };
+  const ctx: FillContext = { record, ownerName, staffName, siteUrl, lang, prices };
   const crisis = detectCrisis(message);
   const finalText = [withGreeting ? greeting(ctx) : "", body.trim()].filter(Boolean).join("\n");
   const unfilled = finalText.match(/\{(稱呼|毛孩|日期|時段|專案編號|同事|網站)\}/g);

@@ -6,6 +6,8 @@ import { LANDING_URL } from "@/lib/company";
 import { canonicalProjectNo, projectNoFromNotes } from "@/lib/order-label";
 import type { ReplyLang, ReplyRecord, ReplySnippet } from "@/lib/reply";
 import { ReplyAssistant } from "./_assistant";
+import { priceTokens } from "@/lib/site-content";
+import { loadSiteContent } from "@/lib/site-content-server";
 
 export const dynamic = "force-dynamic";
 
@@ -34,7 +36,7 @@ const langOf = (notes: string | null): ReplyLang => (/Project no\./i.test(notes 
 export default async function RepliesPage({ searchParams }: { searchParams: Promise<{ ref?: string }> }) {
   const { ref } = await searchParams;
   const supabase = createAdminClient();
-  const [snippetsRes, depositsRes, bookingsRes, staff] = await Promise.all([
+  const [snippetsRes, depositsRes, bookingsRes, staff, site] = await Promise.all([
     supabase.from("reply_snippets").select("id, slug, category, title, zh, en, sort_order, active").eq("active", true).order("sort_order"),
     supabase
       .from("deposit_bookings")
@@ -47,6 +49,7 @@ export default async function RepliesPage({ searchParams }: { searchParams: Prom
       .order("created_at", { ascending: false })
       .limit(300),
     getStaff(),
+    loadSiteContent(),
   ]);
 
   const notReady = !!snippetsRes.error;
@@ -90,7 +93,7 @@ export default async function RepliesPage({ searchParams }: { searchParams: Prom
           未啟用回覆知識庫：請先於 Supabase（diyxcx）執行 <code>db/migration_reply_snippets.sql</code>。
         </div>
       ) : (
-        <ReplyAssistant snippets={snippets} records={records} staffName={staffName} siteUrl={LANDING_URL} initialRef={ref || ""} />
+        <ReplyAssistant snippets={snippets} records={records} staffName={staffName} siteUrl={LANDING_URL} prices={priceTokens(site.content)} initialRef={ref || ""} />
       )}
     </div>
   );

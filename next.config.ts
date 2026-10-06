@@ -2,6 +2,15 @@ import type { NextConfig } from "next";
 
 const isDev = process.env.NODE_ENV !== "production";
 
+// 客戶網站來源：「網站內容 → 商店分類」預覽網站 images/ 的背景圖片
+const landingOrigin = (() => {
+  try {
+    return new URL(process.env.NEXT_PUBLIC_LANDING_URL || "https://resoul-landing-beta.vercel.app").origin;
+  } catch {
+    return "https://resoul-landing-beta.vercel.app";
+  }
+})();
+
 // 收緊 CSP：明確限制 connect/img/script/style 來源；只允許自身與 Supabase。
 // 註：script-src 沿用 'unsafe-inline'（Next 需要），未用 nonce（需中介層逐請求生成，
 // 風險較高，留待日後）。dev 額外允許 'unsafe-eval' 與 ws: 以免影響 HMR。
@@ -12,7 +21,7 @@ const csp = [
   "frame-ancestors 'none'",
   "frame-src 'self'",
   "form-action 'self'",
-  "img-src 'self' data: blob: https://*.supabase.co https://cdn.shopify.com",
+  `img-src 'self' data: blob: https://*.supabase.co https://cdn.shopify.com ${landingOrigin}`,
   "font-src 'self' data: https://fonts.gstatic.com",
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
