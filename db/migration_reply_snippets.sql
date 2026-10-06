@@ -48,12 +48,12 @@ $$我哋有三個火化旅程，收費按毛孩實際體重計算：
 ・風之旅：HK$1,800 起（私人接送、個別火化同基本骨灰安排）
 ・雲之旅：HK$2,800 起（完整私人告別儀式同指定紀念項目）
 ・星之旅：HK$3,800 起（深度個人化告別同進階紀念選擇）
-另外亦有「回歸自然」HK$500 同「慈善套餐」HK$800。詳細比較可以睇：{網站}/cremation#plans$$,
+詳細比較可以睇：{網站}/cremation#plans$$,
 $$We offer three cremation journeys, priced by your pet's actual weight:
 • Breeze: from HK$1,800 (private pick-up, individual cremation and a simple ashes arrangement)
 • Cloud: from HK$2,800 (a complete private farewell ceremony with selected memorial items)
 • Star: from HK$3,800 (a deeply personalised farewell with advanced memorial options)
-We also offer Back to Nature (HK$500) and a Charity Package (HK$800). Full comparison: {網站}/cremation-en#plans$$, 10),
+Full comparison: {網站}/cremation-en#plans$$, 10),
 
 ('price_weight', '收費', '按體重收費表',
 $$按體重收費（風之旅／雲之旅／星之旅）：
@@ -183,7 +183,7 @@ $$You can change the time once for free, with at least 48 hours' notice.$$, 10),
 $$如果當日有空位，我哋會盡量幫你安排，實際要睇當日嘅預約情況。我同同事確認一下再覆你。$$,
 $$If there's an available slot that day, we'll do our best to arrange it — it depends on that day's bookings. Let me check with my team and get back to you.$$, 20),
 
-('vet_referral', '獸醫轉介', '上門獸醫評估及安樂死安排',
+('vet_referral', '獸醫轉介', '上門安樂死安排',
 $$我哋提供行政協調同獸醫轉介，可以幫你安排獨立註冊獸醫上門評估，並預先銜接之後嘅接送同善終安排。是否適合進行安樂程序，只會由到場嘅註冊獸醫按毛孩情況判斷，並喺你了解同同意後先進行。你可以喺呢度提交評估申請：{網站}/euthanasia$$,
 $$We provide coordination and vet referral — we can arrange for an independent registered vet to assess your pet at home, and line up the pick-up and farewell arrangements afterwards. Whether euthanasia is appropriate is decided only by the attending registered vet based on your pet's condition, and only after you understand and consent. You can submit an assessment request here: {網站}/euthanasia-en$$, 10),
 
