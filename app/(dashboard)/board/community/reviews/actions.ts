@@ -25,6 +25,15 @@ function validOptionalUrl(value: string) {
   }
 }
 
+// 未執行 migration_google_reviews_en_name.sql 時，去掉英文名稱欄再寫入一次
+type ReviewPayload = ReturnType<typeof readReview>;
+const missingEnName = (message?: string) => !!message && /display_name_en/.test(message);
+const withoutEnName = (payload: ReviewPayload) => {
+  const rest: Partial<ReviewPayload> = { ...payload };
+  delete rest.display_name_en;
+  return rest;
+};
+
 // 讀取一則評價的欄位；「儲存全部」時欄位名稱前綴為「評價 id:」
 function readReview(data: FormData, prefix = "") {
   const name = field(data, prefix + "display_name");
@@ -40,6 +49,7 @@ function readReview(data: FormData, prefix = "") {
   if (!validOptionalUrl(photo) || !validOptionalUrl(source)) throw new Error("相片及來源網址只接受 http(s) 或網站內路徑。");
   return {
     display_name: name,
+    display_name_en: field(data, prefix + "display_name_en").slice(0, 80),
     rating,
     zh_content: zh,
     en_content: en,
@@ -57,9 +67,12 @@ export async function saveReview(data: FormData) {
   const name = field(data, "display_name");
   const payload = readReview(data);
   const admin = createAdminClient();
-  const result = id
-    ? await admin.from("google_reviews").update(payload).eq("id", id).select("id").maybeSingle()
-    : await admin.from("google_reviews").insert(payload).select("id").single();
+  const write = (p: Partial<ReviewPayload>) =>
+    id
+      ? admin.from("google_reviews").update(p).eq("id", id).select("id").maybeSingle()
+      : admin.from("google_reviews").insert(p).select("id").single();
+  let result = await write(payload);
+  if (result.error && missingEnName(result.error.message)) result = await write(withoutEnName(payload));
   if (result.error) throw new Error(`儲存失敗：${result.error.message}`);
   await logAudit(id ? "update_google_review" : "create_google_review", "google_reviews", result.data?.id, name);
   revalidatePath("/board/community/reviews");
@@ -82,7 +95,8 @@ export async function saveAllReviews(data: FormData) {
   });
   const admin = createAdminClient();
   for (const { id, payload } of rows) {
-    const { error } = await admin.from("google_reviews").update(payload).eq("id", id);
+    let { error } = await admin.from("google_reviews").update(payload).eq("id", id);
+    if (error && missingEnName(error.message)) ({ error } = await admin.from("google_reviews").update(withoutEnName(payload)).eq("id", id));
     if (error) throw new Error(`「${payload.display_name}」儲存失敗：${error.message}`);
     await logAudit("update_google_review", "google_reviews", id, payload.display_name);
   }

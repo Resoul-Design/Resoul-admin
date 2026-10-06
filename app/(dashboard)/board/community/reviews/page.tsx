@@ -12,6 +12,7 @@ export const dynamic = "force-dynamic";
 type Review = {
   id: string;
   display_name: string;
+  display_name_en?: string;
   rating: number;
   zh_content: string;
   en_content: string;
@@ -28,8 +29,9 @@ function ReviewFields({ review, prefix = "" }: { review?: Review; prefix?: strin
   const n = (name: string) => prefix + name;
   return (
     <>
-      <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_120px_120px]">
+      <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_120px_120px]">
         <label className="text-sm">顯示名稱<input required name={n("display_name")} defaultValue={review?.display_name} className={inputClass + " mt-1"} /></label>
+        <label className="text-sm">英文顯示名稱<input name={n("display_name_en")} defaultValue={review?.display_name_en || ""} maxLength={80} className={inputClass + " mt-1"} placeholder="留空自動轉換，例如 Jacky's owner" /></label>
         <label className="text-sm">星級<select name={n("rating")} defaultValue={review?.rating || 5} className={inputClass + " mt-1"}>{[5, 4, 3, 2, 1].map((n) => <option key={n} value={n}>{n} 星</option>)}</select></label>
         <label className="text-sm">排序<input type="number" name={n("sort_order")} defaultValue={review?.sort_order ?? 0} className={inputClass + " mt-1"} /></label>
       </div>
