@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getStaff, hasModule, requireModule } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { logAudit } from "@/lib/audit";
 import { shopDomain, shopifyGraphQL } from "@/lib/shopify";
 import { isRslProjectNo } from "@/lib/order-label";
 import { makeProjectNo } from "@/lib/project-no";
@@ -37,7 +38,7 @@ const SYNC_QUERY = `query ProductOrders($after: String) {
       shippingAddress { phone }
       billingAddress { phone }
       totalPriceSet { shopMoney { amount currencyCode } }
-      lineItems(first: 100) { edges { node { title quantity customAttributes { key value } } } }
+      lineItems(first: 100) { edges { node { title quantity sku variantTitle originalUnitPriceSet { shopMoney { amount } } customAttributes { key value } } } }
     } }
     pageInfo { hasNextPage }
   }
@@ -280,4 +281,26 @@ export async function sendSouvenirDraftInvoice(
     console.error("[souvenir_draft_invoice]", error instanceof Error ? error.message : "unknown error");
     return { error: "付款連結未能寄出，請到 Shopify 草稿訂單確認後再試。" };
   }
+}
+
+// 紀念品訂單連結客人原有的專案編號（須已存在於接送、火化或其他紀念品記錄）
+export async function linkOrderProject(orderId: string, rawProjectNo: string): Promise<{ error?: string }> {
+  const staff = await getStaff();
+  if (!staff) return { error: "登入狀態已失效，請重新登入。" };
+  if (!hasModule(staff, ["orders"])) return { error: "沒有「紀念品訂單」權限。" };
+  const projectNo = rawProjectNo.trim().toUpperCase();
+  if (!isRslProjectNo(projectNo)) return { error: "專案編號格式應為 RSL-年月日-代碼。" };
+  const admin = createAdminClient();
+  const [d, b, o] = await Promise.all([
+    admin.from("deposit_bookings").select("id", { count: "exact", head: true }).eq("project_no", projectNo),
+    admin.from("cremation_bookings").select("id", { count: "exact", head: true }).or(`case_no.eq.${projectNo},notes.ilike.*${projectNo}*`),
+    admin.from("product_orders").select("shopify_order_id", { count: "exact", head: true }).eq("project_no", projectNo),
+  ]);
+  if (!(d.count || b.count || o.count)) return { error: "找不到此專案編號，請檢查是否輸入正確。" };
+  const { error } = await admin.from("product_orders").update({ project_no: projectNo }).eq("shopify_order_id", orderId);
+  if (error) return { error: `更新失敗：${error.message}` };
+  await logAudit("link_order_project", "product_orders", orderId, `連結專案 ${projectNo}`);
+  revalidatePath("/orders");
+  revalidatePath("/projects");
+  return {};
 }

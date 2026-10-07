@@ -141,7 +141,8 @@ function depositActions(r: DepositRow, fu: FollowUpItem | undefined, staffName: 
   if (fu) list.push({ kind: "panel", key: "followup", label: `🔔 ${FOLLOW_UP_ACTION[fu.kind]}（${FOLLOW_UP_LABEL[fu.kind]}）`, title: "訂金跟進", alert: true, node: <FollowUpInline item={fu} staffName={staffName} /> });
   if (wa) list.push({ kind: "link", key: "wa", label: "💬 WhatsApp 客人", href: wa, whatsapp: true, confirm: WHATSAPP_CONFIRM });
   if (cal) list.push({ kind: "link", key: "cal", label: "📅 加入日曆", href: cal });
-  if (invoice) list.push({ kind: "link", key: "invoice", label: "🧾 發票（Shopify 訂單）", href: invoice });
+  if (r.payment_status === "paid" && r.shopify_order_name) list.push({ kind: "link", key: "invoice-pdf", label: "🧾 發票 PDF", href: `/print/invoices?refs=deposit:${r.id}` });
+  if (invoice) list.push({ kind: "link", key: "invoice", label: "🛒 Shopify 訂單", href: invoice });
   list.push({ kind: "panel", key: "test", label: r.is_test ? "🧪 取消測試標記" : "🧪 標記為測試", title: "測試記錄", node: <TestFlagPanel entity="deposit" id={r.id} isTest={!!r.is_test} /> });
   list.push({ kind: "panel", key: "edit", label: "✏️ 編輯資料", title: "編輯接送服務", node: <EditDepositInline booking={r} /> });
   return list;

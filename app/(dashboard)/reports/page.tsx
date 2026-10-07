@@ -129,6 +129,20 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
         </div>
       </div>
 
+      {/* 批量發票 */}
+      <form action="/print/invoices" method="get" target="_blank" className="mb-6 rounded-2xl border border-[var(--line)] bg-[var(--card)] p-5">
+        <h2 className="text-base mb-1">批量發票 PDF</h2>
+        <p className="mb-3 text-xs text-[var(--soft)]">按付款日期列出所有已付款記錄的發票（不包括測試記錄），開啟後按「列印 / 儲存 PDF」。</p>
+        <div className="flex flex-wrap items-end gap-3 text-sm">
+          <label className="text-xs text-[var(--soft)]">由<input type="date" name="from" required className="mt-1 block rounded-lg border border-[var(--line)] bg-white px-3 py-2 text-sm" /></label>
+          <label className="text-xs text-[var(--soft)]">至<input type="date" name="to" required className="mt-1 block rounded-lg border border-[var(--line)] bg-white px-3 py-2 text-sm" /></label>
+          {[["deposit", "接送訂金"], ["cremation", "火化"], ["order", "紀念品"]].map(([v, l]) => (
+            <label key={v} className="flex items-center gap-1.5 py-2"><input type="checkbox" name="kinds" value={v} defaultChecked className="h-4 w-4 accent-[var(--gold)]" />{l}</label>
+          ))}
+          <button className="rounded-lg bg-[var(--gold)] px-4 py-2 text-white hover:opacity-90">開啟發票</button>
+        </div>
+      </form>
+
       {/* 匯出 */}
       <div className="rounded-2xl border border-[var(--line)] bg-[var(--card)] p-5">
         <h2 className="text-base mb-3">匯出 CSV</h2>

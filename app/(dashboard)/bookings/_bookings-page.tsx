@@ -224,6 +224,7 @@ export async function BookingsPage({ mode, query = "", onlyFollow = false, showT
       calUrl: gcalUrl(b, timePref, ""),
       waText: `你好，我哋係 RESOUL 🐾。已收到${b.pet_name || "毛孩"}嘅${vet ? "查詢" : "火化預約"}${invoiceNo ? "（編號 " + invoiceNo + "）" : ""}。想同你確認接送時間同安排，請問方便嗎？`,
       search: [b.owner_name, b.contact, b.pet_name, invoiceNo, b.plan, b.pickup_address].filter(Boolean).join(" ").toLowerCase(),
+      invoiceHref: b.payment_status === "paid" && b.shopify_order_name ? `/print/invoices?refs=booking:${b.id}` : null,
       shopifyOrderUrl: b.shopify_order_id
         ? `https://${shopDomain()}/admin/orders/${String(b.shopify_order_id).split("/").pop()}`
         : null,

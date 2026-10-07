@@ -2,6 +2,9 @@ export type ProductLineItem = {
   title: string;
   quantity: number;
   attributes?: { key: string; value: string }[];
+  sku?: string | null; // 產品代碼（2026-10-07 起同步時保存，Shopify 刪單後仍可出發票）
+  unit_price?: number | null; // 單價
+  variant_title?: string | null; // 款式
 };
 
 export type ProductOrderRow = {
@@ -58,6 +61,9 @@ export type ShopifyWebhookOrder = {
     name?: string;
     quantity?: number;
     properties?: Attribute[];
+    sku?: string | null;
+    price?: string | number | null;
+    variant_title?: string | null;
   }[];
 };
 
@@ -82,7 +88,7 @@ export type ShopifyGraphQLOrder = {
   shippingAddress: { phone: string | null } | null;
   billingAddress: { phone: string | null } | null;
   totalPriceSet: { shopMoney: { amount: string; currencyCode: string } };
-  lineItems: { edges: { node: { title: string; quantity: number; customAttributes: { key: string; value: string }[] } }[] };
+  lineItems: { edges: { node: { title: string; quantity: number; customAttributes: { key: string; value: string }[]; sku?: string | null; variantTitle?: string | null; originalUnitPriceSet?: { shopMoney: { amount: string } } | null } }[] };
 };
 
 export const phoneKey = (value?: string | null) =>
@@ -148,6 +154,9 @@ export function productOrderFromWebhook(order: ShopifyWebhookOrder): ProductOrde
       title: item.title || item.name || "產品",
       quantity: Number(item.quantity || 0),
       attributes: (item.properties || []).filter((a) => a.value).map((a) => ({ key: String(a.name || a.key || ""), value: String(a.value || "") })),
+      sku: item.sku || null,
+      unit_price: item.price != null && item.price !== "" ? Number(item.price) : null,
+      variant_title: item.variant_title || null,
     })),
     cancelled_at: order.cancelled_at || null,
     synced_at: new Date().toISOString(),
@@ -184,6 +193,9 @@ export function productOrderFromGraphQL(order: ShopifyGraphQLOrder): ProductOrde
       title: node.title,
       quantity: node.quantity,
       attributes: node.customAttributes || [],
+      sku: node.sku || null,
+      unit_price: node.originalUnitPriceSet ? Number(node.originalUnitPriceSet.shopMoney.amount) : null,
+      variant_title: node.variantTitle || null,
     })),
     cancelled_at: order.cancelledAt,
     synced_at: new Date().toISOString(),

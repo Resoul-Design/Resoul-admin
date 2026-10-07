@@ -41,6 +41,7 @@ export type BookingRow = {
   waText: string;
   search: string;
   shopifyOrderUrl: string | null;
+  invoiceHref: string | null; // 已付款：後台發票 PDF
   booking: BookingData & { created_at: string; notes?: string | null };
   english: boolean;
   progress: ProgressData | null; // null：獸醫評估或未執行進度 migration
@@ -104,7 +105,8 @@ function rowActions(r: BookingRow, staffName: string): RowAction[] {
   const wa = whatsappHref(r.contact, r.waText);
   if (wa) list.push({ kind: "link", key: "wa", label: "💬 WhatsApp 客人", href: wa, whatsapp: true, confirm: WHATSAPP_CONFIRM });
   if (r.calUrl) list.push({ kind: "link", key: "cal", label: "📅 加入日曆", href: r.calUrl });
-  if (r.shopifyOrderUrl) list.push({ kind: "link", key: "invoice", label: "🧾 發票（Shopify 訂單）", href: r.shopifyOrderUrl });
+  if (r.invoiceHref) list.push({ kind: "link", key: "invoice-pdf", label: "🧾 發票 PDF", href: r.invoiceHref });
+  if (r.shopifyOrderUrl) list.push({ kind: "link", key: "invoice", label: "🛒 Shopify 訂單", href: r.shopifyOrderUrl });
   list.push({ kind: "panel", key: "test", label: r.isTest ? "🧪 取消測試標記" : "🧪 標記為測試", title: "測試記錄", node: <TestFlagPanel entity={r.sourceKey} id={r.id} isTest={r.isTest} /> });
   list.push({ kind: "panel", key: "edit", label: "✏️ 編輯資料", title: "編輯預約", node: <EditBookingInline booking={r.booking} /> });
   return list;

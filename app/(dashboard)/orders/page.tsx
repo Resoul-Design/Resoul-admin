@@ -102,7 +102,8 @@ export default async function OrdersPage({ searchParams }: {
       amount: Number(o.total_amount),
       currency: o.currency,
       cancelled: !!o.cancelled_at,
-      printHref: `/print/order/${orderId(o)}`,
+      // 發票：已付款、未取消的訂單（由後台記錄產生）
+      printHref: ["PAID", "PARTIALLY_REFUNDED"].includes(o.financial_status || "") && !o.cancelled_at ? `/print/invoices?refs=order:${orderId(o)}` : "",
       whatsapp: wa,
       editUrl: `https://${shopDomain()}/admin/orders/${orderId(o)}`,
     };
