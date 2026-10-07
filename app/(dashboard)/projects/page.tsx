@@ -2,7 +2,7 @@ import { loadSouvenirDrafts } from "@/lib/souvenir-drafts";
 import { PageHeader } from "../_page-header";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { canonicalProjectNo, projectNoFromItems, projectNoFromNotes } from "@/lib/order-label";
+import { canonicalProjectNo, productOrderProjectNo, projectNoFromNotes } from "@/lib/order-label";
 import type { ProductOrderRow } from "@/lib/product-orders";
 import { ProjectsTable } from "./_table";
 
@@ -151,7 +151,7 @@ export default async function ProjectsPage() {
     rows.push({
       key: "o:" + o.shopify_order_id,
       href: `/projects/order/${o.shopify_order_id.split("/").pop()}`,
-      projectNo: canonicalProjectNo(o.order_name, projectNoFromItems(o.line_items)),
+      projectNo: productOrderProjectNo(o),
       owner: o.customer_name || "",
       pet: "",
       primary: o.customer_name || "—",

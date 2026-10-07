@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { addEntry, deleteEntry } from "../../actions";
-import { canonicalProjectNo, projectNoFromItems } from "@/lib/order-label";
+import { productOrderProjectNo } from "@/lib/order-label";
 import type { ProductOrderRow } from "@/lib/product-orders";
 
 export const dynamic = "force-dynamic";
@@ -64,7 +64,7 @@ export default async function ProductProjectPage({
   const income = manualIncome > 0 ? manualIncome : paidIncome;
   const net = income - expense;
   const items = (o.line_items || []).map((it) => `${it.title}×${it.quantity}`).join("、");
-  const projectNo = canonicalProjectNo(o.order_name, projectNoFromItems(o.line_items));
+  const projectNo = productOrderProjectNo(o);
 
   return (
     <div>

@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getStaff } from "@/lib/auth";
-import { canonicalProjectNo, isRslProjectNo, projectNoFromItems, projectNoFromNotes } from "@/lib/order-label";
+import { canonicalProjectNo, isRslProjectNo, productOrderProjectNo, projectNoFromNotes } from "@/lib/order-label";
 import type { ProductOrderRow } from "@/lib/product-orders";
 
 export const dynamic = "force-dynamic";
@@ -139,7 +139,7 @@ export default async function ProjectGroupPage({ params }: { params: Promise<{ p
     });
   }
   for (const order of (orderRes.data || []) as ProductOrderRow[]) {
-    if (canonicalProjectNo(projectNoFromItems(order.line_items)) !== projectNo) continue;
+    if (productOrderProjectNo(order) !== projectNo) continue;
     const financial = (order.financial_status || "").toUpperCase();
     const cancelled = !!order.cancelled_at || ["REFUNDED", "PARTIALLY_REFUNDED", "VOIDED"].includes(financial);
     // 訂單號已列在「發票編號」，此處顯示產品名稱

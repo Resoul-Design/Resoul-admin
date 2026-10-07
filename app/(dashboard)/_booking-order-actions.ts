@@ -1,7 +1,8 @@
 "use server";
 
 import { createDraftWithCustomer } from "@/lib/shopify-customer";
-import { randomBytes, randomUUID } from "node:crypto";
+import { randomUUID } from "node:crypto";
+import { makeProjectNo } from "@/lib/project-no";
 import { revalidatePath } from "next/cache";
 import { getStaff, hasModule } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -71,16 +72,8 @@ const INVOICE_MUTATION = `mutation SendBookingDraftInvoice($id: ID!) {
   draftOrderInvoiceSend(id: $id) { draftOrder { id } userErrors { field message } }
 }`;
 
-function hkYYMMDD() {
-  const hk = new Date(Date.now() + 8 * 60 * 60 * 1000);
-  return hk.toISOString().slice(2, 10).replace(/-/g, "");
-}
 
-// 與網站相同格式：RSL-YYMMDD-8 位隨機碼；PAY-時間碼-8 位隨機碼
-function makeProjectNo() {
-  const code = Array.from(randomBytes(5), (b) => b.toString(36).padStart(2, "0")).join("").slice(0, 8).toUpperCase();
-  return `RSL-${hkYYMMDD()}-${code}`;
-}
+// PAY-時間碼-8 位隨機碼（RSL 專案編號見 lib/project-no.ts）
 function makePaymentRef() {
   return `PAY-${Date.now().toString(36).toUpperCase()}-${randomUUID().slice(0, 8).toUpperCase()}`;
 }

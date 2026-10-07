@@ -6,6 +6,8 @@ import { getStaff, hasModule, requireModule } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { shopDomain, shopifyGraphQL } from "@/lib/shopify";
 import { isRslProjectNo } from "@/lib/order-label";
+import { makeProjectNo } from "@/lib/project-no";
+import { assignMissingProjectNos } from "@/lib/product-order-projects";
 import {
   isCremationGraphQLOrder,
   productOrderFromGraphQL,
@@ -67,6 +69,7 @@ export async function syncProductOrders() {
       after = result.orders.pageInfo.hasNextPage ? edges.at(-1)?.cursor || null : null;
     } while (after);
 
+    await assignMissingProjectNos();
     revalidatePath("/orders");
     revalidatePath("/crm");
   } catch (error) {
@@ -147,13 +150,15 @@ export async function createSouvenirDraftOrder(
   const email = String(formData.get("email") || "").trim();
   const phone = String(formData.get("phone") || "").trim();
   const petName = String(formData.get("petName") || "").trim();
-  const projectNo = String(formData.get("projectNo") || "").trim().toUpperCase();
+  const enteredProjectNo = String(formData.get("projectNo") || "").trim().toUpperCase();
   const extraNote = String(formData.get("note") || "").trim();
 
   if (!customerName || customerName.length > 120) return { error: "請填寫有效的主人名稱。" };
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254) return { error: "請填寫有效的客人電郵，Shopify 會用它寄送付款連結。" };
   if (phone.length > 40 || petName.length > 120 || extraNote.length > 1000) return { error: "電話、寵物名稱或備註太長，請縮短後再試。" };
-  if (projectNo && !isRslProjectNo(projectNo)) return { error: "專案編號格式應為 RSL-年月日-代碼。" };
+  if (enteredProjectNo && !isRslProjectNo(enteredProjectNo)) return { error: "專案編號格式應為 RSL-年月日-代碼。" };
+  // 未填專案編號（新客人）時自動產生新編號
+  const projectNo = enteredProjectNo || makeProjectNo();
 
   let submittedLines: unknown;
   try {

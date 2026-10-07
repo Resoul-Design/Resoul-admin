@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { revalidateTag } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { assignMissingProjectNos } from "@/lib/product-order-projects";
 import {
   isCremationWebhookOrder,
   productOrderFromWebhook,
@@ -42,6 +43,7 @@ export async function POST(request: Request) {
     console.error("[Resoul] Product order sync failed", error);
     return NextResponse.json({ error: "Supabase upsert failed" }, { status: 500 });
   }
+  await assignMissingProjectNos();
 
   revalidateTag("shopify-orders");
   return NextResponse.json({ ok: true, productOrder: true });

@@ -5,7 +5,8 @@ import { PageHeader } from "../_page-header";
 import { createClient } from "@/lib/supabase/server";
 import type { ProductOrderRow } from "@/lib/product-orders";
 import { shopDomain } from "@/lib/shopify";
-import { canonicalProjectNo } from "@/lib/order-label";
+import { productOrderProjectNo } from "@/lib/order-label";
+import { assignMissingProjectNos } from "@/lib/product-order-projects";
 import { getStaff, hasModule } from "@/lib/auth";
 import { syncProductOrders } from "./actions";
 import { OrdersTable, type OrderRow } from "./_table";
@@ -67,15 +68,19 @@ export default async function OrdersPage({ searchParams }: {
     .from("product_orders").select("*")
     .order("shopify_created_at", { ascending: false }).limit(2000);
   const orders = (data || []) as ProductOrderRow[];
+  // 未有專案編號的訂單（例如未經同步或 webhook 寫入的舊訂單）即時補上
+  if (orders.some((o) => "project_no" in o && !o.project_no)) {
+    const assigned = await assignMissingProjectNos();
+    for (const o of orders) if (!o.project_no && assigned.has(o.shopify_order_id)) o.project_no = assigned.get(o.shopify_order_id);
+  }
 
   const { products, error: catalogError } = catalogP ? await catalogP : { products: [], error: "" };
 
   const orderId = (o: ProductOrderRow) => o.shopify_order_id.split("/").pop() || "";
   const rows: OrderRow[] = orders.map((o) => {
     const phone = (o.phone || "").replace(/\D/g, "");
-    // 專案編號只取 RSL- 編號（來自訂單屬性）；Shopify 訂單號 #RS-#### 屬發票編號，不作專案編號。
-    const attrProject = (o.line_items || []).flatMap((item) => item.attributes || []).find((a) => /project|專案/i.test(a.key))?.value || "";
-    const projectNo = canonicalProjectNo(o.order_name, attrProject);
+    // 專案編號只取 RSL- 編號（訂單屬性或系統自動產生）；Shopify 訂單號 #RS-#### 屬發票編號，不作專案編號。
+    const projectNo = productOrderProjectNo(o);
     const wa = phone ? `https://wa.me/${phone.startsWith("852") ? phone : `852${phone}`}?text=${encodeURIComponent(`你好 ${o.customer_name || ""}，關於你的 Resoul 訂單 ${o.order_name}：`)}` : null;
     return {
       id: o.shopify_order_id,

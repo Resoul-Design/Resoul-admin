@@ -29,3 +29,8 @@ export function projectNoFromItems(items?: { attributes?: { key: string; value: 
   const value = items?.flatMap((item) => item.attributes || []).find((a) => /project|專案/i.test(a.key))?.value || "";
   return isRslProjectNo(value) ? value.trim().toUpperCase() : "—";
 }
+
+// 紀念品訂單：訂單屬性帶入的編號（連結原有專案）優先，否則用系統自動產生的 project_no
+export function productOrderProjectNo(o: { project_no?: string | null; line_items?: { attributes?: { key: string; value: string }[] }[] | null }): string {
+  return canonicalProjectNo(projectNoFromItems(o.line_items || undefined), o.project_no);
+}

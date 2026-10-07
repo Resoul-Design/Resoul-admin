@@ -20,6 +20,7 @@ export type ProductOrderRow = {
   line_items: ProductLineItem[];
   cancelled_at: string | null;
   synced_at: string;
+  project_no?: string | null; // 需 db/migration_product_order_project_no.sql
 };
 
 type Attribute = { key?: string; name?: string; value?: string };

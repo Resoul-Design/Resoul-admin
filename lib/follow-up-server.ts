@@ -1,6 +1,6 @@
 // 統一跟進：伺服器端讀取（follow_up_marks 及各類資料），只可在伺服器使用
 import { createAdminClient } from "@/lib/supabase/admin";
-import { canonicalProjectNo, projectNoFromItems, projectNoFromNotes } from "@/lib/order-label";
+import { canonicalProjectNo, productOrderProjectNo, projectNoFromNotes } from "@/lib/order-label";
 import { loadSouvenirDrafts } from "@/lib/souvenir-drafts";
 import type { ProductOrderRow } from "@/lib/product-orders";
 import { EMPTY_MARK, followKind, followWaitingNote, type FollowEntity, type FollowItem, type FollowMark, type FollowUpKind } from "@/lib/follow-up";
@@ -140,7 +140,7 @@ export async function productFollowUps(orders: ProductOrderRow[]) {
       paymentStatus: FIN_TO_PAY[(o.financial_status || "").toUpperCase()] || "pending",
       amount: Number(o.total_amount || 0),
       label: (o.line_items || []).map((it) => `${it.title}×${it.quantity}`).join("、"),
-      projectNo: (() => { const n = canonicalProjectNo(projectNoFromItems(o.line_items)); return n === "—" ? "" : n; })(),
+      projectNo: (() => { const n = productOrderProjectNo(o); return n === "—" ? "" : n; })(),
       english: false,
       mark: map.get(o.shopify_order_id) || EMPTY_MARK,
     };

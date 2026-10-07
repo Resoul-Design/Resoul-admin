@@ -3,7 +3,7 @@
 import { loadSouvenirDrafts } from "@/lib/souvenir-drafts";
 import { getStaff, hasModule } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { canonicalProjectNo, projectNoFromNotes } from "@/lib/order-label";
+import { canonicalProjectNo, productOrderProjectNo, projectNoFromNotes } from "@/lib/order-label";
 
 export type SearchItem = { key: string; title: string; sub: string; href: string };
 export type SearchGroup = { label: string; items: SearchItem[]; more: number };
@@ -65,7 +65,7 @@ export async function globalSearch(query: string): Promise<SearchGroup[]> {
     can("orders")
       ? admin
           .from("product_orders")
-          .select("shopify_order_id, order_name, shopify_created_at, customer_name, phone, email, line_items, financial_status, cancelled_at")
+          .select("*")
           .order("shopify_created_at", { ascending: false })
           .limit(1000)
       : null,
@@ -121,12 +121,12 @@ export async function globalSearch(query: string): Promise<SearchGroup[]> {
       .filter((o) => {
         const lines = (o.line_items || []) as { title?: string; attributes?: { key?: string; value?: string }[] }[];
         const attrs = lines.flatMap((l) => l.attributes || []).map((a) => a.value);
-        return match([o.order_name, o.customer_name, o.email, ...lines.map((l) => l.title), ...attrs], [o.phone]);
+        return match([o.order_name, productOrderProjectNo(o), o.customer_name, o.email, ...lines.map((l) => l.title), ...attrs], [o.phone]);
       })
       .map((o) => ({
         key: "o-" + o.shopify_order_id,
         title: join(o.order_name, o.customer_name),
-        sub: join(o.shopify_created_at.slice(0, 10), o.cancelled_at ? "已取消" : o.financial_status === "PAID" ? "已付款" : o.financial_status),
+        sub: join(productOrderProjectNo(o), o.shopify_created_at.slice(0, 10), o.cancelled_at ? "已取消" : o.financial_status === "PAID" ? "已付款" : o.financial_status),
         href: listHref("/orders", o.order_name),
       })));
     groups.push(group("紀念品訂單", items));
