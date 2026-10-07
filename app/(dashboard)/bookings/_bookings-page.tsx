@@ -182,7 +182,8 @@ export async function BookingsPage({ mode, query = "", onlyFollow = false, showT
   const testCount = modeRows.filter(isTestRow).length;
   const bookings = modeRows.filter((b) => isTestRow(b) === showTests);
 
-  const follow = await bookingFollowUps(bookings, mode === "vet" ? "vet" : "cremation");
+  // 查看測試記錄時不顯示跟進
+  const follow = await bookingFollowUps(showTests ? [] : bookings, mode === "vet" ? "vet" : "cremation");
 
   const tableRows: BookingRow[] = bookings.map((b) => {
     // 專案編號僅限跨服務沿用的 RSL 編號；Shopify 訂單號屬付款發票。

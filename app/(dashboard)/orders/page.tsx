@@ -111,7 +111,8 @@ export default async function OrdersPage({ searchParams }: {
 
   const draftRows = showTests ? [] : await draftsP;
   // 四類跟進（與接送服務一致）：未付款草稿、已付款未出貨等
-  const follow = await productFollowUps(orders);
+  // 查看測試訂單時不顯示跟進
+  const follow = await productFollowUps(showTests ? [] : orders);
   const allRows = [...draftRows, ...rows].map((r) => ({ ...r, followUp: follow.result.get(r.id) || null, followWaiting: follow.waiting.get(r.id) || null }));
   const staffName = staff?.name?.trim() || staff?.email?.split("@")[0] || "同事";
 

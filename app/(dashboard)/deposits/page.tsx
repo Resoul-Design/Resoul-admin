@@ -177,7 +177,8 @@ export default async function DepositsPage({ searchParams }: { searchParams: Pro
   const staffName = staff?.name?.trim() || staff?.email?.split("@")[0] || "同事";
   const depositCatalog = staff && hasModule(staff, ["deposits"]) ? await loadCatalog("deposit") : { products: [], error: "" };
   const now = new Date();
-  const followUps: FollowUpItem[] = followUpNotReady
+  // 查看測試記錄時不顯示跟進
+  const followUps: FollowUpItem[] = followUpNotReady || showTests
     ? []
     : rows
         .flatMap<FollowUpItem>((r) => {

@@ -41,7 +41,8 @@ export async function deleteTestRecords(entity: TestEntity): Promise<Result> {
   const admin = createAdminClient();
   let query = admin.from(conf.table).delete({ count: "exact" }).eq("is_test", true);
   if (entity === "vet") query = query.ilike("source", "%euthanasia%");
-  if (entity === "cremation") query = query.not("source", "ilike", "%euthanasia%");
+  // 火化：來源不是獸醫評估（包括未有來源的舊記錄）
+  if (entity === "cremation") query = query.or("source.is.null,source.not.ilike.*euthanasia*");
   const { error, count } = await query;
   if (error) return { error: `刪除失敗：${error.message}` };
   await logAudit("delete_test_records", conf.table, null, `刪除${conf.label}測試記錄 ${count ?? 0} 筆`);
