@@ -286,6 +286,31 @@
         <li>詳情頁可新增收入／支出明細（可上載收據），三格（收入綠／支出琥珀／淨額）即時更新，並有合計列。<span class="en">Add income/expense entries (with receipts); tiles and a totals row update live.</span></li>
         <li>財務管理頁：每月預計／實際收支＋近 6 個月表；產品銷售另計。<span class="en">Finance shows monthly projected/actual + a 6-month table; product sales counted separately.</span></li>
       </ul>
+      <h3>測試記錄<span class="en">Test records</span></h3>
+      <ul class="tight">
+        <li>Shopify 測試付款的訂單會自動標記為「測試」；亦可在接送服務、火化預約、獸醫評估或紀念品訂單每行「操作」→「🧪 標記為測試」手動標記，隨時可取消。<span class="en">Orders paid with Shopify test payments are marked as test automatically; you can also mark a row via Actions → 🧪 Mark as test in pick-ups, cremation, vet assessments or keepsake orders, and undo it any time.</span></li>
+        <li>測試記錄不計入收入、報表、總覽、專案、客戶檔案、跟進、回覆助手及 CSV 匯出；列表預設隱藏，列表上方「查看測試記錄」可查看。<span class="en">Test records are excluded from income, reports, the overview, projects, customer files, follow-ups, the reply assistant and CSV exports; lists hide them by default, and 查看測試記錄 above the list shows them.</span></li>
+        <li>管理員查看測試記錄時可按「刪除全部測試記錄」永久刪除（只限接送及預約；紀念品訂單會由 Shopify 同步回來，只會保持隱藏）。<span class="en">When viewing test records, admins can permanently delete them all (pick-ups and bookings only; keepsake orders sync back from Shopify, so they stay hidden instead).</span></li>
+      </ul>
+      <h3>發票 PDF<span class="en">Invoice PDFs</span></h3>
+      <ul class="tight">
+        <li>已付款並有 Shopify 訂單號的接送、火化及紀念品記錄，「操作」內有「🧾 發票 PDF」；開啟後按「列印 / 儲存 PDF」。發票由後台記錄產生，即使 Shopify 訂單已刪除仍可列印。<span class="en">Paid pick-ups, cremation bookings and keepsake orders with a Shopify order number have 🧾 Invoice PDF under Actions; click Print / Save PDF. Invoices are built from admin records, so they still work if the Shopify order was deleted.</span></li>
+        <li>報表與匯出 →「批量發票 PDF」：選擇付款日期範圍及類別，一次過開啟所有發票（不包括測試記錄）。<span class="en">Reports → 批量發票 PDF: pick a payment date range and categories to open all invoices at once (test records excluded).</span></li>
+        <li>同步 Shopify 訂單時會一併保存產品代碼、單價及款式，日後 Shopify 刪單亦不會遺失發票資料。<span class="en">Syncing Shopify orders now also saves item codes, unit prices and variants, so invoice details survive if a Shopify order is deleted.</span></li>
+      </ul>
+      <h3>紀念品訂單連結專案<span class="en">Link keepsake orders to a project</span></h3>
+      <ul class="tight">
+        <li>舊客在網上商店購買時，系統會自動派新的專案編號。可在紀念品訂單「操作」→「🔗 連結專案」改用客人原有編號（系統會確認編號存在），訂單即歸入同一專案。<span class="en">When a returning client buys in the online shop, a new project number is assigned. Use Actions → 🔗 Link project on the keepsake order to switch to their existing number (it must already exist); the order then joins that project.</span></li>
+      </ul>
+      <h3>客戶檔案合併<span class="en">Merge customer files</span></h3>
+      <ul class="tight">
+        <li>同一位客人用過不同電話或名稱時，在其中一個客戶檔案按「合併客戶」，輸入另一個電話或名稱即可合併；已合併的會列出，可「取消合併」。合併只影響客戶檔案的歸類及統計，不會修改預約或訂單本身。<span class="en">If one client used different phones or names, open one customer file, click 合併客戶 and enter the other phone or name. Merged entries are listed and can be unmerged. Merging only affects how customer files group and total records; bookings and orders are not changed.</span></li>
+      </ul>
+      <h3>網站內容：版本記錄及公告日期<span class="en">Site content: version history and notice dates</span></h3>
+      <ul class="tight">
+        <li>每次儲存前，系統會保留上一個版本（每區塊最近 20 個）。區塊標題旁「版本記錄」可查看並「還原」；還原前的內容亦會保留，可再還原。<span class="en">Each save keeps the previous version (latest 20 per section). Use 版本記錄 beside the section title to view and restore; the content before a restore is kept too.</span></li>
+        <li>頁頂公告可設開始及結束日期（香港日期）：開始日期當日起顯示，結束日期完結後自動收起；留空即即時顯示／一直顯示。<span class="en">The top notice can have start and end dates (Hong Kong date): it shows from the start date and hides automatically after the end date; leave blank to show now / indefinitely.</span></li>
+      </ul>
       <h3>其他版面<span class="en">Other pages</span></h3>
       <ul class="tight">
         <li>文章記錄：管理網誌文章（來自 Shopify Blog）及網誌分類，並顯示每篇文章的標籤。員工管理：新增／停用員工、修改姓名、設定權限（姓名會用於訂金跟進及回覆助手的訊息署名，修改後按該行「存」）。<span class="en">Articles (from Shopify Blog); Staff: add/disable, edit names and set permissions (names sign deposit follow-up and reply messages; click Save on the row).</span></li>
@@ -293,6 +318,7 @@
         <li><b>報表與匯出</b>：按服務類別分開統計——<b>獸醫評估、火化預約、接送服務、紀念品訂單</b>（各顯示筆數與已記錄收入），並列出評估與火化的狀態分佈、火化收支。可分別<b>匯出 CSV</b>：獸醫評估、火化預約、接送服務、紀念品訂單（會計對數用）。<span class="en">Reports split by service — vet assessments, cremation bookings, pick-ups, keepsake orders (counts and recorded income) — with status breakdowns and cremation income. Export each category as CSV separately.</span></li>
         <li><b>審計記錄</b>：紀錄後台重要操作（訂單及預約資料更新、訂金跟進、收支增刪、留言審核、評價及知識庫修改、員工／權限變更），每項以一句中文說明改了甚麼（例如「更新火化預約「陳小姐・BB・RSL-…」資料，狀態為「已排期」」），並顯示操作同事姓名及時間，方便日後追查。<span class="en">Audit log: key admin actions (booking/order updates, deposit follow-ups, finance entries, moderation, review and knowledge-base edits, staff/permission changes), each described in one Chinese sentence with the staff member's name and time.</span></li>
         <li><b>全後台搜尋</b>：頁頂「🔍」掣（或在任何頁面按「/」鍵）開啟，可輸入電話（852、空格、橫線均可）、主人或毛孩名、RSL 專案編號、PAY 付款參考或 Shopify 訂單號；結果按接送服務、火化預約、獸醫評估、紀念品訂單分組，只顯示同事有權限的類別。用方向鍵選擇、Enter 開啟，會轉到該列表並自動篩選該筆記錄。<span class="en">Global search: the 🔍 button at the top (or press / on any page) searches phone numbers (any format), owner/pet names, RSL project numbers, PAY payment refs and Shopify order numbers; results are grouped by pick-up, cremation, vet and keepsake orders, limited to the categories the staff member can access. Use arrow keys and Enter to open the filtered list.</span></li>
+        <li>同步狀態頁亦會比對網站火化收費（網站內容）與 Shopify 火化方案價錢，列出價錢不同、只在 Shopify 或只在網站的體重級別；並列出已上架但未設產品類型的產品。<span class="en">The Sync status page also compares the website's cremation fees (Site content) with the Shopify cremation plan prices, listing weight bands that differ or exist on only one side, and lists active products without a product type.</span></li>
         <li><b>同步狀態</b>：一頁檢查 Shopify／Supabase／環境變數／webhook 是否已連接（見第十四節）。<span class="en">Sync status: one page to check connections (see section 14).</span></li>
         <li><b>使用教學</b>：在後台直接閱讀本手冊的網頁版（管理員及已獲「使用教學」權限的員工可查看；未登入或無權限均無法開啟。現有員工可於 Supabase 執行 db/migration_guide_permission.sql 一次過開通）；右上「新分頁開啟」可在獨立分頁閱讀。<span class="en">Guide (使用教學): read this manual inside the admin (admins and staff with the Guide permission; run db/migration_guide_permission.sql to grant it to existing staff); 新分頁開啟 opens it in a new tab.</span></li>
       </ul>
@@ -432,6 +458,8 @@
           <tr><td><code>project_entries</code> / <code>plan_prices</code></td><td>專案收支明細（可連火化預約或產品訂單）／方案定價。<span class="en">Project entries (linked to a booking or product order) / plan pricing.</span></td></tr>
           <tr><td><code>product_orders</code></td><td>由 Shopify 同步的紀念產品訂單副本。<span class="en">Copy of memorial-product orders synced from Shopify.</span></td></tr>
           <tr><td><code>audit_log</code></td><td>後台操作審計記錄。<span class="en">Audit log of admin actions.</span></td></tr>
+          <tr><td><code>site_content_versions</code></td><td>後台「網站內容」每次儲存前的舊版本（可還原）。<span class="en">Previous Site content versions (restorable).</span></td></tr>
+          <tr><td><code>customer_aliases</code></td><td>客戶檔案合併對照（被合併的客戶 → 保留的客戶）。<span class="en">Customer file merges (merged key → kept key).</span></td></tr>
           <tr><td><code>site_content</code></td><td>後台「網站內容」儲存的收費、紀念精品、商店分類、常見問題及頁頂公告。<span class="en">Prices, keepsakes, shop categories, FAQ and top notice saved in Site content.</span></td></tr>
           <tr><td><code>google_reviews</code></td><td>網站顯示的 Google 評價（由後台「主人評價及故事分享 → 查看服務評價」維護）。<span class="en">Google reviews shown on the website (maintained in the admin).</span></td></tr>
           <tr><td><code>api_rate_limits</code></td><td>公開表單及 AI 功能的防濫用計數（IP 經單向加密，只作短時間計數）。<span class="en">Abuse-prevention counters for public forms and AI tools (hashed IPs, short-lived).</span></td></tr>
@@ -649,6 +677,7 @@
         <li>☐ 以 iPhone 測試：打開導覽選單時頂部不會移動；轉頁不閃動（需 iOS 18.2 或以上）。<span class="en">Test on iPhone: the header stays still when the menu is open; page changes don't flash (needs iOS 18.2+).</span></li>
         <li>☐ 於 Supabase diyxcx 執行 <code>db/migration_site_content.sql</code>（啟用後台「網站內容」，並把回覆知識庫四則收費範本改用收費代號）。<span class="en">Run db/migration_site_content.sql in Supabase diyxcx (enables Site content and switches the four price replies to price tokens).</span></li>
         <li>☐ 於 Supabase diyxcx 執行 <code>db/migration_product_order_project_no.sql</code>（紀念品訂單自動產生專案編號；執行後打開「紀念品訂單」頁即為現有訂單補上編號）。<span class="en">Run db/migration_product_order_project_no.sql in Supabase diyxcx (auto project numbers for keepsake orders; open the Souvenir orders page afterwards to fill in existing orders).</span></li>
+        <li>☐ 於 Supabase diyxcx 執行 <code>db/migration_20261007_admin_upgrade.sql</code>（測試記錄、網站內容版本記錄、客戶檔案合併）；執行後到紀念品訂單按「同步 Shopify 訂單」，自動標記 Shopify 測試訂單。<span class="en">Run db/migration_20261007_admin_upgrade.sql in Supabase diyxcx (test records, Site content versions, customer merges), then click Sync Shopify orders to mark Shopify test orders.</span></li>
         <li>☐ 開「同步狀態」頁確認全部綠燈。<span class="en">Open the Sync status page and confirm all green.</span></li>
       </ul>
 
