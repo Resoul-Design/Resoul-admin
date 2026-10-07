@@ -21,11 +21,13 @@ export type ProductOrderRow = {
   cancelled_at: string | null;
   synced_at: string;
   project_no?: string | null; // 需 db/migration_product_order_project_no.sql
+  is_test?: boolean; // 需 db/migration_20261007_admin_upgrade.sql
 };
 
 type Attribute = { key?: string; name?: string; value?: string };
 
 export type ShopifyWebhookOrder = {
+  test?: boolean;
   id?: number | string;
   admin_graphql_api_id?: string;
   name?: string;
@@ -62,6 +64,7 @@ export type ShopifyWebhookOrder = {
 export type ShopifyGraphQLOrder = {
   id: string;
   name: string;
+  test?: boolean;
   createdAt: string;
   updatedAt: string;
   cancelledAt: string | null;

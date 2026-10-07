@@ -8,6 +8,7 @@ import { shopDomain, shopifyGraphQL } from "@/lib/shopify";
 import { isRslProjectNo } from "@/lib/order-label";
 import { makeProjectNo } from "@/lib/project-no";
 import { assignMissingProjectNos } from "@/lib/product-order-projects";
+import { markShopifyTestOrders } from "@/lib/test-orders";
 import {
   isCremationGraphQLOrder,
   productOrderFromGraphQL,
@@ -24,7 +25,7 @@ type OrdersPage = {
 const SYNC_QUERY = `query ProductOrders($after: String) {
   orders(first: 250, after: $after, sortKey: CREATED_AT, reverse: true) {
     edges { cursor node {
-      id name createdAt updatedAt cancelledAt email phone
+      id name test createdAt updatedAt cancelledAt email phone
       displayFinancialStatus displayFulfillmentStatus
       customAttributes { key value }
       customer {
@@ -49,10 +50,13 @@ export async function syncProductOrders() {
   try {
     const supabase = createAdminClient();
     let after: string | null = null;
+    const testOrders: { id: string; name: string }[] = [];
 
     do {
       const result: OrdersPage = await shopifyGraphQL<OrdersPage>(SYNC_QUERY, { after });
       const edges = result.orders.edges;
+      // Shopify 測試付款（包括接送訂金及火化訂單）
+      testOrders.push(...edges.filter(({ node }) => node.test).map(({ node }) => ({ id: node.id, name: node.name })));
       const productRows = edges
         .map(({ node }) => node)
         .filter((order) => !isCremationGraphQLOrder(order))
@@ -70,6 +74,7 @@ export async function syncProductOrders() {
     } while (after);
 
     await assignMissingProjectNos();
+    await markShopifyTestOrders(testOrders);
     revalidatePath("/orders");
     revalidatePath("/crm");
   } catch (error) {

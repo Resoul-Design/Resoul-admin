@@ -64,13 +64,13 @@ export default async function FinancePage({
   const [bkRes, ordersRes, ppRes, peRes, depRes] = await Promise.all([
     createAdminClient()
       .from("cremation_bookings")
-      .select("id, case_no, pet_name, owner_name, plan, status, service_date, amount, cost, payment_amount, payment_status, paid_at, created_at, shopify_order_name")
+      .select("id, case_no, pet_name, owner_name, plan, status, service_date, amount, cost, payment_amount, payment_status, paid_at, created_at, shopify_order_name").eq("is_test", false)
       .order("service_date", { ascending: false, nullsFirst: false })
       .limit(500),
     getOrdersSinceCached(since),
     supabase.from("plan_prices").select("plan, price, cost"),
     supabase.from("project_entries").select("booking_id, kind, amount, entry_date"),
-    admin.from("deposit_bookings").select("payment_amount, payment_status, status, service_date, paid_at, created_at").limit(1000),
+    admin.from("deposit_bookings").select("payment_amount, payment_status, status, service_date, paid_at, created_at").eq("is_test", false).limit(1000),
   ]);
   const planPrices = (ppRes.data ?? []) as { plan: string; price: number; cost: number }[];
   const PLAN_ORDER = ["風之旅", "雲之旅", "星之旅"];

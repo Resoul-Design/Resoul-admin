@@ -40,12 +40,12 @@ export default async function RepliesPage({ searchParams }: { searchParams: Prom
     supabase.from("reply_snippets").select("id, slug, category, title, zh, en, sort_order, active").eq("active", true).order("sort_order"),
     supabase
       .from("deposit_bookings")
-      .select("id, created_at, owner_name, contact, pet_name, service_date, service_time, notes, project_no")
+      .select("id, created_at, owner_name, contact, pet_name, service_date, service_time, notes, project_no").eq("is_test", false)
       .order("created_at", { ascending: false })
       .limit(300),
     supabase
       .from("cremation_bookings")
-      .select("id, created_at, owner_name, contact, pet_name, service_date, service_time, notes, case_no, source")
+      .select("id, created_at, owner_name, contact, pet_name, service_date, service_time, notes, case_no, source").eq("is_test", false)
       .order("created_at", { ascending: false })
       .limit(300),
     getStaff(),

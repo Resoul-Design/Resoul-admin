@@ -125,7 +125,7 @@ export default async function OverviewPage() {
     staff && hasModule(staff, ["deposits"])
       ? createAdminClient()
           .from("deposit_bookings")
-          .select("id, created_at, owner_name, contact, pet_name, service_date, service_time, status, payment_status, payment_amount, reminded_at, reminder_count, follow_up_closed_at, payment_link")
+          .select("id, created_at, owner_name, contact, pet_name, service_date, service_time, status, payment_status, payment_amount, reminded_at, reminder_count, follow_up_closed_at, payment_link").eq("is_test", false)
           .not("status", "in", "(cancelled,completed)")
           .then((r) => r)
       : Promise.resolve({ data: [] as FollowUpRow[], error: null });
@@ -133,7 +133,7 @@ export default async function OverviewPage() {
   // 輕量查詢：狀態分佈用聚合 count（不拉全部資料）；列表只取最近 6 筆
   const statusCountsP = Promise.all(
     BOOKING_STATUS.map((s) =>
-      createAdminClient().from("cremation_bookings").select("id", { count: "exact", head: true }).eq("status", s.key)
+      createAdminClient().from("cremation_bookings").select("id", { count: "exact", head: true }).eq("is_test", false).eq("status", s.key)
     )
   );
   const [
@@ -143,8 +143,8 @@ export default async function OverviewPage() {
     Promise.all([
       supabase.from("posts").select("*", { count: "exact", head: true }).eq("status", "held"),
       supabase.from("posts").select("name, body, crisis_flag, context, created_at").eq("status", "held").order("created_at", { ascending: false }).limit(4),
-      createAdminClient().from("cremation_bookings").select("owner_name, pet_name, plan, status, service_date, created_at").order("created_at", { ascending: false }).limit(6),
-      createAdminClient().from("cremation_bookings").select("id", { count: "exact", head: true }).eq("service_date", today),
+      createAdminClient().from("cremation_bookings").select("owner_name, pet_name, plan, status, service_date, created_at").eq("is_test", false).order("created_at", { ascending: false }).limit(6),
+      createAdminClient().from("cremation_bookings").select("id", { count: "exact", head: true }).eq("is_test", false).eq("service_date", today),
       supabase.from("project_entries").select("amount").eq("kind", "income").gte("entry_date", monthStart),
       getOrdersSinceCached(since),
       getProductsCountCached(),
@@ -170,11 +170,11 @@ export default async function OverviewPage() {
     canCrem || canVet
       ? createAdminClient()
           .from("cremation_bookings")
-          .select("id, created_at, owner_name, contact, pet_name, service_date, service_time, status, payment_status, payment_amount, plan, notes, case_no, source")
+          .select("id, created_at, owner_name, contact, pet_name, service_date, service_time, status, payment_status, payment_amount, plan, notes, case_no, source").eq("is_test", false)
           .not("status", "in", "(cancelled,completed)")
           .limit(1000)
       : Promise.resolve({ data: [] }),
-    canOrders ? createAdminClient().from("product_orders").select("*").is("cancelled_at", null).limit(1000) : Promise.resolve({ data: [] }),
+    canOrders ? createAdminClient().from("product_orders").select("*").eq("is_test", false).is("cancelled_at", null).limit(1000) : Promise.resolve({ data: [] }),
   ]);
   const followBookings = (bkFollowRes.data || []) as BookingForFollow[];
   const isVetBooking = (b: BookingForFollow) => (b.source || "").includes("euthanasia");

@@ -11,7 +11,7 @@ export async function GET() {
   if (denied) return denied;
   const { data } = await createAdminClient()
     .from("deposit_bookings")
-    .select("created_at, owner_name, contact, pet_name, pet_type, service_date, service_time, pickup_address, status, payment_ref, payment_status, payment_amount, payment_currency, shopify_order_name, notes")
+    .select("created_at, owner_name, contact, pet_name, pet_type, service_date, service_time, pickup_address, status, payment_ref, payment_status, payment_amount, payment_currency, shopify_order_name, notes").eq("is_test", false)
     .order("created_at", { ascending: false });
   const headers = ["分類", "專案編號", "收到", "主人", "聯絡", "毛孩", "種類", "希望日期", "希望時段", "接送地址", "狀態", "付款狀態", "付款金額", "付款貨幣", "付款參考", "備註"];
   const rows = (data ?? []).map((b) => [

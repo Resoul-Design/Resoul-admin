@@ -10,6 +10,7 @@ import { shopDomain } from "@/lib/shopify";
 import { canonicalProjectNo, projectNoFromNotes } from "@/lib/order-label";
 import { type BookingData } from "./_edit";
 import { BookingsTable, type BookingRow } from "./_table";
+import { TestRecordsBar } from "../_test-controls";
 import { PROGRESS_COLUMNS, type ProgressData } from "@/lib/booking-progress";
 
 export const dynamic = "force-dynamic";
@@ -125,7 +126,7 @@ function paymentBadgeClass(status?: string | null) {
 }
 
 const BASE_SELECT =
-  "id, case_no, owner_name, contact, pet_name, pet_type, plan, service_date, service_time, pickup_address, status, source, notes, created_at";
+  "id, case_no, owner_name, contact, pet_name, pet_type, plan, service_date, service_time, pickup_address, status, source, notes, created_at, is_test";
 
 const PAYMENT_SELECT =
   BASE_SELECT +
@@ -135,7 +136,7 @@ function isVet(source?: string | null) {
   return (source || "").indexOf("euthanasia") >= 0;
 }
 
-export async function BookingsPage({ mode, query = "", onlyFollow = false }: { mode: "cremation" | "vet"; query?: string; onlyFollow?: boolean }) {
+export async function BookingsPage({ mode, query = "", onlyFollow = false, showTests = false }: { mode: "cremation" | "vet"; query?: string; onlyFollow?: boolean; showTests?: boolean }) {
   const staff = await getStaff();
   if (!staff) redirect("/login");
   const staffName = staff.name?.trim() || staff.email.split("@")[0] || "同事";
@@ -173,9 +174,13 @@ export async function BookingsPage({ mode, query = "", onlyFollow = false }: { m
     created_at: string;
     notes?: string | null;
   })[];
-  const bookings = allBookings.filter((booking) =>
+  const modeRows = allBookings.filter((booking) =>
     mode === "vet" ? isVet(booking.source) : !isVet(booking.source)
   );
+  // 測試記錄預設隱藏；?test=1 只顯示測試記錄
+  const isTestRow = (b: unknown) => !!(b as { is_test?: boolean | null }).is_test;
+  const testCount = modeRows.filter(isTestRow).length;
+  const bookings = modeRows.filter((b) => isTestRow(b) === showTests);
 
   const follow = await bookingFollowUps(bookings, mode === "vet" ? "vet" : "cremation");
 
@@ -193,6 +198,7 @@ export async function BookingsPage({ mode, query = "", onlyFollow = false }: { m
     const pg = b as unknown as Partial<ProgressData>;
     return {
       id: b.id,
+      isTest: isTestRow(b),
       created: b.created_at?.slice(0, 16).replace("T", " ") || "",
       invoiceNo,
       paymentRef: (b as { payment_ref?: string | null }).payment_ref || "",
@@ -246,6 +252,8 @@ export async function BookingsPage({ mode, query = "", onlyFollow = false }: { m
       </PageHeader>
 
       <TestingNotice />
+
+      <TestRecordsBar entity={mode} count={testCount} showing={showTests} basePath={mode === "vet" ? "/vet-assessments" : "/bookings"} canDelete={staff.role === "admin"} />
 
       {error && (
         <div className="mb-4 text-sm text-red-600">

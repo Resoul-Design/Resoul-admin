@@ -13,6 +13,7 @@ import Link from "next/link";
 import { Fragment, Suspense } from "react";
 import { DepositsToolbar } from "./_toolbar";
 import { FollowUpInline, type FollowUpItem } from "./_followup";
+import { TestFlagPanel, TestRecordsBar } from "../_test-controls";
 
 export const dynamic = "force-dynamic";
 
@@ -21,6 +22,7 @@ export const dynamic = "force-dynamic";
 
 type DepositRow = {
   id: string;
+  is_test?: boolean | null;
   created_at: string;
   owner_name: string | null;
   contact: string | null;
@@ -140,15 +142,16 @@ function depositActions(r: DepositRow, fu: FollowUpItem | undefined, staffName: 
   if (wa) list.push({ kind: "link", key: "wa", label: "💬 WhatsApp 客人", href: wa, whatsapp: true, confirm: WHATSAPP_CONFIRM });
   if (cal) list.push({ kind: "link", key: "cal", label: "📅 加入日曆", href: cal });
   if (invoice) list.push({ kind: "link", key: "invoice", label: "🧾 發票（Shopify 訂單）", href: invoice });
+  list.push({ kind: "panel", key: "test", label: r.is_test ? "🧪 取消測試標記" : "🧪 標記為測試", title: "測試記錄", node: <TestFlagPanel entity="deposit" id={r.id} isTest={!!r.is_test} /> });
   list.push({ kind: "panel", key: "edit", label: "✏️ 編輯資料", title: "編輯接送服務", node: <EditDepositInline booking={r} /> });
   return list;
 }
 
-export default async function DepositsPage({ searchParams }: { searchParams: Promise<{ followup?: string; q?: string; status?: string }> }) {
-  const { followup, q, status: statusParam } = await searchParams;
+export default async function DepositsPage({ searchParams }: { searchParams: Promise<{ followup?: string; q?: string; status?: string; test?: string }> }) {
+  const { followup, q, status: statusParam, test } = await searchParams;
   const supabase = createAdminClient();
   const baseColumns =
-    "id, created_at, owner_name, contact, pet_name, pet_type, plan, service_date, service_time, pickup_address, notes, status, payment_ref, payment_status, payment_amount, payment_currency, shopify_order_name, shopify_order_id, paid_at";
+    "id, created_at, owner_name, contact, pet_name, pet_type, plan, service_date, service_time, pickup_address, notes, status, payment_ref, payment_status, payment_amount, payment_currency, shopify_order_name, shopify_order_id, paid_at, is_test";
   // 訂金跟進欄位需先執行 db/migration_deposit_followup.sql；未執行時退回原有欄位，列表照常顯示。
   const full = await supabase
     .from("deposit_bookings")
@@ -163,7 +166,11 @@ export default async function DepositsPage({ searchParams }: { searchParams: Pro
     error = base.error;
   }
 
-  const rows = data ?? [];
+  // 測試記錄預設隱藏；?test=1 只顯示測試記錄
+  const allDeposits = data ?? [];
+  const showTests = test === "1";
+  const testCount = allDeposits.filter((r) => r.is_test).length;
+  const rows = allDeposits.filter((r) => (showTests ? !!r.is_test : !r.is_test));
   const tableMissing = !!error && /deposit_bookings|does not exist|relation/i.test(error.message);
   const staff = await getStaff();
   const staffName = staff?.name?.trim() || staff?.email?.split("@")[0] || "同事";
@@ -236,6 +243,8 @@ export default async function DepositsPage({ searchParams }: { searchParams: Pro
           <span className="text-xs text-[var(--soft)]">需要跟進的訂金以淡黃色標示，按該行「🔔」掣處理。</span>
         </div>
       ))}
+
+      <TestRecordsBar entity="deposit" count={testCount} showing={showTests} basePath="/deposits" canDelete={staff?.role === "admin"} />
 
       <Suspense fallback={null}>
         <DepositsToolbar query={query} status={statusFilter} />

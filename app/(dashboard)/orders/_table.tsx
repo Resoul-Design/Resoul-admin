@@ -8,9 +8,11 @@ import { WHATSAPP_CONFIRM } from "../_testing-notice";
 import { csvCell } from "@/lib/csv";
 import { Fragment, useMemo, useState } from "react";
 import { RowActions, type RowAction } from "../_row-actions";
+import { TestFlagPanel } from "../_test-controls";
 
 export type OrderRow = {
   id: string;
+  isTest?: boolean;
   orderName: string;
   projectNo: string;
   date: string;
@@ -47,6 +49,7 @@ function rowActions(r: OrderRow, staffName: string): RowAction[] {
   }
   if (r.whatsapp && !r.cancelled) list.push({ kind: "link", key: "wa", label: r.invoiceUrl ? "💬 WhatsApp 傳付款連結" : "💬 WhatsApp 客人", href: r.whatsapp, whatsapp: true, confirm: WHATSAPP_CONFIRM });
   if (r.invoiceUrl) list.push({ kind: "link", key: "pay", label: "💳 開啟付款頁", href: r.invoiceUrl });
+  if (!r.invoiceUrl) list.push({ kind: "panel", key: "test", label: r.isTest ? "🧪 取消測試標記" : "🧪 標記為測試", title: "測試記錄", node: <TestFlagPanel entity="order" id={r.id} isTest={!!r.isTest} /> });
   list.push({ kind: "link", key: "edit", label: r.invoiceUrl ? "✏️ 編輯（開啟 Shopify 草稿）" : "✏️ 編輯（開啟 Shopify 訂單）", href: r.editUrl });
   return list;
 }

@@ -71,13 +71,13 @@ export default async function ProjectsPage() {
   const [bkRes, peRes, poRes, depRes] = await Promise.all([
     createAdminClient()
       .from("cremation_bookings")
-      .select("id, case_no, pet_name, owner_name, plan, status, service_date, created_at, amount, payment_amount, payment_status, shopify_order_name, notes, source")
+      .select("id, case_no, pet_name, owner_name, plan, status, service_date, created_at, amount, payment_amount, payment_status, shopify_order_name, notes, source").eq("is_test", false)
       .order("created_at", { ascending: false })
       .limit(1000),
     // select("*") 以容忍 order_ref 欄位尚未建立（migration 未跑）時不報錯
     supabase.from("project_entries").select("*"),
-    supabase.from("product_orders").select("*").order("shopify_created_at", { ascending: false }).limit(500),
-    admin.from("deposit_bookings").select("id, owner_name, pet_name, status, service_date, created_at, payment_amount, payment_status, shopify_order_name, notes").order("created_at", { ascending: false }).limit(1000),
+    supabase.from("product_orders").select("*").eq("is_test", false).order("shopify_created_at", { ascending: false }).limit(500),
+    admin.from("deposit_bookings").select("id, owner_name, pet_name, status, service_date, created_at, payment_amount, payment_status, shopify_order_name, notes").eq("is_test", false).order("created_at", { ascending: false }).limit(1000),
   ]);
   const bookings = (bkRes.data ?? []) as Booking[];
   const entries = (peRes.data ?? []) as Entry[];

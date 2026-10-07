@@ -126,6 +126,7 @@ type OrdersPageResp = {
       node: {
         createdAt: string;
         cancelledAt: string | null;
+        test?: boolean;
         customAttributes: { key: string; value: string }[];
         totalPriceSet: { shopMoney: { amount: string; currencyCode: string } };
       };
@@ -147,7 +148,7 @@ export async function fetchOrdersSince(
   const query = `query Orders($after: String) {
     orders(first: 250, after: $after, sortKey: CREATED_AT, query: "created_at:>=${sinceDate}") {
       edges { cursor node {
-        createdAt cancelledAt
+        createdAt cancelledAt test
         customAttributes { key value }
         totalPriceSet { shopMoney { amount currencyCode } }
       } }
@@ -159,6 +160,7 @@ export async function fetchOrdersSince(
     const edges = d.orders.edges;
     for (const e of edges) {
       if (!opts.includeCancelled && e.node.cancelledAt) continue;
+      if (e.node.test) continue; // Shopify 測試付款不計入收入
       rows.push({
         createdAt: e.node.createdAt,
         amount: Number(e.node.totalPriceSet.shopMoney.amount),

@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   const denied = await moduleGuardResponse("orders", "reports");
   if (denied) return denied;
-  const { data } = await (await createClient()).from("product_orders").select("*").order("shopify_created_at", { ascending: false });
+  const { data } = await (await createClient()).from("product_orders").select("*").eq("is_test", false).order("shopify_created_at", { ascending: false });
   const headers = ["分類", "專案編號", "Shopify訂單", "日期", "客戶", "電話", "內容", "付款狀態", "出貨狀態", "金額", "貨幣", "取消時間"];
   const rows = ((data ?? []) as ProductOrderRow[]).map((o) => [
     "紀念品訂單", productOrderProjectNo(o), o.order_name, o.shopify_created_at?.slice(0, 19).replace("T", " "),

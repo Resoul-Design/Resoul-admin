@@ -4,7 +4,8 @@ import { notFound } from "next/navigation";
 import { getStaff, hasModule } from "@/lib/auth";
 import { LANDING_URL } from "@/lib/company";
 import { SITE_LABELS, type SiteKey } from "@/lib/site-content";
-import { loadSiteContent, type LoadedSiteContent } from "@/lib/site-content-server";
+import { loadSiteContent, loadVersions, type LoadedSiteContent } from "@/lib/site-content-server";
+import { VersionHistory, type VersionInfo } from "./_versions";
 import {
   CremationPricesEditor,
   FaqEditor,
@@ -39,14 +40,15 @@ function fmt(iso: string) {
   return d.toLocaleString("zh-HK", { timeZone: "Asia/Hong_Kong", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false });
 }
 
-function SectionTitle({ siteKey, loaded }: { siteKey: SiteKey; loaded: LoadedSiteContent }) {
+function SectionTitle({ siteKey, loaded, versions }: { siteKey: SiteKey; loaded: LoadedSiteContent; versions: Partial<Record<SiteKey, VersionInfo[]>> }) {
   const meta = SITE_LABELS[siteKey];
   const saved = loaded.saved[siteKey];
   return (
     <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
       <h2 className="text-lg font-semibold">{meta.label}</h2>
-      <span className="text-xs text-[var(--soft)]">
-        顯示於：{meta.pages}　·　{saved ? `最後儲存 ${fmt(saved.updated_at)}${saved.updated_by ? `（${saved.updated_by}）` : ""}` : "未曾修改（網站顯示原有內容）"}
+      <span className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-[var(--soft)]">
+        <span>顯示於：{meta.pages}　·　{saved ? `最後儲存 ${fmt(saved.updated_at)}${saved.updated_by ? `（${saved.updated_by}）` : ""}` : "未曾修改（網站顯示原有內容）"}</span>
+        <VersionHistory versions={versions[siteKey] || []} />
       </span>
     </div>
   );
@@ -58,7 +60,9 @@ export default async function SiteContentPage({ searchParams }: { searchParams: 
   const { tab: tabParam, faq: faqParam } = await searchParams;
   const tab = TABS.find((t) => t.key === tabParam)?.key || "prices";
   const faqPage = FAQ_PAGES.find((f) => f.key === faqParam)?.key || "cremation";
-  const loaded = await loadSiteContent();
+  const [loaded, versions] = await Promise.all([loadSiteContent(), loadVersions()]);
+  // 儲存或還原後重新載入編輯器（以最後儲存時間作 key）
+  const ver = (k: SiteKey) => loaded.saved[k]?.updated_at || "default";
   const { content } = loaded;
 
   return (
@@ -84,16 +88,16 @@ export default async function SiteContentPage({ searchParams }: { searchParams: 
       {tab === "prices" && (
         <div className="space-y-8">
           <section>
-            <SectionTitle siteKey="prices.cremation" loaded={loaded} />
-            <CremationPricesEditor initial={content["prices.cremation"]} />
+            <SectionTitle siteKey="prices.cremation" loaded={loaded} versions={versions} />
+            <CremationPricesEditor key={ver("prices.cremation")} initial={content["prices.cremation"]} />
           </section>
           <section>
-            <SectionTitle siteKey="prices.vet" loaded={loaded} />
-            <VetPricesEditor initial={content["prices.vet"]} />
+            <SectionTitle siteKey="prices.vet" loaded={loaded} versions={versions} />
+            <VetPricesEditor key={ver("prices.vet")} initial={content["prices.vet"]} />
           </section>
           <section>
-            <SectionTitle siteKey="prices.grief" loaded={loaded} />
-            <GriefPricesEditor initial={content["prices.grief"]} />
+            <SectionTitle siteKey="prices.grief" loaded={loaded} versions={versions} />
+            <GriefPricesEditor key={ver("prices.grief")} initial={content["prices.grief"]} />
           </section>
           <p className="text-xs leading-5 text-[var(--soft)]">
             回覆知識庫可用收費代號 {"{風之旅起價}"}、{"{火化收費表}"}、{"{獸醫收費表}"}、{"{情緒支援收費表}"} 等，插入回覆時會自動填入此頁的最新收費。
@@ -104,15 +108,15 @@ export default async function SiteContentPage({ searchParams }: { searchParams: 
 
       {tab === "keepsakes" && (
         <section>
-          <SectionTitle siteKey="keepsakes" loaded={loaded} />
-          <KeepsakesEditor initial={content.keepsakes} />
+          <SectionTitle siteKey="keepsakes" loaded={loaded} versions={versions} />
+          <KeepsakesEditor key={ver("keepsakes")} initial={content.keepsakes} />
         </section>
       )}
 
       {tab === "shop" && (
         <section>
-          <SectionTitle siteKey="shop.categories" loaded={loaded} />
-          <ShopCategoriesEditor initial={content["shop.categories"]} landingUrl={LANDING_URL} />
+          <SectionTitle siteKey="shop.categories" loaded={loaded} versions={versions} />
+          <ShopCategoriesEditor key={ver("shop.categories")} initial={content["shop.categories"]} landingUrl={LANDING_URL} />
         </section>
       )}
 
@@ -125,9 +129,9 @@ export default async function SiteContentPage({ searchParams }: { searchParams: 
               </Link>
             ))}
           </div>
-          <SectionTitle siteKey={`faq.${faqPage}`} loaded={loaded} />
+          <SectionTitle siteKey={`faq.${faqPage}`} loaded={loaded} versions={versions} />
           <FaqEditor
-            key={faqPage}
+            key={`${faqPage}:${ver(`faq.${faqPage}`)}`}
             siteKey={`faq.${faqPage}`}
             initial={content[`faq.${faqPage}`]}
             fixedGroups={faqPage === "support"}
@@ -138,8 +142,8 @@ export default async function SiteContentPage({ searchParams }: { searchParams: 
 
       {tab === "notice" && (
         <section>
-          <SectionTitle siteKey="notice" loaded={loaded} />
-          <NoticeEditor initial={content.notice} />
+          <SectionTitle siteKey="notice" loaded={loaded} versions={versions} />
+          <NoticeEditor key={ver("notice")} initial={content.notice} />
         </section>
       )}
     </div>

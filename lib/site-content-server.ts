@@ -21,3 +21,19 @@ export async function loadSiteContent(): Promise<LoadedSiteContent> {
   }
   return { content, saved, notReady: false };
 }
+
+// 各區塊的版本記錄（新至舊）；未建立版本表時回傳空
+export async function loadVersions(): Promise<Partial<Record<SiteKey, { id: number; saved_at: string; saved_by: string | null }[]>>> {
+  const { data, error } = await createAdminClient()
+    .from("site_content_versions")
+    .select("id, key, saved_at, saved_by")
+    .order("saved_at", { ascending: false })
+    .limit(300);
+  const out: Partial<Record<SiteKey, { id: number; saved_at: string; saved_by: string | null }[]>> = {};
+  if (error) return out;
+  for (const v of (data || []) as { id: number; key: string; saved_at: string; saved_by: string | null }[]) {
+    if (!(SITE_KEYS as string[]).includes(v.key)) continue;
+    (out[v.key as SiteKey] ||= []).push({ id: v.id, saved_at: v.saved_at, saved_by: v.saved_by });
+  }
+  return out;
+}

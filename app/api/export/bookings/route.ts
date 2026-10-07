@@ -16,7 +16,7 @@ export async function GET(request: Request) {
     .from("cremation_bookings")
     .select(
       "case_no, created_at, owner_name, contact, pet_name, pet_type, plan, service_date, service_time, pickup_address, status, source, amount, cost, payment_status, payment_amount, payment_currency, shopify_order_name, shopify_order_id, paid_at, payment_ref, notes"
-    )
+    ).eq("is_test", false)
     .order("created_at", { ascending: false });
 
   const filtered = (data ?? []).filter((b) => category === "vet" ? (b.source || "").includes("euthanasia") : category === "cremation" ? !(b.source || "").includes("euthanasia") : true);

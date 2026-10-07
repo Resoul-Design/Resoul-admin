@@ -12,6 +12,7 @@ import { syncProductOrders } from "./actions";
 import { OrdersTable, type OrderRow } from "./_table";
 import { NewSouvenirOrder } from "./_new-order";
 import { loadCatalog } from "@/lib/catalog";
+import { TestRecordsBar } from "../_test-controls";
 
 export const dynamic = "force-dynamic";
 
@@ -55,7 +56,7 @@ async function loadDraftRows(): Promise<OrderRow[]> {
 }
 
 export default async function OrdersPage({ searchParams }: {
-  searchParams: Promise<{ synced?: string; sync_error?: string; q?: string; followup?: string }>;
+  searchParams: Promise<{ synced?: string; sync_error?: string; q?: string; followup?: string; test?: string }>;
 }) {
   const params = await searchParams;
   const supabase = await createClient();
@@ -67,7 +68,11 @@ export default async function OrdersPage({ searchParams }: {
   const { data, error } = await supabase
     .from("product_orders").select("*")
     .order("shopify_created_at", { ascending: false }).limit(2000);
-  const orders = (data || []) as ProductOrderRow[];
+  // 測試訂單預設隱藏；?test=1 只顯示測試訂單（草稿不屬測試）
+  const showTests = params.test === "1";
+  const allOrders = (data || []) as ProductOrderRow[];
+  const testCount = allOrders.filter((o) => o.is_test).length;
+  const orders = allOrders.filter((o) => !!o.is_test === showTests);
   // 未有專案編號的訂單（例如未經同步或 webhook 寫入的舊訂單）即時補上
   if (orders.some((o) => "project_no" in o && !o.project_no)) {
     const assigned = await assignMissingProjectNos();
@@ -84,6 +89,7 @@ export default async function OrdersPage({ searchParams }: {
     const wa = phone ? `https://wa.me/${phone.startsWith("852") ? phone : `852${phone}`}?text=${encodeURIComponent(`你好 ${o.customer_name || ""}，關於你的 Resoul 訂單 ${o.order_name}：`)}` : null;
     return {
       id: o.shopify_order_id,
+      isTest: !!o.is_test,
       orderName: o.order_name,
       projectNo,
       date: o.shopify_created_at.slice(0, 10),
@@ -102,7 +108,7 @@ export default async function OrdersPage({ searchParams }: {
     };
   });
 
-  const draftRows = await draftsP;
+  const draftRows = showTests ? [] : await draftsP;
   // 四類跟進（與接送服務一致）：未付款草稿、已付款未出貨等
   const follow = await productFollowUps(orders);
   const allRows = [...draftRows, ...rows].map((r) => ({ ...r, followUp: follow.result.get(r.id) || null, followWaiting: follow.waiting.get(r.id) || null }));
@@ -120,6 +126,8 @@ export default async function OrdersPage({ searchParams }: {
       </PageHeader>
 
       <TestingNotice />
+
+      <TestRecordsBar entity="order" count={testCount} showing={showTests} basePath="/orders" canDelete={false} />
 
       {params.synced && <div className="mb-4 rounded-lg border border-green-300 bg-green-50 px-4 py-3 text-sm text-green-800">已同步 {params.synced} 張產品訂單到 Supabase。</div>}
       {params.sync_error && <div className="mb-4 rounded-lg border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700">同步失敗：{params.sync_error}</div>}

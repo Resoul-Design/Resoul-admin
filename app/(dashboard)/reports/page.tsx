@@ -35,10 +35,10 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
   const supabase = await createClient();
   const admin = createAdminClient();
   const [bkRes, peRes, depRes, orderRes] = await Promise.all([
-    createAdminClient().from("cremation_bookings").select("id, created_at, case_no, notes, contact, plan, status, source, service_date, amount, payment_amount, payment_status, paid_at").limit(2000),
+    createAdminClient().from("cremation_bookings").select("id, created_at, case_no, notes, contact, plan, status, source, service_date, amount, payment_amount, payment_status, paid_at").eq("is_test", false).limit(2000),
     supabase.from("project_entries").select("booking_id, kind, amount").limit(5000),
-    admin.from("deposit_bookings").select("created_at, notes, contact, status, service_date, payment_status, payment_amount, paid_at").limit(2000),
-    supabase.from("product_orders").select("*").order("shopify_created_at", { ascending: false }).limit(2000),
+    admin.from("deposit_bookings").select("created_at, notes, contact, status, service_date, payment_status, payment_amount, paid_at").eq("is_test", false).limit(2000),
+    supabase.from("product_orders").select("*").eq("is_test", false).order("shopify_created_at", { ascending: false }).limit(2000),
   ]);
   const allBookings = (bkRes.data ?? []) as Booking[];
   const vetBookings = allBookings.filter((b) => (b.source || "").includes("euthanasia"));

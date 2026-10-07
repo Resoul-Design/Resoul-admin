@@ -5,6 +5,9 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { customerKey, phoneKey, type ProductOrderRow } from "@/lib/product-orders";
 import { canonicalProjectNo, productOrderProjectNo, projectNoFromNotes } from "@/lib/order-label";
 import { RecordTable, type RecordRow } from "./_record-table";
+import { MergeCustomer } from "./_merge";
+import { aliasesOf, loadAliases, resolveCustomerKey } from "@/lib/customer-aliases";
+import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
@@ -103,17 +106,23 @@ export default async function CustomerPage({
 }) {
   const { key: rawKey } = await params;
   const key = decodeURIComponent(rawKey);
+  // 已合併入其他客戶的檔案：轉到保留的檔案
+  const aliasMap = await loadAliases();
+  const primary = resolveCustomerKey(key, aliasMap);
+  if (primary !== key) redirect(`/crm/${encodeURIComponent(primary)}`);
+  const mergedKeys = aliasesOf(key, aliasMap);
+  const keys = new Set([key, ...mergedKeys]);
 
   const supabase = await createClient();
   const admin = createAdminClient();
   const [{ data }, { data: pickupData }] = await Promise.all([
-    createAdminClient().from("cremation_bookings").select("id, case_no, owner_name, contact, pet_name, pet_type, plan, status, service_date, service_time, amount, payment_amount, payment_status, payment_ref, shopify_order_name, notes, source, created_at").order("created_at", { ascending: false }).limit(1000),
-    admin.from("deposit_bookings").select("id, project_no, owner_name, contact, pet_name, status, service_date, service_time, payment_amount, payment_status, shopify_order_name, notes, created_at").order("created_at", { ascending: false }).limit(1000),
+    createAdminClient().from("cremation_bookings").select("id, case_no, owner_name, contact, pet_name, pet_type, plan, status, service_date, service_time, amount, payment_amount, payment_status, payment_ref, shopify_order_name, notes, source, created_at").eq("is_test", false).order("created_at", { ascending: false }).limit(1000),
+    admin.from("deposit_bookings").select("id, project_no, owner_name, contact, pet_name, status, service_date, service_time, payment_amount, payment_status, shopify_order_name, notes, created_at").eq("is_test", false).order("created_at", { ascending: false }).limit(1000),
   ]);
 
   // 客戶識別鍵與客戶檔案列表一致（電話尾 8 位，無電話用名稱）；舊連結以原始聯絡文字亦可配對
   const sameCustomer = (contact: string | null, name: string | null) =>
-    customerKey(contact, name) === key || (contact || name || "未知").trim() === key;
+    keys.has(customerKey(contact, name)) || keys.has((contact || name || "未知").trim());
   const allBookings = ((data ?? []) as Booking[]).filter((b) => sameCustomer(b.contact, b.owner_name));
   const vetBookings = allBookings.filter((b) => (b.source || "").includes("euthanasia"));
   const bookings = allBookings.filter((b) => !(b.source || "").includes("euthanasia"));
@@ -133,20 +142,20 @@ export default async function CustomerPage({
     .reduce((s, b) => s + Number(b.payment_amount || 0), 0);
 
   // 產品銷售：直接從 Supabase 同步表按電話尾 8 位配對。
-  const custPhone = phoneKey(contact);
+  const phoneKeys = [...new Set([phoneKey(contact), ...[...keys].filter((k) => /^\d{8}$/.test(k))].filter(Boolean))];
   let productOrders: ProductOrderRow[] = [];
-  if (custPhone) {
+  if (phoneKeys.length) {
     const { data: orderData } = await supabase
       .from("product_orders")
-      .select("*")
-      .eq("phone_key", custPhone)
+      .select("*").eq("is_test", false)
+      .in("phone_key", phoneKeys)
       .order("shopify_created_at", { ascending: false });
     productOrders = (orderData || []) as ProductOrderRow[];
   }
   // 未付款草稿：列出但不計入消費
-  const draftOrders: ProductOrderRow[] = custPhone
+  const draftOrders: ProductOrderRow[] = phoneKeys.length
     ? (await loadSouvenirDrafts())
-        .filter((d) => d.phoneKey === custPhone)
+        .filter((d) => phoneKeys.includes(d.phoneKey))
         .map((d) => ({
           shopify_order_id: d.id,
           order_name: d.name,
@@ -165,7 +174,9 @@ export default async function CustomerPage({
           synced_at: d.createdAt,
         }))
     : [];
-  const productSpend = productOrders.reduce((sum, order) => sum + Number(order.total_amount), 0);
+  const productSpend = productOrders
+    .filter((o) => !o.cancelled_at && !["REFUNDED", "PARTIALLY_REFUNDED", "VOIDED"].includes(o.financial_status || ""))
+    .reduce((sum, order) => sum + Number(order.total_amount), 0);
   productOrders = [...draftOrders, ...productOrders];
 
   // 四類記錄統一欄位：日期及時間、專案編號、訂單編號、內容、狀態、付款、金額
@@ -222,6 +233,8 @@ export default async function CustomerPage({
           {pets.length > 0 && <>　·　毛孩：{pets.join("、")}</>}
         </div>
       </div>
+
+      <MergeCustomer primaryKey={key} aliases={mergedKeys} />
 
       <div className="grid grid-cols-2 lg:grid-cols-6 gap-3 mb-6">
         {stat("接送服務", `${pickups.length} 次`)}

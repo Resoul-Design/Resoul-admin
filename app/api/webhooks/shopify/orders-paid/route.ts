@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { revalidateTag } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { assignMissingProjectNos } from "@/lib/product-order-projects";
+import { markShopifyTestOrders } from "@/lib/test-orders";
 import {
   isCremationWebhookOrder,
   productOrderFromWebhook,
@@ -61,6 +62,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Supabase upsert failed" }, { status: 500 });
     }
     await assignMissingProjectNos();
+    if (order.test) await markShopifyTestOrders([{ id: order.admin_graphql_api_id || (order.id ? `gid://shopify/Order/${order.id}` : null), name: order.name || null }]);
     revalidateTag("shopify-orders");
     return NextResponse.json({ ok: true, matched: false, productOrder: true });
   }
@@ -83,6 +85,7 @@ export async function POST(request: Request) {
     console.error("[Resoul] Shopify paid webhook Supabase update failed", error);
     return NextResponse.json({ error: "Supabase update failed" }, { status: 500 });
   }
+  if (order.test) await markShopifyTestOrders([{ name: order.name || (order.order_number ? `#${order.order_number}` : null) }]);
 
   revalidateTag("shopify-orders");
   return NextResponse.json({ ok: true, matched: (data || []).length > 0 });

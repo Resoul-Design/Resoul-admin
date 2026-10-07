@@ -3,6 +3,7 @@ import Link from "next/link";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { customerKey, type ProductOrderRow } from "@/lib/product-orders";
 import { loadSouvenirDrafts } from "@/lib/souvenir-drafts";
+import { loadAliases, resolveCustomerKey } from "@/lib/customer-aliases";
 
 export const dynamic = "force-dynamic";
 
@@ -33,11 +34,12 @@ type Customer = {
 
 export default async function CrmPage() {
   const admin = createAdminClient();
-  const [{ data }, { data: pickupData }, { data: orderData }, drafts] = await Promise.all([
-    admin.from("cremation_bookings").select("owner_name, contact, pet_name, status, service_date, amount, payment_amount, payment_status, created_at").order("created_at", { ascending: false }).limit(1000),
-    admin.from("deposit_bookings").select("owner_name, contact, pet_name, status, service_date, payment_amount, payment_status, created_at").order("created_at", { ascending: false }).limit(1000),
-    admin.from("product_orders").select("customer_name, phone, total_amount, financial_status, cancelled_at, shopify_created_at").order("shopify_created_at", { ascending: false }).limit(1000),
+  const [{ data }, { data: pickupData }, { data: orderData }, drafts, aliases] = await Promise.all([
+    admin.from("cremation_bookings").select("owner_name, contact, pet_name, status, service_date, amount, payment_amount, payment_status, created_at").eq("is_test", false).order("created_at", { ascending: false }).limit(1000),
+    admin.from("deposit_bookings").select("owner_name, contact, pet_name, status, service_date, payment_amount, payment_status, created_at").eq("is_test", false).order("created_at", { ascending: false }).limit(1000),
+    admin.from("product_orders").select("customer_name, phone, total_amount, financial_status, cancelled_at, shopify_created_at").eq("is_test", false).order("shopify_created_at", { ascending: false }).limit(1000),
     loadSouvenirDrafts(),
+    loadAliases(),
   ]);
   const paidBooking = (b: Booking) =>
     b.payment_status === "paid" && b.status !== "cancelled" ? Number(b.amount ?? b.payment_amount ?? 0) : 0;
@@ -57,7 +59,8 @@ export default async function CrmPage() {
 
   const map = new Map<string, Customer>();
   for (const e of entries) {
-    const key = customerKey(e.contact, e.name);
+    // 已合併的客戶歸入保留的檔案
+    const key = resolveCustomerKey(customerKey(e.contact, e.name), aliases);
     let c = map.get(key);
     if (!c) {
       c = { key, name: e.name || "—", contact: e.contact, pets: new Set(), count: 0, spend: 0, last: e.date };
