@@ -14,7 +14,7 @@ export type ShopCategories = {
 };
 export type FaqItem = { qZh: string; qEn: string; aZh: string; aEn: string };
 export type Faq = { groups: { icon: string; zh: string; en: string; items: FaqItem[] }[] };
-export type Notice = { enabled: boolean; zh: string; en: string; link: string };
+export type Notice = { enabled: boolean; zh: string; en: string; link: string; startDate?: string; endDate?: string };
 
 export type SiteContent = {
   "prices.cremation": CremationPrices;
@@ -201,7 +201,15 @@ export function normalizeSiteContent<K extends SiteKey>(key: K, raw: unknown): S
     case "notice": {
       const enabled = data.enabled === true;
       const zh = str(data.zh, 200, "中文公告", enabled);
-      return { enabled, zh, en: str(data.en, 300, "英文公告"), link: safeLink(data.link) } as SiteContent[K];
+      const day = (v: unknown, label: string) => {
+        const d = str(v, 10, label);
+        if (d && !/^\d{4}-\d{2}-\d{2}$/.test(d)) throw new Error(`${label}格式不正確。`);
+        return d;
+      };
+      const startDate = day(data.startDate, "開始日期");
+      const endDate = day(data.endDate, "結束日期");
+      if (startDate && endDate && endDate < startDate) throw new Error("結束日期不可早於開始日期。");
+      return { enabled, zh, en: str(data.en, 300, "英文公告"), link: safeLink(data.link), startDate, endDate } as SiteContent[K];
     }
   }
   throw new Error("未知的網站內容區塊。");

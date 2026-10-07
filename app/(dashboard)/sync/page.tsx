@@ -2,6 +2,9 @@ import { PageHeader } from "../_page-header";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { shopifyGraphQL, shopDomain } from "@/lib/shopify";
 import { syncProductOrders } from "../orders/actions";
+import Link from "next/link";
+import { comparePrices, productsWithoutType } from "@/lib/price-check";
+import { loadSiteContent } from "@/lib/site-content-server";
 
 export const dynamic = "force-dynamic";
 
@@ -93,6 +96,26 @@ export default async function SyncStatusPage() {
     }
   }
 
+  // 3) 網站收費與 Shopify 價錢、未設產品類型的產品
+  const site = await loadSiteContent();
+  const [prices, untyped] = await Promise.all([comparePrices(site.content["prices.cremation"]), productsWithoutType()]);
+  const priceIssues = prices.rows.filter((r) => r.state !== "ok");
+  const money = (n: number | null) => (n === null ? "—" : "$" + n.toLocaleString());
+  checks.push({
+    label: "火化收費：網站與 Shopify 一致",
+    state: prices.error ? "warn" : priceIssues.some((r) => r.state === "diff") ? "warn" : "ok",
+    detail: prices.error
+      ? "未能讀取 Shopify：" + prices.error
+      : priceIssues.length
+        ? `${priceIssues.filter((r) => r.state === "diff").length} 項價錢不同、${priceIssues.filter((r) => r.state === "shop_only").length} 項只在 Shopify、${priceIssues.filter((r) => r.state === "site_only").length} 項只在網站（見下表）`
+        : "全部一致",
+  });
+  checks.push({
+    label: "Shopify 產品類型",
+    state: untyped.error ? "warn" : untyped.titles.length ? "warn" : "ok",
+    detail: untyped.error ? "未能讀取 Shopify：" + untyped.error : untyped.titles.length ? `${untyped.titles.length} 件已上架產品未設產品類型，只會在商店「全部」出現：${untyped.titles.join("、")}` : "全部已設定",
+  });
+
   const fails = checks.filter((c) => c.state === "fail").length;
   const warns = checks.filter((c) => c.state === "warn").length;
   const overall: State = fails > 0 ? "fail" : warns > 0 ? "warn" : "ok";
@@ -130,6 +153,29 @@ export default async function SyncStatusPage() {
           </div>
         ))}
       </div>
+
+      {priceIssues.length > 0 && (
+        <div className="mt-5 overflow-x-auto rounded-2xl border border-[var(--line)] bg-[var(--card)]">
+          <div className="px-4 pt-4 text-sm font-medium">火化收費對數（網站 vs Shopify）</div>
+          <p className="px-4 pb-2 text-xs text-[var(--soft)]">
+            客人網上付款以 Shopify 價錢為準。網站收費在 <Link href="/site-content?tab=prices" className="text-[var(--gold)] hover:underline">網站內容 → 收費</Link> 修改；Shopify 價錢在 Shopify 後台的火化方案產品修改。
+          </p>
+          <table className="w-full min-w-[520px] text-sm">
+            <thead><tr className="bg-[var(--head)] text-left text-[var(--soft)]"><th className="px-4 py-2 font-medium">方案</th><th className="px-4 py-2 font-medium">體重</th><th className="px-4 py-2 text-right font-medium">網站</th><th className="px-4 py-2 text-right font-medium">Shopify</th><th className="px-4 py-2 font-medium">情況</th></tr></thead>
+            <tbody>
+              {priceIssues.map((r) => (
+                <tr key={r.plan + r.band} className="border-t border-[var(--line)]">
+                  <td className="px-4 py-2">{r.plan}</td>
+                  <td className="px-4 py-2">{r.band}</td>
+                  <td className="px-4 py-2 text-right tabular-nums">{money(r.site)}</td>
+                  <td className="px-4 py-2 text-right tabular-nums">{money(r.shop)}</td>
+                  <td className="px-4 py-2 text-xs">{r.state === "diff" ? <span className="text-amber-700">價錢不同</span> : r.state === "shop_only" ? "只在 Shopify（網站未列）" : "只在網站（Shopify 未有此級別）"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       <div className="mt-5 rounded-2xl border border-[var(--line)] bg-[var(--card)] p-4 text-sm text-[var(--soft)]">
         <div className="mb-1 font-medium text-[var(--ink)]">提示</div>

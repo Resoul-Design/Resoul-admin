@@ -373,6 +373,11 @@ export function NoticeEditor({ initial }: { initial: Notice }) {
           <label className="text-xs text-[var(--soft)]">公告（中文）<textarea rows={2} value={data.zh} onChange={(e) => set({ zh: e.target.value })} className={inputClass + " mt-1"} placeholder="例如：農曆新年期間接送服務照常，火化安排或需延後一至兩日。" /></label>
           <label className="text-xs text-[var(--soft)]">公告（英文）<textarea rows={2} value={data.en} onChange={(e) => set({ en: e.target.value })} className={inputClass + " mt-1"} /></label>
         </div>
+        <div className="mt-2 grid gap-2 sm:grid-cols-2">
+          <label className="text-xs text-[var(--soft)]">開始日期（可留空＝即時）<input type="date" value={data.startDate || ""} onChange={(e) => set({ startDate: e.target.value })} className={inputClass + " mt-1"} /></label>
+          <label className="text-xs text-[var(--soft)]">結束日期（可留空＝一直顯示）<input type="date" value={data.endDate || ""} onChange={(e) => set({ endDate: e.target.value })} className={inputClass + " mt-1"} /></label>
+        </div>
+        <p className="mt-1 text-xs text-[var(--soft)]">按香港日期計算：開始日期當日起顯示，結束日期當日完結後自動收起。</p>
         <label className="mt-2 block text-xs text-[var(--soft)]">連結（可留空）<input value={data.link} onChange={(e) => set({ link: e.target.value })} className={inputClass + " mt-1"} placeholder="/booking 或 https://…" /></label>
         {data.enabled && data.zh.trim() && (
           <div className="mt-3">
