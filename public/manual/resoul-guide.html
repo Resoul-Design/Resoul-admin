@@ -155,7 +155,7 @@
       <div class="tablewrap"><table>
         <thead><tr><th>編號 Number</th><th>格式／例子 Format</th><th>何時產生 Created</th><th>用途 Purpose</th></tr></thead>
         <tbody>
-          <tr><td><b>專案編號</b><span class="en">Project no.</span></td><td><code>RSL-YYMMDD-XXXXXXXX</code><br><span class="en">e.g. RSL-260922-X7K2Q9MD</span></td><td>客人首次預約時由系統自動產生；回訪客人可填回原有編號。<span class="en">Generated at a customer's first booking; returning clients can re-enter theirs.</span></td><td>同一客人整個善終旅程（接送、火化、紀念品）<b>共用同一個</b>，用作識別個案。<span class="en">Shared across the whole journey (pick-up, cremation, keepsakes) to identify the case.</span></td></tr>
+          <tr><td><b>專案編號</b><span class="en">Project no.</span></td><td><code>RSL-YYMMDD-XXXXXXXX</code><br><span class="en">e.g. RSL-260922-X7K2Q9MD</span></td><td>客人首次預約時由系統自動產生；回訪客人可填回原有編號。直接在網上商店購買、未有編號的紀念品訂單，系統亦會自動產生新編號。<span class="en">Generated at a customer's first booking; returning clients can re-enter theirs. Keepsake orders bought directly in the online shop without one also get a new number automatically.</span></td><td>同一客人整個善終旅程（接送、火化、紀念品）<b>共用同一個</b>，用作識別個案。<span class="en">Shared across the whole journey (pick-up, cremation, keepsakes) to identify the case.</span></td></tr>
           <tr><td><b>付款參考</b><span class="en">Payment ref.</span></td><td><code>PAY-…</code><br><span class="en">e.g. PAY-M1K2-AB12CD34</span></td><td>每次付款時產生。<span class="en">Created for each payment.</span></td><td>把 Shopify 付款對回資料庫的記錄；只作系統核對，一般無須告知客人。<span class="en">Matches a Shopify payment back to its record; internal only.</span></td></tr>
           <tr><td><b>發票編號</b><span class="en">Invoice no.</span></td><td>Shopify 訂單號<br><span class="en">e.g. #RS-1012</span></td><td>每次在 Shopify 付款時產生。<span class="en">Created for each Shopify payment.</span></td><td>正式收費單據；<b>每次付款各一個</b>，因此可與專案編號不同。<span class="en">The formal bill; one per payment, so it can differ from the project number.</span></td></tr>
         </tbody>
@@ -269,7 +269,7 @@
       <ul class="tight">
         <li>紀念品訂單：由 Shopify 同步、存於 Supabase。支援關鍵字搜尋（訂單／專案編號／客戶／電話／產品）、狀態篩選、每頁 25 筆與「匯出 CSV」。每行「<b>操作</b>」掣內有 WhatsApp 客人、<b>編輯</b>（開啟 Shopify 訂單）；手機版卡片格式與接送服務一致。後台「＋ 新增訂單」建立的草稿（客人未付款）亦會列在最前，付款欄顯示「待付款」、出貨欄顯示「草稿」，「操作」內可 WhatsApp 傳付款連結、開啟付款頁或開啟 Shopify 草稿；客人付款後草稿會變成正式訂單。待付款草稿亦會在專案管理、專案明細、客戶檔案及全後台搜尋列出，但不計入收入。<span class="en">Orders synced from Shopify; search (order/project no./customer/phone/product), filter, pagination, CSV; the row's Actions button has WhatsApp and Edit (opens the Shopify order); mobile cards match Pick-up services. Unpaid drafts created with + New order are listed first (payment: Pending, fulfilment: Draft), with actions to WhatsApp the payment link, open the payment page or open the Shopify draft; once paid they become regular orders. Unpaid drafts also appear in Projects, project detail, Customers and global search, but are not counted as income.</span></li>
         <li><b>已取消</b>訂單會標示並自動隱藏操作按鈕。若有新訂單未見到，按右上「同步 Shopify 訂單」重新匯入。<span class="en">Cancelled orders are marked and hide the actions; click "Sync Shopify orders" if a new one isn't showing.</span></li>
-        <li>新增 Shopify 草稿訂單（管理員或有「紀念品訂單」權限的員工）：按「＋ 新增訂單」，填寫主人名稱、客人電郵、電話、專案編號（選填）及寵物名稱，再按「產品類型 → 產品 → 款式」揀選商品及數量。建立後不會自動寄信；可先檢查付款頁，再按「寄付款連結電郵」寄給客人。<span class="en">New Shopify draft order (admins, or staff with the Souvenir orders permission): click &quot;＋ 新增訂單&quot;, enter the owner's name, email, phone, project no. (optional) and pet name, then pick items by product type → product → variant. Nothing is emailed automatically — check the payment page first, then click &quot;寄付款連結電郵&quot; to send it.</span></li>
+        <li>新增 Shopify 草稿訂單（管理員或有「紀念品訂單」權限的員工）：按「＋ 新增訂單」，填寫主人名稱、客人電郵、電話、專案編號（選填；回訪客人填原有編號，留空則自動產生新編號）及寵物名稱，再按「產品類型 → 產品 → 款式」揀選商品及數量。建立後不會自動寄信；可先檢查付款頁，再按「寄付款連結電郵」寄給客人。<span class="en">New Shopify draft order (admins, or staff with the Souvenir orders permission): click &quot;＋ 新增訂單&quot;, enter the owner's name, email, phone, project no. (optional: enter a returning client's existing number, or leave blank to generate a new one) and pet name, then pick items by product type → product → variant. Nothing is emailed automatically — check the payment page first, then click &quot;寄付款連結電郵&quot; to send it.</span></li>
         <li>倉存 · 出貨：讀取 Shopify 全部產品，按產品類型分組＋篩選；每件顯示圖片、狀態、售價與庫存（≤3 紅色）。<span class="en">Stock: all Shopify products, grouped by type with a filter; ≤3 in red.</span></li>
       </ul>
       <h3>客戶檔案<span class="en">Customer files</span></h3>
@@ -648,6 +648,7 @@
         <li>☐ 以非管理員員工帳戶測試：有權限的頁面可正常操作；沒有權限時，匯出（例如 /api/export/deposits）會被拒絕。<span class="en">Test with a non-admin staff account: permitted pages work; without permission, exports (e.g. /api/export/deposits) are refused.</span></li>
         <li>☐ 以 iPhone 測試：打開導覽選單時頂部不會移動；轉頁不閃動（需 iOS 18.2 或以上）。<span class="en">Test on iPhone: the header stays still when the menu is open; page changes don't flash (needs iOS 18.2+).</span></li>
         <li>☐ 於 Supabase diyxcx 執行 <code>db/migration_site_content.sql</code>（啟用後台「網站內容」，並把回覆知識庫四則收費範本改用收費代號）。<span class="en">Run db/migration_site_content.sql in Supabase diyxcx (enables Site content and switches the four price replies to price tokens).</span></li>
+        <li>☐ 於 Supabase diyxcx 執行 <code>db/migration_product_order_project_no.sql</code>（紀念品訂單自動產生專案編號；執行後打開「紀念品訂單」頁即為現有訂單補上編號）。<span class="en">Run db/migration_product_order_project_no.sql in Supabase diyxcx (auto project numbers for keepsake orders; open the Souvenir orders page afterwards to fill in existing orders).</span></li>
         <li>☐ 開「同步狀態」頁確認全部綠燈。<span class="en">Open the Sync status page and confirm all green.</span></li>
       </ul>
 
@@ -659,7 +660,7 @@
       </ul>
     </section>
 
-    <footer>RESOUL 營運手冊 · 內部參考文件。系統：GitHub · Vercel · Supabase · Shopify。最後更新：2026-10-06。<span class="en" style="display:inline">RESOUL Operations Manual · internal reference. Last updated 2026-10-06.</span></footer>
+    <footer>RESOUL 營運手冊 · 內部參考文件。系統：GitHub · Vercel · Supabase · Shopify。最後更新：2026-10-07。<span class="en" style="display:inline">RESOUL Operations Manual · internal reference. Last updated 2026-10-07.</span></footer>
   </main>
 </div>
 
