@@ -149,45 +149,45 @@
     "items": [
       {
         "icon": "🏺",
-        "zh": "骨灰龕及木製骨灰盒",
-        "en": "Urns and wooden ash boxes",
-        "descZh": "多款造型骨灰龕，亦可訂製專屬木雕骨灰盒及音樂盒。",
-        "descEn": "A range of urn designs, plus custom wood-carved ash boxes and music boxes."
+        "zh": "骨灰龕",
+        "en": "Urns",
+        "descZh": "以精緻骨灰龕，安放牠的一生。",
+        "descEn": "A fine urn to hold a whole life."
+      },
+      {
+        "icon": "🪵",
+        "zh": "專屬木雕",
+        "en": "Custom wood carvings",
+        "descZh": "木製骨灰盒、音樂盒及寵物木雕，按牠的模樣訂製。",
+        "descEn": "Wooden urns, music boxes and pet carvings made in their likeness."
+      },
+      {
+        "icon": "💠",
+        "zh": "骨灰裸石",
+        "en": "Cremation gemstones",
+        "descZh": "將思念凝聚成一顆隨身的光。",
+        "descEn": "Longing, held in a stone you can carry."
       },
       {
         "icon": "💎",
-        "zh": "骨灰裸石及晶石",
-        "en": "Cremation gemstones and crystals",
-        "descZh": "以骨灰製成的永恆裸石、伴光晶石、晶塔及平安伴扣。",
-        "descEn": "Gemstones, companion crystals, memory towers and keepsake pendants made with ashes."
-      },
-      {
-        "icon": "✨",
-        "zh": "毛髮寶石飾物",
-        "en": "Fur gemstone jewellery",
-        "descZh": "以毛孩毛髮製成的寶石手鍊、頸鍊、戒指及耳環。",
-        "descEn": "Bracelets, necklaces, rings and earrings with a gemstone made from your pet's fur."
+        "zh": "毛髮寶石",
+        "en": "Fur gemstones",
+        "descZh": "以毛孩毛髮製成的寶石飾物。",
+        "descEn": "Jewellery set with a gemstone made from their fur."
       },
       {
         "icon": "🐾",
-        "zh": "鼻紋及腳印純銀飾物",
-        "en": "Nose and paw print silver jewellery",
-        "descZh": "925 純銀鼻紋、腳印頸鏈／手鏈／戒指，以及手繪寵物飾物。",
-        "descEn": "925 silver nose-print and paw-print necklaces, bracelets and rings, plus hand-painted pet accessories."
+        "zh": "925 純銀",
+        "en": "925 silver prints",
+        "descZh": "把鼻紋與腳印，刻在每天戴着的純銀飾物上。",
+        "descEn": "Their nose and paw prints on sterling silver you wear every day."
       },
       {
-        "icon": "🔮",
-        "zh": "琉璃及光影系列",
-        "en": "Liuli glass and Halo series",
-        "descZh": "手工琉璃飾物、紀念琉璃球及光影水晶球，讓思念帶點光。",
-        "descEn": "Handcrafted liuli glass pieces, memorial glass orbs and Halo crystal globes."
-      },
-      {
-        "icon": "🖼️",
-        "zh": "腳印、相框及陶瓷紀念品",
-        "en": "Paw prints, frames and ceramics",
-        "descZh": "腳印鼻紋相框、陶瓷杯碟、銅製掌印及寵物銅像。",
-        "descEn": "Paw and nose print frames, ceramic cups and plates, bronze paw impressions and pet portraits."
+        "icon": "📿",
+        "zh": "琉璃飾物",
+        "en": "Handcrafted liuli",
+        "descZh": "手工琉璃飾物，在忙碌的日子仍能輕輕碰到牠。",
+        "descEn": "Handcrafted liuli glass, to reach for them even on busy days."
       }
     ]
   },
@@ -197,145 +197,167 @@
         "key": "urn",
         "img": "images/cat-urn.jpg",
         "icon": "🏺",
-        "zh": "骨灰盅",
+        "zh": "骨灰龕",
         "en": "Urns",
-        "descZh": "以精緻骨灰盅，安放牠的一生。",
+        "descZh": "以精緻骨灰龕，安放牠的一生。",
         "descEn": "A fine urn to hold a whole life.",
-        "tags": [
-          "骨灰龕",
-          "urn"
+        "types": [
+          "骨灰龕"
         ],
-        "keywords": [
-          "骨灰",
-          "甕",
-          "盅",
-          "龕",
-          "urn"
-        ]
+        "tags": [],
+        "keywords": []
       },
       {
-        "key": "stone",
+        "key": "wood",
+        "img": "https://cdn.shopify.com/s/files/1/0839/2841/6484/files/WP005.png?width=600",
+        "icon": "🪵",
+        "zh": "專屬木雕",
+        "en": "Custom wood carvings",
+        "descZh": "木製骨灰盒、音樂盒及寵物木雕，按牠的模樣訂製。",
+        "descEn": "Wooden urns, music boxes and pet carvings made in their likeness.",
+        "types": [
+          "專屬木雕"
+        ],
+        "tags": [],
+        "keywords": []
+      },
+      {
+        "key": "gem",
         "img": "images/cat-stone.jpg",
         "icon": "💠",
-        "zh": "永念晶石及伴光晶石",
-        "en": "Memory & light stones",
+        "zh": "骨灰裸石",
+        "en": "Cremation gemstones",
         "descZh": "將思念凝聚成一顆隨身的光。",
         "descEn": "Longing, held in a stone you can carry.",
-        "tags": [
-          "晶石"
+        "types": [
+          "骨灰裸石"
         ],
-        "keywords": [
-          "晶石",
-          "stone",
-          "crystal"
-        ]
+        "tags": [],
+        "keywords": []
       },
       {
-        "key": "bronze",
+        "key": "fur",
+        "img": "images/cat-jewel.jpg",
+        "icon": "💎",
+        "zh": "毛髮寶石",
+        "en": "Fur gemstones",
+        "descZh": "以毛孩毛髮製成的寶石飾物。",
+        "descEn": "Jewellery set with a gemstone made from their fur.",
+        "types": [
+          "毛髮寶石"
+        ],
+        "tags": [],
+        "keywords": []
+      },
+      {
+        "key": "silver",
+        "img": "https://cdn.shopify.com/s/files/1/0839/2841/6484/files/BT007.png?width=600",
+        "icon": "🐾",
+        "zh": "925 純銀",
+        "en": "925 silver prints",
+        "descZh": "把鼻紋與腳印，刻在每天戴着的純銀飾物上。",
+        "descEn": "Their nose and paw prints on sterling silver you wear every day.",
+        "types": [
+          "925 純銀"
+        ],
+        "tags": [],
+        "keywords": []
+      },
+      {
+        "key": "painted",
+        "img": "https://cdn.shopify.com/s/files/1/0839/2841/6484/files/FA001.png?width=600",
+        "icon": "🎨",
+        "zh": "客製化手繪寵物飾物",
+        "en": "Hand-painted pet portraits",
+        "descZh": "手繪毛孩肖像，做成頸鏈及手鏈。",
+        "descEn": "Hand-painted portraits of your pet, made into necklaces and bracelets.",
+        "types": [
+          "客製化手繪寵物飾物"
+        ],
+        "tags": [],
+        "keywords": []
+      },
+      {
+        "key": "liuli",
+        "img": "https://cdn.shopify.com/s/files/1/0839/2841/6484/files/BT020.png?width=600",
+        "icon": "📿",
+        "zh": "琉璃飾物",
+        "en": "Handcrafted liuli",
+        "descZh": "手工琉璃飾物，在忙碌的日子仍能輕輕碰到牠。",
+        "descEn": "Handcrafted liuli glass, to reach for them even on busy days.",
+        "types": [
+          "琉璃飾物"
+        ],
+        "tags": [],
+        "keywords": []
+      },
+      {
+        "key": "halo",
+        "img": "https://cdn.shopify.com/s/files/1/0839/2841/6484/files/RE104.jpg?width=600",
+        "icon": "🔮",
+        "zh": "光影系列",
+        "en": "Halo series",
+        "descZh": "光影水晶球及飾物，讓思念帶點光。",
+        "descEn": "Halo crystal globes and jewellery that let memories glow.",
+        "types": [
+          "光影系列"
+        ],
+        "tags": [],
+        "keywords": []
+      },
+      {
+        "key": "ceramic",
+        "img": "https://cdn.shopify.com/s/files/1/0839/2841/6484/files/CP104.jpg?width=600",
+        "icon": "☕",
+        "zh": "寵物印記陶瓷",
+        "en": "Paw-print ceramics",
+        "descZh": "印上腳印的杯、碟及紀念牌，融入日常生活。",
+        "descEn": "Cups, plates and plaques with their paw print, for everyday life.",
+        "types": [
+          "寵物印記陶瓷"
+        ],
+        "tags": [],
+        "keywords": []
+      },
+      {
+        "key": "keepsake",
         "img": "images/cat-bronze.jpg",
         "icon": "🪙",
-        "zh": "永恆銅印紀念系列",
-        "en": "Eternal bronze prints",
-        "descZh": "以銅印留住牠獨一無二的印記。",
-        "descEn": "Their unique mark, kept in bronze.",
-        "tags": [
-          "銅印"
+        "zh": "紀念品",
+        "en": "Keepsakes",
+        "descZh": "腳印黏土、相框及銅印，把最熟悉的觸感好好保存。",
+        "descEn": "Paw-print clay, frames and bronze prints that keep the most familiar touch.",
+        "types": [
+          "紀念品"
         ],
-        "keywords": [
-          "銅印",
-          "bronze"
-        ]
+        "tags": [],
+        "keywords": []
       },
       {
-        "key": "print",
-        "img": "images/cat-print.jpg",
-        "icon": "🐾",
-        "zh": "掌印、鼻印及毛髮紀念",
-        "en": "Paw, nose & fur keepsakes",
-        "descZh": "把最熟悉的觸感，好好保存下來。",
-        "descEn": "Keep the most familiar touch close.",
-        "tags": [
-          "掌印",
-          "鼻印",
-          "毛髮"
-        ],
-        "keywords": [
-          "掌印",
-          "鼻印",
-          "毛髮",
-          "paw",
-          "nose",
-          "fur"
-        ]
-      },
-      {
-        "key": "jewel",
-        "img": "images/cat-jewel.jpg",
-        "icon": "📿",
-        "zh": "飾物及日常隨身紀念",
-        "en": "Jewellery & everyday keepsakes",
-        "descZh": "在忙碌的日子，仍能輕輕碰到牠。",
-        "descEn": "Reach for them, even on busy days.",
-        "tags": [
-          "飾物"
-        ],
-        "keywords": [
-          "飾物",
-          "琉璃",
-          "頸鏈",
-          "手鏈",
-          "吊墜",
-          "jewel",
-          "necklace",
-          "pendant",
-          "bracelet"
-        ]
-      },
-      {
-        "key": "gift",
+        "key": "paper",
         "img": "images/cat-gift.jpg",
         "icon": "🎁",
-        "zh": "禮物及悲傷關懷用品",
-        "en": "Gifts & grief-care items",
-        "descZh": "給自己或同路人，一份溫柔的陪伴。",
-        "descEn": "Gentle comfort, for you or a friend.",
-        "tags": [
-          "關懷"
+        "zh": "紙製品",
+        "en": "Paper offerings",
+        "descZh": "為牠準備的紙紮祭品，寄託心意。",
+        "descEn": "Paper offerings prepared for them, carrying your love.",
+        "types": [
+          "紙製品"
         ],
-        "keywords": [
-          "禮物",
-          "關懷",
-          "gift",
-          "care",
-          "comfort"
-        ]
+        "tags": [],
+        "keywords": []
       },
       {
-        "key": "home",
-        "img": "images/cat-home-img-2882.jpg",
-        "icon": "🏡",
-        "zh": "家居安放",
-        "en": "Home resting",
-        "descZh": "在家中留一個角落，讓牠仍是家的一部分。",
-        "descEn": "Keep a corner at home, so they remain part of it.",
-        "tags": [
-          "家居安放"
-        ],
-        "keywords": [
-          "家居安放",
-          "擺放",
-          "相框",
-          "home resting"
-        ]
-      },
-      {
-        "key": "all",
+        "key": "memorial",
         "img": "images/cat-hall.jpg",
         "icon": "🕯️",
         "zh": "寵物紀念牆",
         "en": "Pet Memorial Hall",
-        "descZh": "走進 RESOUL 的紀念空間，細看每一件紀念之物。",
-        "descEn": "Step into RESOUL's memorial space and see every keepsake.",
+        "descZh": "在 RESOUL 紀念空間，為牠留一個安放思念的位置。",
+        "descEn": "A place in RESOUL's memorial hall to keep their memory.",
+        "types": [
+          "紀念服務"
+        ],
         "tags": [],
         "keywords": []
       }

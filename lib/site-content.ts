@@ -10,7 +10,7 @@ export type VetPrices = {
 export type GriefPrices = { rows: { zh: string; en: string; priceZh: string; priceEn: string }[] };
 export type Keepsakes = { items: { icon: string; zh: string; en: string; descZh: string; descEn: string }[] };
 export type ShopCategories = {
-  items: { key: string; img: string; icon: string; zh: string; en: string; descZh: string; descEn: string; tags: string[]; keywords: string[] }[];
+  items: { key: string; img: string; icon: string; zh: string; en: string; descZh: string; descEn: string; types: string[]; tags: string[]; keywords: string[] }[];
 };
 export type FaqItem = { qZh: string; qEn: string; aZh: string; aEn: string };
 export type Faq = { groups: { icon: string; zh: string; en: string; items: FaqItem[] }[] };
@@ -186,6 +186,7 @@ export function normalizeSiteContent<K extends SiteKey>(key: K, raw: unknown): S
             en: str(it.en, 80, `第 ${i + 1} 張卡英文名稱`, true),
             descZh: str(it.descZh, 120, `第 ${i + 1} 張卡中文說明`),
             descEn: str(it.descEn, 200, `第 ${i + 1} 張卡英文說明`),
+            types: words(it.types, `第 ${i + 1} 張卡 Shopify 產品類型`),
             tags: words(it.tags, `第 ${i + 1} 張卡 Shopify 標籤`),
             keywords: words(it.keywords, `第 ${i + 1} 張卡後備關鍵字`),
           };

@@ -249,7 +249,7 @@ export function KeepsakesEditor({ initial }: { initial: Keepsakes }) {
 
 /* ---------- 商店分類卡 ---------- */
 
-type ShopItem = Omit<ShopCategories["items"][number], "tags" | "keywords"> & { tags: string[] | string; keywords: string[] | string };
+type ShopItem = Omit<ShopCategories["items"][number], "types" | "tags" | "keywords"> & { types: string[] | string; tags: string[] | string; keywords: string[] | string };
 const joinWords = (v: string[] | string) => (Array.isArray(v) ? v.join("、") : v);
 
 export function ShopCategoriesEditor({ initial, landingUrl }: { initial: ShopCategories; landingUrl: string }) {
@@ -279,6 +279,7 @@ export function ShopCategoriesEditor({ initial, landingUrl }: { initial: ShopCat
             <label className="mt-2 block text-xs text-[var(--soft)]">說明（中文）<input value={it.descZh} onChange={(e) => set(i, { descZh: e.target.value })} className={inputClass + " mt-1"} /></label>
             <label className="mt-2 block text-xs text-[var(--soft)]">說明（英文）<input value={it.descEn} onChange={(e) => set(i, { descEn: e.target.value })} className={inputClass + " mt-1"} /></label>
             <label className="mt-2 block text-xs text-[var(--soft)]">背景圖片<input value={it.img} onChange={(e) => set(i, { img: e.target.value })} className={inputClass + " mt-1"} placeholder="images/cat-urn.jpg 或 https:// 網址" /></label>
+            <label className="mt-2 block text-xs text-[var(--soft)]">Shopify 產品類型（中文名稱，多個以頓號分隔）<input value={joinWords(it.types)} onChange={(e) => set(i, { types: e.target.value })} className={inputClass + " mt-1"} placeholder="例如 骨灰龕" /></label>
             <div className="mt-2 grid gap-2 sm:grid-cols-2">
               <label className="text-xs text-[var(--soft)]">Shopify 標籤（以頓號分隔）<input value={joinWords(it.tags)} onChange={(e) => set(i, { tags: e.target.value })} className={inputClass + " mt-1"} /></label>
               <label className="text-xs text-[var(--soft)]">後備關鍵字（以頓號分隔）<input value={joinWords(it.keywords)} onChange={(e) => set(i, { keywords: e.target.value })} className={inputClass + " mt-1"} /></label>
@@ -286,10 +287,11 @@ export function ShopCategoriesEditor({ initial, landingUrl }: { initial: ShopCat
           </Card>
         ))}
       </div>
-      <button type="button" className={addBtn + " mt-3"} onClick={() => update((x) => ({ items: [...x.items, { key: "", img: "", icon: "✨", zh: "", en: "", descZh: "", descEn: "", tags: [], keywords: [] }] }))}>＋ 新增分類卡</button>
+      <button type="button" className={addBtn + " mt-3"} onClick={() => update((x) => ({ items: [...x.items, { key: "", img: "", icon: "✨", zh: "", en: "", descZh: "", descEn: "", types: [], tags: [], keywords: [] }] }))}>＋ 新增分類卡</button>
       <p className="mt-3 text-xs leading-5 text-[var(--soft)]">
-        客人按分類卡時，會顯示 Shopify 產品標籤包含任一「Shopify 標籤」字眼的產品；未有任何分類標籤的產品，改用「後備關鍵字」比對產品名稱及類型。兩欄都留空＝顯示全部產品。
-        背景圖片須先放在網站 images/ 資料夾（或使用 https 圖片網址）。
+        客人按分類卡時，顯示 Shopify「產品類型」與此卡相同的產品（填產品類型的中文部分，例如「骨灰龕」；一張卡可對應多個類型）。只對應一個類型時，商店的篩選掣亦會使用此卡的名稱。
+        亦可改用「Shopify 標籤」或「後備關鍵字」（比對產品名稱、類型及標籤）；三欄都留空＝顯示全部產品。「預約服務」及「火化服務」類產品不會在商店顯示。
+        背景圖片可用網站 images/ 路徑或 https 圖片網址（例如 Shopify 產品相片）。
       </p>
       {bar}
     </div>
