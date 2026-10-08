@@ -311,6 +311,16 @@
         <li>每次儲存前，系統會保留上一個版本（每區塊最近 20 個）。區塊標題旁「版本記錄」可查看並「還原」；還原前的內容亦會保留，可再還原。<span class="en">Each save keeps the previous version (latest 20 per section). Use 版本記錄 beside the section title to view and restore; the content before a restore is kept too.</span></li>
         <li>頁頂公告可設開始及結束日期（香港日期）：開始日期當日起顯示，結束日期完結後自動收起；留空即即時顯示／一直顯示。<span class="en">The top notice can have start and end dates (Hong Kong date): it shows from the start date and hides automatically after the end date; leave blank to show now / indefinitely.</span></li>
       </ul>
+      <h3>客人自助查詢進度<span class="en">Customer progress lookup</span></h3>
+      <ul class="tight">
+        <li>網站「查詢進度」頁（/track，英文 /track-en；全站頁尾及「預約已收到」頁有連結）：客人輸入專案編號及預約時登記的電話（尾 8 位須相符），即可查看服務階段及日期：已收到預約、已付訂金、已安排接送、已接送、火化中、骨灰可取回、已交還；上門安樂死查詢則顯示已收到、已安排上門、已完成。同一專案的紀念品訂單會顯示製作／出貨狀態。<span class="en">The website's Track progress page (/track, /track-en; linked in every footer and the booking-received page) lets a client enter their project number and the phone used when booking (last 8 digits must match) to see service stages and dates: booking received, deposit paid, pick-up arranged, collected, cremation in progress, ashes ready, returned home; home euthanasia enquiries show received, home visit arranged, completed. Keepsake orders in the same project show their preparation or shipping status.</span></li>
+        <li>進度直接跟後台資料：火化進度在火化預約「進度」記錄；接送安排跟接送服務的狀態。只會顯示毛孩名稱、階段及日期，不會顯示地址、電話或付款資料；每個來源每小時最多查詢 20 次。<span class="en">Progress follows the admin records: cremation stages come from the booking's progress, and pick-up arrangements from the pick-up status. Only the companion's name, stages and dates are shown, never address, phone or payment details; each source can look up at most 20 times an hour.</span></li>
+      </ul>
+      <h3>服務後邀請評價<span class="en">Post-service review invitations</span></h3>
+      <ul class="tight">
+        <li>總覽頁「⭐ 邀請評價」列出服務完成 3 日後（火化：已交還骨灰；接送：狀態已完成）、最近 90 日內的客人。按「💬 WhatsApp 邀請」開啟預填訊息（附 Google 評價連結，中英按客人語言），傳送後按「已邀請」；不適合邀請的按「略過」。同一電話只會出現一次，測試記錄不會列出。<span class="en">The overview's ⭐ 邀請評價 card lists clients whose service finished at least 3 days ago (cremation: ashes returned; pick-up: completed) within the last 90 days. Click 💬 WhatsApp 邀請 to open a prefilled message with the Google review link (in the client's language), then click 已邀請 after sending, or 略過 if not suitable. Each phone appears only once; test records are excluded.</span></li>
+        <li>評價連結預設為 Resoul 的 Google 地圖頁。如在 Google 商家檔案取得「撰寫評論」直接連結，可在 Vercel（Admin）設定 <code>NEXT_PUBLIC_GOOGLE_REVIEW_URL</code> 取代。需先於 Supabase 執行 <code>db/migration_review_invites.sql</code>。<span class="en">The review link defaults to Resoul's Google Maps page. If you get a direct 'write a review' link from the Google Business Profile, set NEXT_PUBLIC_GOOGLE_REVIEW_URL in Vercel (Admin) to replace it. Requires db/migration_review_invites.sql in Supabase.</span></li>
+      </ul>
       <h3>其他版面<span class="en">Other pages</span></h3>
       <ul class="tight">
         <li>文章記錄：管理網誌文章（來自 Shopify Blog）及網誌分類，並顯示每篇文章的標籤。員工管理：新增／停用員工、修改姓名、設定權限（姓名會用於訂金跟進及回覆助手的訊息署名，修改後按該行「存」）。<span class="en">Articles (from Shopify Blog); Staff: add/disable, edit names and set permissions (names sign deposit follow-up and reply messages; click Save on the row).</span></li>
@@ -458,6 +468,7 @@
           <tr><td><code>project_entries</code> / <code>plan_prices</code></td><td>專案收支明細（可連火化預約或產品訂單）／方案定價。<span class="en">Project entries (linked to a booking or product order) / plan pricing.</span></td></tr>
           <tr><td><code>product_orders</code></td><td>由 Shopify 同步的紀念產品訂單副本。<span class="en">Copy of memorial-product orders synced from Shopify.</span></td></tr>
           <tr><td><code>audit_log</code></td><td>後台操作審計記錄。<span class="en">Audit log of admin actions.</span></td></tr>
+          <tr><td><code>review_invites</code></td><td>後台「服務後邀請評價」的已邀請／略過記錄。<span class="en">Review invitation records (invited / skipped).</span></td></tr>
           <tr><td><code>site_content_versions</code></td><td>後台「網站內容」每次儲存前的舊版本（可還原）。<span class="en">Previous Site content versions (restorable).</span></td></tr>
           <tr><td><code>customer_aliases</code></td><td>客戶檔案合併對照（被合併的客戶 → 保留的客戶）。<span class="en">Customer file merges (merged key → kept key).</span></td></tr>
           <tr><td><code>site_content</code></td><td>後台「網站內容」儲存的收費、紀念精品、商店分類、常見問題及頁頂公告。<span class="en">Prices, keepsakes, shop categories, FAQ and top notice saved in Site content.</span></td></tr>
@@ -678,6 +689,7 @@
         <li>☐ 於 Supabase diyxcx 執行 <code>db/migration_site_content.sql</code>（啟用後台「網站內容」，並把回覆知識庫四則收費範本改用收費代號）。<span class="en">Run db/migration_site_content.sql in Supabase diyxcx (enables Site content and switches the four price replies to price tokens).</span></li>
         <li>☐ 於 Supabase diyxcx 執行 <code>db/migration_product_order_project_no.sql</code>（紀念品訂單自動產生專案編號；執行後打開「紀念品訂單」頁即為現有訂單補上編號）。<span class="en">Run db/migration_product_order_project_no.sql in Supabase diyxcx (auto project numbers for keepsake orders; open the Souvenir orders page afterwards to fill in existing orders).</span></li>
         <li>☐ 於 Supabase diyxcx 執行 <code>db/migration_20261007_admin_upgrade.sql</code>（測試記錄、網站內容版本記錄、客戶檔案合併）；執行後到紀念品訂單按「同步 Shopify 訂單」，自動標記 Shopify 測試訂單。<span class="en">Run db/migration_20261007_admin_upgrade.sql in Supabase diyxcx (test records, Site content versions, customer merges), then click Sync Shopify orders to mark Shopify test orders.</span></li>
+        <li>☐ 於 Supabase diyxcx 執行 <code>db/migration_review_invites.sql</code>（服務後邀請評價）；如有 Google「撰寫評論」直接連結，設定 Admin 環境變數 <code>NEXT_PUBLIC_GOOGLE_REVIEW_URL</code>。<span class="en">Run db/migration_review_invites.sql in Supabase diyxcx (review invitations); if you have a direct Google 'write a review' link, set NEXT_PUBLIC_GOOGLE_REVIEW_URL in the Admin environment.</span></li>
         <li>☐ 開「同步狀態」頁確認全部綠燈。<span class="en">Open the Sync status page and confirm all green.</span></li>
       </ul>
 
@@ -689,7 +701,7 @@
       </ul>
     </section>
 
-    <footer>RESOUL 營運手冊 · 內部參考文件。系統：GitHub · Vercel · Supabase · Shopify。最後更新：2026-10-07。<span class="en" style="display:inline">RESOUL Operations Manual · internal reference. Last updated 2026-10-07.</span></footer>
+    <footer>RESOUL 營運手冊 · 內部參考文件。系統：GitHub · Vercel · Supabase · Shopify。最後更新：2026-10-08。<span class="en" style="display:inline">RESOUL Operations Manual · internal reference. Last updated 2026-10-08.</span></footer>
   </main>
 </div>
 
