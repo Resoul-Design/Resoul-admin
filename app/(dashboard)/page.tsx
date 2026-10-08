@@ -8,6 +8,9 @@ import { bookingFollowUps, productFollowUps, type BookingForFollow } from "@/lib
 import type { ProductOrderRow } from "@/lib/product-orders";
 import { Clock } from "./_clock";
 import { DashboardAutoRefresh } from "./_auto-refresh";
+import { ReviewInvites } from "./_review-invites";
+import { loadReviewCandidates } from "@/lib/review-invites";
+import { GOOGLE_REVIEW_URL } from "@/lib/company";
 
 export const dynamic = "force-dynamic";
 
@@ -191,6 +194,9 @@ export default async function OverviewPage() {
   ].filter((l) => l.count > 0);
   const followTotal = followLinks.reduce((n, l) => n + l.count, 0);
 
+  // 服務完成後邀請評價（火化：骨灰已交還；接送：已完成）
+  const reviews = await loadReviewCandidates({ cremation: canCrem, deposit: !!staff && hasModule(staff, ["deposits"]) });
+
   // 訂單營業額（分頁抓取 + 5 分鐘快取）
   const shopErr = ordersRes.ok ? "" : ordersRes.error || "error";
   const revByMonth: Record<string, number> = {};
@@ -288,6 +294,8 @@ export default async function OverviewPage() {
           </div>
         </div>
       )}
+
+      <ReviewInvites items={reviews.items} staffName={staff?.name?.trim() || staff?.email?.split("@")[0] || "同事"} reviewUrl={GOOGLE_REVIEW_URL} />
 
       {/* KPI 圖標大數字 */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4 mb-6">

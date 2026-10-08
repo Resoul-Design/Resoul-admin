@@ -18,3 +18,6 @@ export const PLAN_CODES: Record<string, { code: string; en: string }> = {
   雲之旅: { code: "CJ1", en: "Cloud Journey" },
   星之旅: { code: "SJ1", en: "Star Journey" },
 };
+
+// 邀請評價用的 Google 連結；取得「撰寫評論」直接連結後，可設 NEXT_PUBLIC_GOOGLE_REVIEW_URL 取代
+export const GOOGLE_REVIEW_URL = (process.env.NEXT_PUBLIC_GOOGLE_REVIEW_URL || "https://maps.app.goo.gl/pivPtcEfwhwJCefw9").trim();
