@@ -37,8 +37,8 @@ export type FollowItem = {
 
 const LABELS: Record<FollowEntity, Record<FollowUpKind, string>> = {
   cremation: { paid_unscheduled: "已付款、未排期", payment_failed: "付款失敗", unpaid_next_day: "未付款", reminded_unpaid: "已提醒、仍未付款" },
-  vet: { paid_unscheduled: "已確認、未排期", payment_failed: "—", unpaid_next_day: "隔日仍未聯絡", reminded_unpaid: "已聯絡、未有回覆" },
-  product: { paid_unscheduled: "已付款、未出貨", payment_failed: "付款失敗", unpaid_next_day: "隔日仍未付款", reminded_unpaid: "已提醒、仍未付款" },
+  vet: { paid_unscheduled: "已確認、未排期", payment_failed: "—", unpaid_next_day: "未聯絡", reminded_unpaid: "已聯絡、未有回覆" },
+  product: { paid_unscheduled: "已付款、未出貨", payment_failed: "付款失敗", unpaid_next_day: "未付款", reminded_unpaid: "已提醒、仍未付款" },
 };
 
 const ACTIONS: Record<FollowEntity, Record<FollowUpKind, string>> = {
@@ -51,11 +51,6 @@ export const followLabel = (entity: FollowEntity, kind: FollowUpKind) => LABELS[
 export const followAction = (entity: FollowEntity, kind: FollowUpKind) => ACTIONS[entity][kind];
 
 const HK_OFFSET_MS = 8 * 60 * 60 * 1000;
-function hkTodayStart(now: Date) {
-  const hk = new Date(now.getTime() + HK_OFFSET_MS);
-  hk.setUTCHours(0, 0, 0, 0);
-  return hk.getTime() - HK_OFFSET_MS;
-}
 
 // 與接送服務相同的四類規則；獸醫評估沒有收費，以「仍是新收到」代替「未付款」
 export function followKind(it: FollowItem, now = new Date()): FollowUpKind | null {
@@ -69,8 +64,8 @@ export function followKind(it: FollowItem, now = new Date()): FollowUpKind | nul
   if (it.entity === "cremation" && !(it.amount && it.amount > 0)) return null;
   if (m.remindedAt) return now.getTime() - new Date(m.remindedAt).getTime() >= REMIND_WAIT_MS ? "reminded_unpaid" : null;
   if (it.paymentStatus === "failed") return "payment_failed";
-  if (it.entity === "cremation") return "unpaid_next_day"; // 火化：即時提醒
-  return new Date(it.createdAt).getTime() < hkTodayStart(now) ? "unpaid_next_day" : null;
+  // 2026-10-11 起：未付款（獸醫評估：未聯絡）即時列入提醒，不再等到翌日
+  return "unpaid_next_day";
 }
 
 // 已提醒、等候客人回應期間的提示（例如「已提醒 10/3 · 10/5 起致電跟進」）；四個列表共用
