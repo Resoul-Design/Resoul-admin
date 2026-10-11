@@ -34,7 +34,7 @@ export const FOLLOW_UP_ORDER: FollowUpKind[] = ["paid_unscheduled", "payment_fai
 export const FOLLOW_UP_LABEL: Record<FollowUpKind, string> = {
   paid_unscheduled: "已付款、未排期",
   payment_failed: "付款失敗",
-  unpaid_next_day: "隔日仍未付款",
+  unpaid_next_day: "未付款",
   reminded_unpaid: "已提醒、仍未付款",
 };
 
@@ -49,14 +49,6 @@ export const FOLLOW_UP_ACTION: Record<FollowUpKind, string> = {
 // 已提醒後等候多久才列入「已提醒、仍未付款」
 export const REMIND_WAIT_MS = 2 * 24 * 60 * 60 * 1000;
 
-const HK_OFFSET_MS = 8 * 60 * 60 * 1000;
-
-// 今日香港時間 00:00 對應的 UTC 毫秒
-function hkTodayStart(now: Date) {
-  const hk = new Date(now.getTime() + HK_OFFSET_MS);
-  hk.setUTCHours(0, 0, 0, 0);
-  return hk.getTime() - HK_OFFSET_MS;
-}
 
 export function followUpKind(row: FollowUpRow, now = new Date()): FollowUpKind | null {
   if (row.follow_up_closed_at) return null;
@@ -68,7 +60,8 @@ export function followUpKind(row: FollowUpRow, now = new Date()): FollowUpKind |
     return now.getTime() - new Date(row.reminded_at).getTime() >= REMIND_WAIT_MS ? "reminded_unpaid" : null;
   }
   if (payment === "failed") return "payment_failed";
-  return new Date(row.created_at).getTime() < hkTodayStart(now) ? "unpaid_next_day" : null;
+  // 2026-10-11 起未付款即時列入提醒（不再等到翌日）
+  return "unpaid_next_day";
 }
 
 // 需要付款連結的類別

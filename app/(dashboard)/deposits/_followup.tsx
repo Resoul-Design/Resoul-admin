@@ -48,6 +48,16 @@ function FollowUpPanel({ item, staffName, onDone }: { item: FollowUpItem; staffN
   const [error, setError] = useState("");
   const [pending, startTransition] = useTransition();
   const payKind = needsPaymentLink(item.kind);
+  const [copied, setCopied] = useState(false);
+  async function copyLink(url: string) {
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      window.prompt("複製付款連結：", url);
+    }
+  }
   const wa = text ? whatsappLink(item.contact, text) : null;
 
   // closeAfter：標記完成後關閉視窗（該行會從跟進清單消失）
@@ -111,6 +121,14 @@ function FollowUpPanel({ item, staffName, onDone }: { item: FollowUpItem; staffN
             className="mt-2 w-full rounded-lg border border-[var(--line)] bg-white px-3 py-2 leading-6 outline-none focus:border-[var(--gold)]"
           />
           {payKind && !link && <p className="mt-1 text-xs text-amber-700">請先按「產生付款連結」，訊息會自動填入連結。</p>}
+          {payKind && link && (
+            <div className="mt-2 flex flex-wrap items-center gap-2 rounded-lg bg-[var(--cream)] px-3 py-2 text-xs">
+              <span className="text-[var(--soft)]">付款連結</span>
+              <a href={link} target="_blank" rel="noopener noreferrer" className={btn}>🔗 開啟</a>
+              <button type="button" className={btn} onClick={() => copyLink(link)}>{copied ? "已複製 ✓" : "複製"}</button>
+              <span className="min-w-0 basis-full break-all text-[var(--soft)]">{link}</span>
+            </div>
+          )}
         </>
       )}
 

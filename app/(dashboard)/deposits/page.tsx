@@ -6,7 +6,7 @@ import { shopDomain } from "@/lib/shopify";
 import { getStaff, hasModule } from "@/lib/auth";
 import { loadCatalog } from "@/lib/catalog";
 import { NewBookingOrder } from "../_booking-order";
-import { FOLLOW_UP_ACTION, FOLLOW_UP_LABEL, FOLLOW_UP_ORDER, followUpKind } from "@/lib/deposit-followup";
+import { FOLLOW_UP_ACTION, FOLLOW_UP_LABEL, FOLLOW_UP_ORDER, followUpKind, needsPaymentLink } from "@/lib/deposit-followup";
 import { EditDepositInline } from "./_edit";
 import { RowActions, type RowAction } from "../_row-actions";
 import Link from "next/link";
@@ -166,6 +166,8 @@ function payable(r: DepositRow) {
 function depositActions(r: DepositRow, fu: FollowUpItem | undefined, staffName: string, cal: string | null, invoice: string | null, wa: string | null, linked: LinkedCremation | undefined, canBook: boolean): RowAction[] {
   const list: RowAction[] = [];
   if (fu) list.push({ kind: "panel", key: "followup", label: `🔔 ${FOLLOW_UP_ACTION[fu.kind]}（${FOLLOW_UP_LABEL[fu.kind]}）`, title: "訂金跟進", alert: true, node: <FollowUpInline item={fu} staffName={staffName} /> });
+  // 未付款但不在付款提醒（例如已提醒、等候客人）：付款連結放在操作內
+  if (payable(r) && !(fu && needsPaymentLink(fu.kind))) list.push({ kind: "panel", key: "paylink", label: "🔗 付款連結", title: "付款連結", node: <DepositPayLink id={r.id} link={r.payment_link || null} /> });
   list.push({ kind: "panel", key: "status", label: `🔄 更新狀態（${STATUS_LABEL[r.status] || r.status}）`, title: "更新接送服務狀態", node: <DepositStatusPanel id={r.id} status={r.status} /> });
   const project = depositProjectNo(r);
   if (linked) list.push({ kind: "link", key: "cremation", label: `🕊️ 查看火化預約（${CREMATION_STATUS[linked.status] || linked.status}）`, href: `/bookings?q=${encodeURIComponent(project)}` });
@@ -363,7 +365,7 @@ export default async function DepositsPage({ searchParams }: { searchParams: Pro
                             </span>
                           </div>
                         </div>
-                        <div className="mt-1.5 flex flex-wrap items-center justify-end gap-3 px-4">{payable(r) && <DepositPayLink id={r.id} link={r.payment_link || null} />}{waitingFor(r) && <span className="text-xs text-[var(--soft)]">{waitingFor(r)}</span>}<RowActions heading={r.owner_name || "—"} sub={project || undefined} alertLabel={fu ? FOLLOW_UP_ACTION[fu.kind] : undefined} actions={depositActions(r, fu, staffName, cal, invoice, wa, linkedFor(r), canBook)} /></div>
+                        <div className="mt-1.5 flex flex-wrap items-center justify-end gap-3 px-4">{waitingFor(r) && <span className="text-xs text-[var(--soft)]">{waitingFor(r)}</span>}<RowActions heading={r.owner_name || "—"} sub={project || undefined} alertLabel={fu ? FOLLOW_UP_ACTION[fu.kind] : undefined} actions={depositActions(r, fu, staffName, cal, invoice, wa, linkedFor(r), canBook)} /></div>
                       </td>
                     </tr>
                     </Fragment>
@@ -409,7 +411,6 @@ export default async function DepositsPage({ searchParams }: { searchParams: Pro
                         {PAYMENT_LABEL[r.payment_status || "pending"] || r.payment_status || "待付款"}
                       </span>
                     </div>
-                    {payable(r) && <div className="col-span-2 order-last"><DepositPayLink id={r.id} link={r.payment_link || null} /></div>}
                     <div className="text-right">
                       <div className="text-[var(--soft)]">接送訂金</div>
                       <div className="mt-0.5 font-medium tabular-nums text-sm text-[var(--ink)]">{fmtAmount(r)}</div>

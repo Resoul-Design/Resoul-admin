@@ -36,7 +36,7 @@ export type FollowItem = {
 };
 
 const LABELS: Record<FollowEntity, Record<FollowUpKind, string>> = {
-  cremation: { paid_unscheduled: "已付款、未排期", payment_failed: "付款失敗", unpaid_next_day: "隔日仍未付款", reminded_unpaid: "已提醒、仍未付款" },
+  cremation: { paid_unscheduled: "已付款、未排期", payment_failed: "付款失敗", unpaid_next_day: "未付款", reminded_unpaid: "已提醒、仍未付款" },
   vet: { paid_unscheduled: "已確認、未排期", payment_failed: "—", unpaid_next_day: "隔日仍未聯絡", reminded_unpaid: "已聯絡、未有回覆" },
   product: { paid_unscheduled: "已付款、未出貨", payment_failed: "付款失敗", unpaid_next_day: "隔日仍未付款", reminded_unpaid: "已提醒、仍未付款" },
 };
@@ -69,6 +69,7 @@ export function followKind(it: FollowItem, now = new Date()): FollowUpKind | nul
   if (it.entity === "cremation" && !(it.amount && it.amount > 0)) return null;
   if (m.remindedAt) return now.getTime() - new Date(m.remindedAt).getTime() >= REMIND_WAIT_MS ? "reminded_unpaid" : null;
   if (it.paymentStatus === "failed") return "payment_failed";
+  if (it.entity === "cremation") return "unpaid_next_day"; // 火化：即時提醒
   return new Date(it.createdAt).getTime() < hkTodayStart(now) ? "unpaid_next_day" : null;
 }
 
