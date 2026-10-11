@@ -4,9 +4,8 @@
 import DEFAULTS from "@/lib/site-content-defaults.json";
 
 export type CremationPrices = { rows: { zh: string; en: string; prices: (number | null)[] }[] };
-export type VetPrices = {
-  rows: { zh: string; en: string; dayFrom: number | null; dayTo: number | null; nightFrom: number | null; nightTo: number | null }[];
-};
+// 上門安樂死：劃一基本收費＋附加費用（2026-10-11 起；之前為按體重日間／晚間範圍）
+export type VetPrices = { base: number; surcharges: { zh: string; en: string; price: number }[] };
 export type GriefPrices = { rows: { zh: string; en: string; priceZh: string; priceEn: string }[] };
 export type Keepsakes = { items: { icon: string; zh: string; en: string; descZh: string; descEn: string }[] };
 export type ShopCategories = {
@@ -35,7 +34,7 @@ export const SITE_KEYS = Object.keys(SITE_DEFAULTS) as SiteKey[];
 // 各區塊名稱及網站上出現的頁面（後台顯示用）
 export const SITE_LABELS: Record<SiteKey, { label: string; pages: string }> = {
   "prices.cremation": { label: "火化收費（按體重）", pages: "善終旅程、安排預約接送（中英）" },
-  "prices.vet": { label: "上門安樂死參考收費", pages: "上門安樂死（中英）" },
+  "prices.vet": { label: "上門安樂死收費", pages: "上門安樂死（中英）" },
   "prices.grief": { label: "情緒支援收費", pages: "專業輔導轉介及資源（中英）" },
   keepsakes: { label: "紀念精品分類", pages: "善終旅程「紀念精品」分段（中英）" },
   "shop.categories": { label: "商店分類卡", pages: "網上商店（中英）" },
@@ -134,23 +133,18 @@ export function normalizeSiteContent<K extends SiteKey>(key: K, raw: unknown): S
           };
         }),
       } as SiteContent[K];
-    case "prices.vet":
+    case "prices.vet": {
+      const base = price(data.base, "劃一基本收費");
+      if (base === null) throw new Error("請填寫劃一基本收費。");
       return {
-        rows: list(data.rows, "體重級別", 20, (r, i) => {
-          const row = {
-            zh: str(r.zh, 40, `第 ${i + 1} 行中文體重`, true),
-            en: str(r.en, 60, `第 ${i + 1} 行英文體重`, true),
-            dayFrom: price(r.dayFrom, `第 ${i + 1} 行日間最低價`),
-            dayTo: price(r.dayTo, `第 ${i + 1} 行日間最高價`),
-            nightFrom: price(r.nightFrom, `第 ${i + 1} 行晚間最低價`),
-            nightTo: price(r.nightTo, `第 ${i + 1} 行晚間最高價`),
-          };
-          if ((row.dayFrom === null) !== (row.nightFrom === null)) throw new Error(`第 ${i + 1} 行：日間及晚間價錢須同時填寫，或同時留空（＝個別報價）。`);
-          if (row.dayTo !== null && row.dayFrom !== null && row.dayTo < row.dayFrom) throw new Error(`第 ${i + 1} 行日間最高價不可低於最低價。`);
-          if (row.nightTo !== null && row.nightFrom !== null && row.nightTo < row.nightFrom) throw new Error(`第 ${i + 1} 行晚間最高價不可低於最低價。`);
-          return row;
-        }),
+        base,
+        surcharges: list(data.surcharges, "附加費用", 12, (r, i) => {
+          const n = price(r.price, `第 ${i + 1} 項附加費用金額`);
+          if (n === null) throw new Error(`請填寫第 ${i + 1} 項附加費用金額。`);
+          return { zh: str(r.zh, 60, `第 ${i + 1} 項中文名稱`, true), en: str(r.en, 100, `第 ${i + 1} 項英文名稱`, true), price: n };
+        }, 0),
       } as SiteContent[K];
+    }
     case "prices.grief":
       return {
         rows: list(data.rows, "收費項目", 20, (r, i) => ({
@@ -224,6 +218,12 @@ const hk = (n: number) => `HK$${n.toLocaleString("en-US")}`;
 const range = (a: number | null, b: number | null) => (a === null ? null : b !== null && b !== a ? `${hk(a)}–${b.toLocaleString("en-US")}` : hk(a));
 
 // 由網站內容產生收費代號的中英文字（回覆助手插入範本時填入）
+// 舊格式（按體重 rows）的上門安樂死收費視為未儲存，改用預設值
+export function isCurrentShape(key: SiteKey, data: unknown) {
+  if (key === "prices.vet") return typeof (data as { base?: unknown })?.base === "number" && Array.isArray((data as { surcharges?: unknown }).surcharges);
+  return true;
+}
+
 export function priceTokens(content: Pick<SiteContent, "prices.cremation" | "prices.vet" | "prices.grief">): PriceTokens {
   const out: PriceTokens = {};
   const rows = content["prices.cremation"].rows;
@@ -236,16 +236,10 @@ export function priceTokens(content: Pick<SiteContent, "prices.cremation" | "pri
     zh: rows.map((r) => `${r.zh}：${r.prices.map((n, i) => (i === 0 ? hk(n ?? 0) : (n ?? 0).toLocaleString("en-US"))).join("／")}`).join("\n"),
     en: rows.map((r) => `${r.en || r.zh}: ${r.prices.map((n, i) => (i === 0 ? hk(n ?? 0) : (n ?? 0).toLocaleString("en-US"))).join(" / ")}`).join("\n"),
   };
-  const vet = content["prices.vet"].rows;
+  const vet = content["prices.vet"];
   out["{獸醫收費表}"] = {
-    zh: vet.map((r) => {
-      const d = range(r.dayFrom, r.dayTo), n = range(r.nightFrom, r.nightTo);
-      return `${r.zh}：${d && n ? `日間 ${d}／晚間 ${n}` : "個別報價"}`;
-    }).join("\n"),
-    en: vet.map((r) => {
-      const d = range(r.dayFrom, r.dayTo), n = range(r.nightFrom, r.nightTo);
-      return `${r.en || r.zh}: ${d && n ? `day ${d} / evening ${n}` : "quoted individually"}`;
-    }).join("\n"),
+    zh: [`劃一基本收費：${hk(vet.base)}`, ...(vet.surcharges.length ? ["附加費用：", ...vet.surcharges.map((r) => `・${r.zh}：另加 ${hk(r.price)}`)] : [])].join("\n"),
+    en: [`Flat base fee: ${hk(vet.base)}`, ...(vet.surcharges.length ? ["Additional charges:", ...vet.surcharges.map((r) => `• ${r.en || r.zh}: + ${hk(r.price)}`)] : [])].join("\n"),
   };
   const grief = content["prices.grief"].rows;
   out["{情緒支援收費表}"] = {

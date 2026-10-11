@@ -58,62 +58,27 @@
     ]
   },
   "prices.vet": {
-    "rows": [
+    "base": 3300,
+    "surcharges": [
       {
-        "zh": "0 – 10 kg",
-        "en": "0 – 10 kg",
-        "dayFrom": 3490,
-        "dayTo": 4340,
-        "nightFrom": 3800,
-        "nightTo": 4650
+        "zh": "晚上 10:30 或之後急症服務",
+        "en": "Emergency service at or after 10:30 pm",
+        "price": 500
       },
       {
-        "zh": "10 – 20 kg",
-        "en": "10 – 20 kg",
-        "dayFrom": 3690,
-        "dayTo": 4590,
-        "nightFrom": 4000,
-        "nightTo": 4900
+        "zh": "偏遠地區或東涌",
+        "en": "Remote areas or Tung Chung",
+        "price": 300
       },
       {
-        "zh": "20 – 30 kg",
-        "en": "20 – 30 kg",
-        "dayFrom": 3990,
-        "dayTo": 4990,
-        "nightFrom": 4300,
-        "nightTo": 5300
+        "zh": "行山或行樓梯",
+        "en": "Hiking access or stairs",
+        "price": 300
       },
       {
-        "zh": "30 – 40 kg",
-        "en": "30 – 40 kg",
-        "dayFrom": 4390,
-        "dayTo": 5590,
-        "nightFrom": 4700,
-        "nightTo": 5900
-      },
-      {
-        "zh": "40 – 50 kg",
-        "en": "40 – 50 kg",
-        "dayFrom": 4890,
-        "dayTo": 6290,
-        "nightFrom": 5200,
-        "nightTo": 6600
-      },
-      {
-        "zh": "50 – 60 kg",
-        "en": "50 – 60 kg",
-        "dayFrom": 5490,
-        "dayTo": 7090,
-        "nightFrom": 5800,
-        "nightTo": 7400
-      },
-      {
-        "zh": "60 kg 以上",
-        "en": "Over 60 kg",
-        "dayFrom": null,
-        "dayTo": null,
-        "nightFrom": null,
-        "nightTo": null
+        "zh": "體重 30 公斤或以上",
+        "en": "Weight 30 kg or above",
+        "price": 300
       }
     ]
   },

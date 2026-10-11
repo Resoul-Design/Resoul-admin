@@ -148,39 +148,35 @@ export function CremationPricesEditor({ initial }: { initial: CremationPrices })
 
 export function VetPricesEditor({ initial }: { initial: VetPrices }) {
   const { data, update, bar } = useSection("prices.vet", initial);
-  type Row = VetPrices["rows"][number];
-  const set = (i: number, patch: Partial<Row>) => update((d) => ({ rows: d.rows.map((r, j) => (j === i ? { ...r, ...patch } : r)) }));
-  const nums: { key: keyof Row; label: string }[] = [
-    { key: "dayFrom", label: "日間最低" },
-    { key: "dayTo", label: "日間最高" },
-    { key: "nightFrom", label: "晚間最低" },
-    { key: "nightTo", label: "晚間最高" },
-  ];
+  type Row = VetPrices["surcharges"][number];
+  const set = (i: number, patch: Partial<Row>) => update((d) => ({ ...d, surcharges: d.surcharges.map((r, j) => (j === i ? { ...r, ...patch } : r)) }));
   return (
     <div>
       <Card>
-        <div className="hidden grid-cols-[minmax(0,1fr)_minmax(0,1fr)_repeat(4,6.5rem)_auto] gap-2 pb-2 text-xs text-[var(--soft)] sm:grid">
-          <span>體重（中文）</span><span>體重（英文）</span>{nums.map((n) => <span key={n.key}>{n.label}</span>)}<span className="w-[7.5rem]" />
+        <label className="block max-w-xs text-sm">
+          <span className="text-xs text-[var(--soft)]">劃一基本收費（HK$）</span>
+          <input inputMode="numeric" value={numText(data.base)} onChange={(e) => update((d) => ({ ...d, base: toNum(e.target.value) as number }))} className={inputClass + " mt-1"} />
+        </label>
+        <p className="mt-5 pb-2 text-sm font-medium">附加費用</p>
+        <div className="hidden grid-cols-[minmax(0,1fr)_minmax(0,1fr)_7rem_auto] gap-2 pb-2 text-xs text-[var(--soft)] sm:grid">
+          <span>項目（中文）</span><span>項目（英文）</span><span>另加（HK$）</span><span className="w-[7.5rem]" />
         </div>
         <div className="space-y-3 sm:space-y-2">
-          {data.rows.map((r, i) => (
-            <div key={i} className="grid grid-cols-2 gap-2 border-b border-[var(--line)] pb-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_repeat(4,6.5rem)_auto] sm:items-center sm:border-0 sm:pb-0">
-              <input aria-label="體重（中文）" value={r.zh} onChange={(e) => set(i, { zh: e.target.value })} className={inputClass} />
-              <input aria-label="體重（英文）" value={r.en} onChange={(e) => set(i, { en: e.target.value })} className={inputClass} />
-              {nums.map((n) => (
-                <label key={n.key} className="text-xs text-[var(--soft)]">
-                  <span className="sm:hidden">{n.label}</span>
-                  <input inputMode="numeric" aria-label={`${r.zh} ${n.label}`} value={numText(r[n.key] as number | null)} onChange={(e) => set(i, { [n.key]: toNum(e.target.value) } as Partial<Row>)} className={inputClass} placeholder="—" />
-                </label>
-              ))}
-              <div className="col-span-2 flex justify-end sm:col-span-1">
-                <RowActions i={i} count={data.rows.length} onMove={(d) => update((x) => ({ rows: move(x.rows, i, d) }))} onRemove={data.rows.length > 1 ? () => update((x) => ({ rows: x.rows.filter((_, j) => j !== i) })) : undefined} />
+          {data.surcharges.map((r, i) => (
+            <div key={i} className="grid grid-cols-2 gap-2 border-b border-[var(--line)] pb-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_7rem_auto] sm:items-center sm:border-0 sm:pb-0">
+              <input aria-label="項目（中文）" value={r.zh} onChange={(e) => set(i, { zh: e.target.value })} className={inputClass} />
+              <input aria-label="項目（英文）" value={r.en} onChange={(e) => set(i, { en: e.target.value })} className={inputClass} />
+              <label className="text-xs text-[var(--soft)]">
+                <span className="sm:hidden">另加（HK$）</span>
+                <input inputMode="numeric" aria-label={`${r.zh} 另加金額`} value={numText(r.price)} onChange={(e) => set(i, { price: toNum(e.target.value) as number })} className={inputClass} />
+              </label>
+              <div className="flex justify-end">
+                <RowActions i={i} count={data.surcharges.length} onMove={(d) => update((x) => ({ ...x, surcharges: move(x.surcharges, i, d) }))} onRemove={() => update((x) => ({ ...x, surcharges: x.surcharges.filter((_, j) => j !== i) }))} />
               </div>
             </div>
           ))}
         </div>
-        <button type="button" className={addBtn + " mt-3"} onClick={() => update((x) => ({ rows: [...x.rows, { zh: "", en: "", dayFrom: null, dayTo: null, nightFrom: null, nightTo: null }] }))}>＋ 新增體重級別</button>
-        <p className="mt-3 text-xs leading-5 text-[var(--soft)]">價錢全部留空的一行，網站顯示「個別報價／Quoted individually」。最高價可留空，只顯示單一價錢。</p>
+        <button type="button" className={addBtn + " mt-3"} onClick={() => update((x) => ({ ...x, surcharges: [...x.surcharges, { zh: "", en: "", price: 0 }] }))}>＋ 新增附加費用</button>
       </Card>
       {bar}
     </div>
