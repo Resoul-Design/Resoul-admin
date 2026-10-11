@@ -12,6 +12,7 @@ import { RowActions, type RowAction } from "../_row-actions";
 import Link from "next/link";
 import { Fragment, Suspense } from "react";
 import { DepositsToolbar } from "./_toolbar";
+import { DepositPayLink } from "./_pay-link";
 import { FollowUpInline, type FollowUpItem } from "./_followup";
 import { TestFlagPanel, TestRecordsBar } from "../_test-controls";
 
@@ -135,6 +136,11 @@ function whatsappUrl(row: DepositRow) {
   const project = projectNo(row);
   const text = `你好，我哋係 RESOUL 🐾。已收到${row.pet_name || "毛孩"}嘅接送服務預約${project ? `（專案編號 ${project}）` : ""}。想同你確認接送時間同安排，請問方便嗎？`;
   return `https://wa.me/${number}?text=${encodeURIComponent(text)}`;
+}
+
+// 未付款且仍有效的訂金：列表直接顯示付款連結
+function payable(r: DepositRow) {
+  return !["cancelled", "completed"].includes(r.status) && !["paid", "refunded"].includes(r.payment_status || "pending");
 }
 
 // 「操作」視窗內的功能（有跟進事項時排第一）
@@ -323,7 +329,7 @@ export default async function DepositsPage({ searchParams }: { searchParams: Pro
                             </span>
                           </div>
                         </div>
-                        <div className="mt-1.5 flex items-center justify-end gap-3 px-4">{waitingFor(r) && <span className="text-xs text-[var(--soft)]">{waitingFor(r)}</span>}<RowActions heading={r.owner_name || "—"} sub={project || undefined} alertLabel={fu ? FOLLOW_UP_ACTION[fu.kind] : undefined} actions={depositActions(r, fu, staffName, cal, invoice, wa)} /></div>
+                        <div className="mt-1.5 flex flex-wrap items-center justify-end gap-3 px-4">{payable(r) && <DepositPayLink id={r.id} link={r.payment_link || null} />}{waitingFor(r) && <span className="text-xs text-[var(--soft)]">{waitingFor(r)}</span>}<RowActions heading={r.owner_name || "—"} sub={project || undefined} alertLabel={fu ? FOLLOW_UP_ACTION[fu.kind] : undefined} actions={depositActions(r, fu, staffName, cal, invoice, wa)} /></div>
                       </td>
                     </tr>
                     </Fragment>
@@ -369,6 +375,7 @@ export default async function DepositsPage({ searchParams }: { searchParams: Pro
                         {PAYMENT_LABEL[r.payment_status || "pending"] || r.payment_status || "待付款"}
                       </span>
                     </div>
+                    {payable(r) && <div className="col-span-2 order-last"><DepositPayLink id={r.id} link={r.payment_link || null} /></div>}
                     <div className="text-right">
                       <div className="text-[var(--soft)]">接送訂金</div>
                       <div className="mt-0.5 font-medium tabular-nums text-sm text-[var(--ink)]">{fmtAmount(r)}</div>

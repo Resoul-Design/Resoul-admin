@@ -215,7 +215,6 @@ export const PRICE_TOKENS = ["{風之旅起價}", "{雲之旅起價}", "{星之�
 export type PriceTokens = Record<string, { zh: string; en: string }>;
 
 const hk = (n: number) => `HK$${n.toLocaleString("en-US")}`;
-const range = (a: number | null, b: number | null) => (a === null ? null : b !== null && b !== a ? `${hk(a)}–${b.toLocaleString("en-US")}` : hk(a));
 
 // 由網站內容產生收費代號的中英文字（回覆助手插入範本時填入）
 // 舊格式（按體重 rows）的上門安樂死收費視為未儲存，改用預設值
