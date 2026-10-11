@@ -5,10 +5,11 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { requireModule } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import { PROGRESS_STAGES, type ProgressStage } from "@/lib/booking-progress";
+import { canonicalProjectNo, projectNoFromNotes } from "@/lib/order-label";
 
 type Result = { error?: string };
 
-const COLUMNS = "id, status, source, service_date, picked_up_at, cremation_started_at, ready_at, returned_at";
+const COLUMNS = "id, status, source, service_date, case_no, notes, picked_up_at, cremation_started_at, ready_at, returned_at";
 const NOT_READY = "未啟用進度追蹤：請先於 Supabase（diyxcx）執行 db/migration_cremation_progress.sql。";
 
 async function load(id: string) {
@@ -31,7 +32,17 @@ function doneCount(row: Record<string, string | null>) {
 
 function revalidate() {
   revalidatePath("/bookings");
+  revalidatePath("/deposits");
   revalidatePath("/");
+}
+
+// 同一專案的接送服務跟隨「已接送」：標記時改為已完成；撤回時由已完成改回已排期
+async function syncDeposits(row: Record<string, string | null>, pickedUp: boolean) {
+  const no = canonicalProjectNo(row.case_no, projectNoFromNotes(row.notes));
+  if (!no) return;
+  const q = createAdminClient().from("deposit_bookings").update({ status: pickedUp ? "completed" : "scheduled" }).or(`project_no.eq.${no},notes.ilike.*${no}*`);
+  const { data } = await (pickedUp ? q.in("status", ["new", "contacted", "scheduled"]) : q.eq("status", "completed")).select("id");
+  for (const d of data || []) await logAudit("update_deposit", "deposit_bookings", d.id, `狀態=${pickedUp ? "completed" : "scheduled"}（跟隨火化預約${pickedUp ? "已接送" : "撤回已接送"}）`);
 }
 
 // 推進至下一階段：只可按次序逐步標記
@@ -56,6 +67,7 @@ export async function advanceProgress(id: string, stage: ProgressStage, returned
   const { error } = await createAdminClient().from("cremation_bookings").update(update).eq("id", id);
   if (error) return { error: `更新失敗：${error.message}` };
   await logAudit("update_progress", "cremation_bookings", id, target.label + (update.returned_to ? `｜簽收人：${update.returned_to}` : ""));
+  if (target.key === "picked_up") await syncDeposits(row, true);
   revalidate();
   return {};
 }
@@ -76,6 +88,7 @@ export async function undoProgress(id: string): Promise<Result> {
   const { error } = await createAdminClient().from("cremation_bookings").update(update).eq("id", id);
   if (error) return { error: `撤回失敗：${error.message}` };
   await logAudit("undo_progress", "cremation_bookings", id, last.label);
+  if (last.key === "picked_up") await syncDeposits(row, false);
   revalidate();
   return {};
 }

@@ -53,6 +53,16 @@ export async function updateBooking(formData: FormData) {
     status,
     notes: g("notes"),
   };
+  // 收費金額（確認方案後填寫；已付款不可修改；獸醫評估不收費）
+  const rawAmount = formData.get("payment_amount");
+  if (rawAmount !== null && key === "bookings") {
+    const { data: payRow } = await supabase.from("cremation_bookings").select("payment_status").eq("id", id).maybeSingle();
+    if (payRow?.payment_status !== "paid") {
+      const text = String(rawAmount).replace(/[,\s]/g, "");
+      const n = text === "" ? null : Number(text);
+      if (n === null || (Number.isInteger(n) && n >= 0 && n <= 1_000_000)) update.payment_amount = n;
+    }
+  }
   // 只有跨服務沿用的 RSL 編號可以寫入 case_no。
   const providedCaseNo = g("case_no");
   if (providedCaseNo && isRslProjectNo(providedCaseNo)) {

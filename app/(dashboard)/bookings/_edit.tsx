@@ -116,6 +116,9 @@ export function EditBookingInline({ booking }: { booking: BookingData }) {
           ))}
         </select>
       </Field>
+      <Field label="收費金額（HK$）">
+        <input name="payment_amount" inputMode="numeric" defaultValue={b.payment_amount != null ? String(b.payment_amount) : ""} readOnly={b.payment_status === "paid"} className={inputCls} placeholder="與客人確認後填寫" title={b.payment_status === "paid" ? "已付款，不能修改金額" : ""} />
+      </Field>
       <Field label="接送地址">
         <input name="pickup_address" defaultValue={b.pickup_address || ""} className={inputCls} />
       </Field>

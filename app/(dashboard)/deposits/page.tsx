@@ -13,6 +13,8 @@ import Link from "next/link";
 import { Fragment, Suspense } from "react";
 import { DepositsToolbar } from "./_toolbar";
 import { DepositPayLink } from "./_pay-link";
+import { CreateCremationPanel, DepositStatusPanel } from "./_link-panels";
+import { canonicalProjectNo, projectNoFromNotes } from "@/lib/order-label";
 import { FollowUpInline, type FollowUpItem } from "./_followup";
 import { TestFlagPanel, TestRecordsBar } from "../_test-controls";
 
@@ -46,6 +48,7 @@ type DepositRow = {
   reminder_count?: number | null;
   follow_up_closed_at?: string | null;
   payment_link?: string | null;
+  project_no?: string | null;
 };
 
 const STATUS_LABEL: Record<string, string> = {
@@ -138,15 +141,35 @@ function whatsappUrl(row: DepositRow) {
   return `https://wa.me/${number}?text=${encodeURIComponent(text)}`;
 }
 
+// 同一專案編號的火化預約（獸醫評估除外）
+type LinkedCremation = { id: string; status: string };
+const CREMATION_STATUS: Record<string, string> = { new: "新收到", scheduled: "已排期", pickup: "已接送", cremating: "火化中", ready: "可取回", completed: "已完成", cancelled: "已取消" };
+function depositProjectNo(r: DepositRow) {
+  return canonicalProjectNo(r.project_no, projectNo(r));
+}
+
+function LinkedBadge({ linked, project }: { linked?: LinkedCremation; project: string }) {
+  if (!linked) return null;
+  return (
+    <a href={`/bookings?q=${encodeURIComponent(project)}`} className="mt-1 inline-block rounded-full bg-[var(--cream)] px-2 py-0.5 text-xs text-[var(--soft)] hover:underline">
+      🕊️ 火化預約：{CREMATION_STATUS[linked.status] || linked.status}
+    </a>
+  );
+}
+
 // 未付款且仍有效的訂金：列表直接顯示付款連結
 function payable(r: DepositRow) {
   return !["cancelled", "completed"].includes(r.status) && !["paid", "refunded"].includes(r.payment_status || "pending");
 }
 
 // 「操作」視窗內的功能（有跟進事項時排第一）
-function depositActions(r: DepositRow, fu: FollowUpItem | undefined, staffName: string, cal: string | null, invoice: string | null, wa: string | null): RowAction[] {
+function depositActions(r: DepositRow, fu: FollowUpItem | undefined, staffName: string, cal: string | null, invoice: string | null, wa: string | null, linked: LinkedCremation | undefined, canBook: boolean): RowAction[] {
   const list: RowAction[] = [];
   if (fu) list.push({ kind: "panel", key: "followup", label: `🔔 ${FOLLOW_UP_ACTION[fu.kind]}（${FOLLOW_UP_LABEL[fu.kind]}）`, title: "訂金跟進", alert: true, node: <FollowUpInline item={fu} staffName={staffName} /> });
+  list.push({ kind: "panel", key: "status", label: `🔄 更新狀態（${STATUS_LABEL[r.status] || r.status}）`, title: "更新接送服務狀態", node: <DepositStatusPanel id={r.id} status={r.status} /> });
+  const project = depositProjectNo(r);
+  if (linked) list.push({ kind: "link", key: "cremation", label: `🕊️ 查看火化預約（${CREMATION_STATUS[linked.status] || linked.status}）`, href: `/bookings?q=${encodeURIComponent(project)}` });
+  else if (canBook && project && r.status !== "cancelled") list.push({ kind: "panel", key: "create-cremation", label: "🕊️ 建立火化預約", title: "建立火化預約", node: <CreateCremationPanel id={r.id} projectNo={project} /> });
   if (wa) list.push({ kind: "link", key: "wa", label: "💬 WhatsApp 客人", href: wa, whatsapp: true, confirm: WHATSAPP_CONFIRM });
   if (cal) list.push({ kind: "link", key: "cal", label: "📅 加入日曆", href: cal });
   if (r.payment_status === "paid" && r.shopify_order_name) list.push({ kind: "link", key: "invoice-pdf", label: "🧾 發票 PDF", href: `/print/invoices?refs=deposit:${r.id}` });
@@ -160,7 +183,7 @@ export default async function DepositsPage({ searchParams }: { searchParams: Pro
   const { followup, q, status: statusParam, test } = await searchParams;
   const supabase = createAdminClient();
   const baseColumns =
-    "id, created_at, owner_name, contact, pet_name, pet_type, plan, service_date, service_time, pickup_address, notes, status, payment_ref, payment_status, payment_amount, payment_currency, shopify_order_name, shopify_order_id, paid_at, is_test";
+    "id, created_at, project_no, owner_name, contact, pet_name, pet_type, plan, service_date, service_time, pickup_address, notes, status, payment_ref, payment_status, payment_amount, payment_currency, shopify_order_name, shopify_order_id, paid_at, is_test";
   // 訂金跟進欄位需先執行 db/migration_deposit_followup.sql；未執行時退回原有欄位，列表照常顯示。
   const full = await supabase
     .from("deposit_bookings")
@@ -182,6 +205,17 @@ export default async function DepositsPage({ searchParams }: { searchParams: Pro
   const rows = allDeposits.filter((r) => (showTests ? !!r.is_test : !r.is_test));
   const tableMissing = !!error && /deposit_bookings|does not exist|relation/i.test(error.message);
   const staff = await getStaff();
+  const canBook = !!staff && hasModule(staff, ["bookings"]);
+  const linkedByProject = new Map<string, LinkedCremation>();
+  {
+    const { data: cb } = await supabase.from("cremation_bookings").select("id, case_no, notes, status, source, created_at").order("created_at", { ascending: true });
+    for (const b of cb || []) {
+      if (String(b.source || "").includes("euthanasia")) continue;
+      const no = canonicalProjectNo(b.case_no, projectNoFromNotes(b.notes));
+      if (no && !linkedByProject.has(no)) linkedByProject.set(no, { id: b.id, status: b.status });
+    }
+  }
+  const linkedFor = (r: DepositRow) => linkedByProject.get(depositProjectNo(r));
   const staffName = staff?.name?.trim() || staff?.email?.split("@")[0] || "同事";
   const depositCatalog = staff && hasModule(staff, ["deposits"]) ? await loadCatalog("deposit") : { products: [], error: "" };
   const now = new Date();
@@ -297,7 +331,7 @@ export default async function DepositsPage({ searchParams }: { searchParams: Pro
                       <td className="px-4 py-3 text-[var(--soft)] whitespace-nowrap">{fmtCreated(r.created_at)}</td>
                       <td className="px-4 py-3">
                         {project ? (
-                          <div className="min-w-0"><span className="font-medium text-[var(--gold)]">{project}</span>{r.payment_ref && <div className="break-all text-xs text-[var(--soft)]">付款參考 {r.payment_ref}</div>}</div>
+                          <div className="min-w-0"><span className="font-medium text-[var(--gold)]">{project}</span>{r.payment_ref && <div className="break-all text-xs text-[var(--soft)]">付款參考 {r.payment_ref}</div>}<LinkedBadge linked={linkedFor(r)} project={depositProjectNo(r)} /></div>
                         ) : (
                           <span className="text-[var(--faint)]">—</span>
                         )}
@@ -329,7 +363,7 @@ export default async function DepositsPage({ searchParams }: { searchParams: Pro
                             </span>
                           </div>
                         </div>
-                        <div className="mt-1.5 flex flex-wrap items-center justify-end gap-3 px-4">{payable(r) && <DepositPayLink id={r.id} link={r.payment_link || null} />}{waitingFor(r) && <span className="text-xs text-[var(--soft)]">{waitingFor(r)}</span>}<RowActions heading={r.owner_name || "—"} sub={project || undefined} alertLabel={fu ? FOLLOW_UP_ACTION[fu.kind] : undefined} actions={depositActions(r, fu, staffName, cal, invoice, wa)} /></div>
+                        <div className="mt-1.5 flex flex-wrap items-center justify-end gap-3 px-4">{payable(r) && <DepositPayLink id={r.id} link={r.payment_link || null} />}{waitingFor(r) && <span className="text-xs text-[var(--soft)]">{waitingFor(r)}</span>}<RowActions heading={r.owner_name || "—"} sub={project || undefined} alertLabel={fu ? FOLLOW_UP_ACTION[fu.kind] : undefined} actions={depositActions(r, fu, staffName, cal, invoice, wa, linkedFor(r), canBook)} /></div>
                       </td>
                     </tr>
                     </Fragment>
@@ -350,7 +384,7 @@ export default async function DepositsPage({ searchParams }: { searchParams: Pro
               return (
                 <div key={r.id} className={"rounded-2xl border p-4 " + (fu ? "border-amber-300 bg-amber-50/70" : "border-[var(--line)] bg-[var(--card)]")}>
                   <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0"><div className="text-xs text-[var(--soft)]">專案編號</div><div className="break-words font-medium text-[var(--gold)]">{project || "（舊記錄未有專案編號）"}</div></div>
+                    <div className="min-w-0"><div className="text-xs text-[var(--soft)]">專案編號</div><div className="break-words font-medium text-[var(--gold)]">{project || "（舊記錄未有專案編號）"}</div><LinkedBadge linked={linkedFor(r)} project={depositProjectNo(r)} /></div>
                     <span className={"px-2 py-0.5 rounded-full text-xs " + statusBadgeClass(r.status)}>
                       {STATUS_LABEL[r.status] || r.status}
                     </span>
@@ -387,7 +421,7 @@ export default async function DepositsPage({ searchParams }: { searchParams: Pro
                   </dl>
                   <div className="mt-3 flex items-center justify-end gap-3 border-t border-[var(--line)] pt-3">
                 {waitingFor(r) && <span className="text-xs text-[var(--soft)]">{waitingFor(r)}</span>}
-                    <RowActions heading={r.owner_name || "—"} sub={project || undefined} alertLabel={fu ? FOLLOW_UP_ACTION[fu.kind] : undefined} actions={depositActions(r, fu, staffName, cal, invoice, wa)} />
+                    <RowActions heading={r.owner_name || "—"} sub={project || undefined} alertLabel={fu ? FOLLOW_UP_ACTION[fu.kind] : undefined} actions={depositActions(r, fu, staffName, cal, invoice, wa, linkedFor(r), canBook)} />
                   </div>
                 </div>
               );

@@ -65,6 +65,8 @@ export function followKind(it: FollowItem, now = new Date()): FollowUpKind | nul
   if (it.paymentStatus === "refunded") return null;
   if (it.paymentStatus === "paid") return it.status === "new" && !m.contactedAt ? "paid_unscheduled" : null;
   if (it.entity === "vet" && it.status !== "new") return null;
+  // 火化預約未有收費金額（例如由接送服務建立、方案待確認）：未需付款，不提醒
+  if (it.entity === "cremation" && !(it.amount && it.amount > 0)) return null;
   if (m.remindedAt) return now.getTime() - new Date(m.remindedAt).getTime() >= REMIND_WAIT_MS ? "reminded_unpaid" : null;
   if (it.paymentStatus === "failed") return "payment_failed";
   return new Date(it.createdAt).getTime() < hkTodayStart(now) ? "unpaid_next_day" : null;
