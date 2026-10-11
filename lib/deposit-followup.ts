@@ -79,8 +79,16 @@ export function needsPaymentLink(kind: FollowUpKind) {
 export const LINK_PLACEHOLDER = "［付款連結］";
 export const LINK_PLACEHOLDER_EN = "[payment link]";
 
-// 預約時段：網站中文版及英文版表格各自儲存本語言的值，後台合併為中英對照選項
+// 預約時段（2026-10-11 起四段，24 小時）：網站中文版及英文版表格各自儲存本語言的值，後台合併為中英對照選項
 export const TIME_SLOTS = [
+  { zh: "上午（08:00–12:00）", en: "Morning (08:00-12:00)", label: "上午 Morning（08:00–12:00）" },
+  { zh: "中午（12:00–18:00）", en: "Afternoon (12:00-18:00)", label: "中午 Afternoon（12:00–18:00）" },
+  { zh: "晚上（18:00–00:00）", en: "Evening (18:00-00:00)", label: "晚上 Evening（18:00–00:00）" },
+  { zh: "凌晨（00:00–08:00）", en: "Overnight (00:00-08:00)", label: "凌晨 Overnight（00:00–08:00）" },
+];
+
+// 舊時段（2026-10-11 前的預約）：只用於辨認及顯示，不再在選單提供
+export const LEGACY_TIME_SLOTS = [
   { zh: "上午（09:00–12:00）", en: "Morning (09:00-12:00)", label: "上午 Morning（09:00–12:00）" },
   { zh: "下午（12:00–17:00）", en: "Afternoon (12:00-17:00)", label: "下午 Afternoon（12:00–17:00）" },
   { zh: "傍晚至晚上（17:00–21:00）", en: "Evening (17:00-21:00)", label: "傍晚至晚上 Evening（17:00–21:00）" },
@@ -88,7 +96,7 @@ export const TIME_SLOTS = [
 
 export function findTimeSlot(value: string | null | undefined) {
   const v = (value || "").trim();
-  return v ? TIME_SLOTS.find((slot) => slot.zh === v || slot.en === v) : undefined;
+  return v ? [...TIME_SLOTS, ...LEGACY_TIME_SLOTS].find((slot) => slot.zh === v || slot.en === v) : undefined;
 }
 
 const MONTHS_EN = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];

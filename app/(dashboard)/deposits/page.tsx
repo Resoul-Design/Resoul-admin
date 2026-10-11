@@ -121,7 +121,9 @@ function calendarUrl(row: DepositRow) {
   const day = row.service_date.replace(/-/g, "");
   const times = Array.from((row.service_time || "").matchAll(/(\d{2}):(\d{2})/g));
   const hm = times[0] ? times[0][1] + times[0][2] : "1000";
-  const endHm = times[1] ? times[1][1] + times[1][2] : String(Math.min(Number(hm.slice(0, 2)) + 2, 23)).padStart(2, "0") + hm.slice(2);
+  let endHm = times[1] ? times[1][1] + times[1][2] : String(Math.min(Number(hm.slice(0, 2)) + 2, 23)).padStart(2, "0") + hm.slice(2);
+  // 「晚上（18:00–00:00）」結束時間跨日：日曆以當日 23:59 為止
+  if (endHm <= hm) endHm = "2359";
   const details = [`主人：${row.owner_name || "—"}`, `電話：${row.contact || "—"}`, `專案編號：${projectNo(row) || "—"}`, `付款參考：${row.payment_ref || "—"}`].join("\n");
   return "https://calendar.google.com/calendar/render?" + new URLSearchParams({ action: "TEMPLATE", text: `Resoul 接送服務 · ${row.pet_name || "毛孩"}`, dates: `${day}T${hm}00/${day}T${endHm}00`, details, location: row.pickup_address || "" }).toString();
 }
