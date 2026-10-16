@@ -13,6 +13,7 @@ import Link from "next/link";
 import { Fragment, Suspense } from "react";
 import { DepositsToolbar } from "./_toolbar";
 import { DepositPayLink } from "./_pay-link";
+import { ManualPaidPanel } from "../_manual-paid";
 import { CreateCremationPanel, DepositStatusPanel } from "./_link-panels";
 import { canonicalProjectNo, projectNoFromNotes } from "@/lib/order-label";
 import { FollowUpInline, type FollowUpItem } from "./_followup";
@@ -168,6 +169,7 @@ function depositActions(r: DepositRow, fu: FollowUpItem | undefined, staffName: 
   if (fu) list.push({ kind: "panel", key: "followup", label: `🔔 ${FOLLOW_UP_ACTION[fu.kind]}（${FOLLOW_UP_LABEL[fu.kind]}）`, title: "訂金跟進", alert: true, node: <FollowUpInline item={fu} staffName={staffName} /> });
   // 未付款但不在付款提醒（例如已提醒、等候客人）：付款連結放在操作內
   if (payable(r) && !(fu && needsPaymentLink(fu.kind))) list.push({ kind: "panel", key: "paylink", label: "🔗 付款連結", title: "付款連結", node: <DepositPayLink id={r.id} link={r.payment_link || null} /> });
+  if (payable(r)) list.push({ kind: "panel", key: "markpaid", label: "✅ 確認已收款（人手）", title: "確認已收款", node: <ManualPaidPanel entity="deposit" id={r.id} expected={r.payment_amount != null ? Number(r.payment_amount) : 1800} /> });
   list.push({ kind: "panel", key: "status", label: `🔄 更新狀態（${STATUS_LABEL[r.status] || r.status}）`, title: "更新接送服務狀態", node: <DepositStatusPanel id={r.id} status={r.status} /> });
   const project = depositProjectNo(r);
   if (linked) list.push({ kind: "link", key: "cremation", label: `🕊️ 查看火化預約（${CREMATION_STATUS[linked.status] || linked.status}）`, href: `/bookings?q=${encodeURIComponent(project)}` });

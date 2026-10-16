@@ -9,6 +9,7 @@ import {
   type ShopifyWebhookOrder,
 } from "@/lib/product-orders";
 import { verifyShopifyWebhook } from "@/lib/shopify-webhook";
+import { appendNote, checkPaidAmount } from "@/lib/payment-check";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -68,6 +69,29 @@ export async function POST(request: Request) {
   }
 
   const supabase = createAdminClient();
+  const orderName = order.name || (order.order_number ? `#${order.order_number}` : null);
+
+  // 核對金額：實付少於預約收費金額（或未設定金額）時不標記已付款，改為付款失敗並記錄於備註
+  const { data: current } = await supabase
+    .from("cremation_bookings")
+    .select("id, payment_amount, payment_status, notes")
+    .eq("payment_ref", paymentRef);
+  const pendingRows = (current || []).filter((row) => row.payment_status !== "paid");
+  if (pendingRows.length) {
+    const check = checkPaidAmount(pendingRows[0].payment_amount, order.total_price != null ? Number(order.total_price) : null, order.currency, orderName);
+    if (!check.ok) {
+      for (const row of pendingRows) {
+        await supabase.from("cremation_bookings").update({ payment_status: "failed", notes: appendNote(row.notes, check.note) }).eq("id", row.id);
+      }
+      console.error("[Resoul] Shopify paid webhook amount mismatch", paymentRef);
+      revalidateTag("shopify-orders");
+      return NextResponse.json({ ok: true, matched: true, amountMismatch: true });
+    }
+  } else if ((current || []).length) {
+    // 已標記已付款：不重複處理
+    return NextResponse.json({ ok: true, matched: true, alreadyPaid: true });
+  }
+
   const { data, error } = await supabase
     .from("cremation_bookings")
     .update({

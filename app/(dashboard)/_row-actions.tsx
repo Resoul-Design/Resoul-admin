@@ -15,9 +15,9 @@ const item = "flex w-full items-center justify-between gap-3 rounded-xl border p
 
 // 功能分組：先揀範圍，再揀功能（跟進事項永遠放最頂，一按即達）
 const GROUPS: { key: string; label: string; keys: string[] }[] = [
-  { key: "status", label: "📋 狀態及服務", keys: ["status", "cremation", "create-cremation", "project"] },
+  { key: "status", label: "📋 狀態及服務", keys: ["status", "progress", "cremation", "create-cremation", "project"] },
   { key: "contact", label: "💬 聯絡及排期", keys: ["wa", "cal"] },
-  { key: "pay", label: "💳 付款及單據", keys: ["paylink", "pay", "invoice", "invoice-pdf"] },
+  { key: "pay", label: "💳 付款及單據", keys: ["paylink", "markpaid", "pay", "invoice", "invoice-pdf"] },
   { key: "data", label: "⚙️ 資料", keys: ["edit", "test"] },
 ];
 const GROUP_MIN = 5; // 功能少於此數目時直接列出
