@@ -1,5 +1,6 @@
 import { PageHeader } from "../_page-header";
 import Link from "next/link";
+import { loadCountableEntries } from "@/lib/project-entries";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getOrdersSinceCached } from "@/lib/revenue";
@@ -69,7 +70,7 @@ export default async function FinancePage({
       .limit(500),
     getOrdersSinceCached(since),
     supabase.from("plan_prices").select("plan, price, cost"),
-    supabase.from("project_entries").select("booking_id, kind, amount, entry_date"),
+    loadCountableEntries(),
     admin.from("deposit_bookings").select("payment_amount, payment_status, status, service_date, paid_at, created_at").eq("is_test", false).limit(1000),
   ]);
   const planPrices = (ppRes.data ?? []) as { plan: string; price: number; cost: number }[];
@@ -100,7 +101,7 @@ export default async function FinancePage({
     b.cost ?? (b.plan ? priceMap[b.plan]?.cost ?? 0 : 0);
 
   // 專案明細（實際收支）：按專案 / 按 entry_date 月份加總
-  const entries = (peRes.data ?? []) as {
+  const entries = peRes as {
     booking_id: string;
     kind: string;
     amount: number;

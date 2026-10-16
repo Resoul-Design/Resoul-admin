@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { loadCountableEntries } from "@/lib/project-entries";
 import { getOrdersSinceCached, getProductsCountCached } from "@/lib/revenue";
 import { getStaff, hasModule } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -148,7 +149,7 @@ export default async function OverviewPage() {
       supabase.from("posts").select("name, body, crisis_flag, context, created_at").eq("status", "held").order("created_at", { ascending: false }).limit(4),
       createAdminClient().from("cremation_bookings").select("owner_name, pet_name, plan, status, service_date, created_at").eq("is_test", false).order("created_at", { ascending: false }).limit(6),
       createAdminClient().from("cremation_bookings").select("id", { count: "exact", head: true }).eq("is_test", false).eq("service_date", today),
-      supabase.from("project_entries").select("amount").eq("kind", "income").gte("entry_date", monthStart),
+      loadCountableEntries(monthStart).then((rows) => ({ data: rows.filter((e) => e.kind === "income") })),
       getOrdersSinceCached(since),
       getProductsCountCached(),
       supabase.from("posts").select("id", { count: "exact", head: true }).eq("status", "held").eq("crisis_flag", true),
