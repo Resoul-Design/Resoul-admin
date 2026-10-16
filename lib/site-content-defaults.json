@@ -97,10 +97,16 @@
         "priceEn": "Free"
       },
       {
-        "zh": "合資格輔導員個別面談 50 分鐘",
-        "en": "Qualified counsellor session (50 min)",
-        "priceZh": "HK$380 至 580",
-        "priceEn": "HK$380–580"
+        "zh": "寵物離世輔導（由香港城市大學實習輔導員 × VMC 提供）",
+        "en": "Pet loss counselling (by City University of Hong Kong trainee counsellors × VMC)",
+        "priceZh": "免費（至 2027 年 4 月）",
+        "priceEn": "Free (until April 2027)"
+      },
+      {
+        "zh": "寵物離世輔導（由香港大學輔導小組提供）",
+        "en": "Pet loss counselling (by the University of Hong Kong counselling team)",
+        "priceZh": "HK$200／節",
+        "priceEn": "HK$200 per session"
       },
       {
         "zh": "註冊輔導／臨床心理學家 50 分鐘",
