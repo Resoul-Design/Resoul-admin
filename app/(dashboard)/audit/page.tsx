@@ -133,8 +133,36 @@ function describe(l: Log, names: Names): string {
         ? `更改員工${quote(who)}權限：${keys.map((k) => MODULE_LABEL.get(k) || k).join("、")}`
         : `取消員工${quote(who)}全部功能權限`;
     }
+    case "delete_test_records":
+      return d || "刪除測試記錄";
+    case "mark_test":
+    case "unmark_test":
+      return `${d || (l.action === "mark_test" ? "標記為測試" : "取消測試標記")}${quote(who)}`;
+    case "create_cremation_from_deposit":
+      return `由接送服務建立火化預約${d ? ` ${d}` : ""}`;
+    case "create_cremation_payment_link":
+      return `為火化預約${quote(who)}產生付款連結${d ? `（Shopify 草稿 ${d}）` : ""}`;
+    case "follow_up":
+      return `跟進${quote(who)}：${parts.join("｜")}`;
+    case "link_order_project":
+      return `紀念品訂單${quote(who)}${d}`;
+    case "mark_paid_manually":
+      return `人手確認收款${quote(who)}${d ? `：${d}` : ""}`;
+    case "merge_customer":
+      return `合併客戶檔案：${d}`;
+    case "unmerge_customer":
+      return `取消合併客戶檔案：${d}`;
+    case "review_invite":
+      return `已邀請${quote(who)}留 Google 評價`;
+    case "skip_review_invite":
+      return `略過邀請${quote(who)}留評價`;
+    case "update_site_content":
+      return `修改網站內容${quote(d)}`;
+    case "restore_site_content":
+      return `還原網站內容${quote(d)}的舊版本`;
     default:
-      return [l.action, who, d].filter(Boolean).join("：");
+      // 未有中文描述的操作：只顯示內容，不顯示英文代號
+      return [who, d].filter(Boolean).join("：") || "其他操作";
   }
 }
 

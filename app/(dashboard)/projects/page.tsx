@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { loadSouvenirDrafts } from "@/lib/souvenir-drafts";
 import { PageHeader } from "../_page-header";
 import { createClient } from "@/lib/supabase/server";
@@ -63,21 +64,27 @@ type Row = {
   records?: { label: string; date: string; status: string; amount: number; href: string }[];
 };
 
-export default async function ProjectsPage() {
+export default async function ProjectsPage({ searchParams }: { searchParams: Promise<{ test?: string }> }) {
+  const { test } = await searchParams;
+  // 測試記錄預設隱藏；?test=1 只顯示測試記錄
+  const showTests = test === "1";
   const supabase = await createClient();
   const admin = createAdminClient();
 
-  const draftsP = loadSouvenirDrafts();
+  const draftsP = showTests ? Promise.resolve([] as Awaited<ReturnType<typeof loadSouvenirDrafts>>) : loadSouvenirDrafts();
+  const testCountP = Promise.all(
+    (["cremation_bookings", "deposit_bookings", "product_orders"] as const).map((t) => admin.from(t).select("*", { count: "exact", head: true }).eq("is_test", true))
+  ).then((rs) => rs.reduce((n, r) => n + (r.count || 0), 0));
   const [bkRes, peRes, poRes, depRes] = await Promise.all([
     createAdminClient()
       .from("cremation_bookings")
-      .select("id, case_no, pet_name, owner_name, plan, status, service_date, created_at, amount, payment_amount, payment_status, shopify_order_name, notes, source").eq("is_test", false)
+      .select("id, case_no, pet_name, owner_name, plan, status, service_date, created_at, amount, payment_amount, payment_status, shopify_order_name, notes, source").eq("is_test", showTests)
       .order("created_at", { ascending: false })
       .limit(1000),
     // select("*") 以容忍 order_ref 欄位尚未建立（migration 未跑）時不報錯
     supabase.from("project_entries").select("*"),
-    supabase.from("product_orders").select("*").eq("is_test", false).order("shopify_created_at", { ascending: false }).limit(500),
-    admin.from("deposit_bookings").select("id, owner_name, pet_name, status, service_date, created_at, payment_amount, payment_status, shopify_order_name, notes").eq("is_test", false).order("created_at", { ascending: false }).limit(1000),
+    supabase.from("product_orders").select("*").eq("is_test", showTests).order("shopify_created_at", { ascending: false }).limit(500),
+    admin.from("deposit_bookings").select("id, owner_name, pet_name, status, service_date, created_at, payment_amount, payment_status, shopify_order_name, notes").eq("is_test", showTests).order("created_at", { ascending: false }).limit(1000),
   ]);
   const bookings = (bkRes.data ?? []) as Booking[];
   const entries = (peRes.data ?? []) as Entry[];
@@ -232,9 +239,21 @@ export default async function ProjectsPage() {
   };
   rows.sort((x, y) => numKey(y.projectNo) - numKey(x.projectNo));
 
+  const testCount = await testCountP;
   return (
     <div>
       <PageHeader title="專案管理" />
+      {showTests ? (
+        <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          <span>正在查看測試記錄（不計入收入、報表及客戶檔案）。</span>
+          <Link href="/projects" className="underline underline-offset-2">返回正式記錄</Link>
+        </div>
+      ) : testCount > 0 ? (
+        <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-xl border border-[var(--line)] bg-[var(--card)] px-4 py-3 text-sm text-[var(--soft)]">
+          <span>已隱藏 {testCount} 筆測試記錄。</span>
+          <Link href="/projects?test=1" className="underline underline-offset-2">查看測試記錄</Link>
+        </div>
+      ) : null}
 
       {rows.length === 0 ? (
         <div className="rounded-2xl border border-[var(--line)] bg-[var(--card)] p-10 text-center text-[var(--soft)]">
