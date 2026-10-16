@@ -11,7 +11,7 @@ import { WHATSAPP_CONFIRM, whatsappHref } from "./_whatsapp";
 import { RowActions, type RowAction } from "../_row-actions";
 import { TestFlagPanel } from "../_test-controls";
 import { ManualPaidPanel } from "../_manual-paid";
-import { ProgressInline } from "./_progress";
+import { ServiceProgress } from "../_service-progress";
 import type { ProgressData } from "@/lib/booking-progress";
 
 export type BookingRow = {
@@ -86,11 +86,14 @@ function rowActions(r: BookingRow, staffName: string): RowAction[] {
       kind: "panel",
       key: "progress",
       label: `📍 更新進度（目前：${r.statusLabel}）`,
-      title: "火化進度",
+      title: "服務進度",
       alert: r.statusKey === "ready",
       node: (
-        <ProgressInline
+        <ServiceProgress
+          entity="cremation"
           id={r.id}
+          createdAt={r.booking.created_at}
+          cremationId={r.id}
           owner={r.owner}
           petName={r.petName}
           contact={r.contact}

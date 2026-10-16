@@ -13,7 +13,6 @@ export type DepositEditData = {
 
 const input = "w-full rounded-lg border border-[var(--line)] bg-white px-3 py-2 outline-none focus:border-[var(--gold)]";
 const field = "min-w-0 flex flex-col gap-1";
-const statuses = [["new","新收到"],["contacted","已聯絡"],["scheduled","已排期"],["completed","已完成"],["cancelled","已取消"]];
 
 // 操作視窗內的編輯表格
 export function EditDepositInline({ booking }: { booking: DepositEditData }) {
@@ -27,7 +26,6 @@ export function EditDepositInline({ booking }: { booking: DepositEditData }) {
       <label className={field}>種類<input name="pet_type" defaultValue={booking.pet_type || ""} className={input}/></label>
       <label className={field}>預約日期<input type="date" name="service_date" defaultValue={booking.service_date || ""} className={input}/></label>
       <label className={field}>預約時段<select name="service_time" defaultValue={findTimeSlot(booking.service_time)?.zh ?? (booking.service_time || "")} className={input}><option value="">待確認</option>{TIME_SLOTS.map((slot) => <option key={slot.zh} value={slot.zh}>{slot.label}</option>)}{booking.service_time && !findTimeSlot(booking.service_time) && <option value={booking.service_time}>{booking.service_time}</option>}{LEGACY_TIME_SLOTS.filter((slot) => slot === findTimeSlot(booking.service_time)).map((slot) => <option key={slot.zh} value={slot.zh}>{slot.label}（舊時段）</option>)}</select></label>
-      <label className={field}>狀態<select name="status" defaultValue={booking.status} className={input}>{statuses.map(([v,l]) => <option key={v} value={v}>{l}</option>)}</select></label>
       <label className={field}>接送地址<input name="pickup_address" defaultValue={booking.pickup_address || ""} className={input}/></label>
       <label className={field + " sm:col-span-2"}>備註<textarea name="notes" rows={3} defaultValue={booking.notes || ""} className={input}/></label>
       <div className="sm:col-span-2 flex justify-end gap-2"><button type="button" onClick={close} className="px-4 py-2">取消</button><button className="rounded-lg bg-[var(--gold)] px-4 py-2 text-white">儲存</button></div>

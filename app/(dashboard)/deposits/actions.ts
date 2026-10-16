@@ -14,8 +14,9 @@ export async function updateDeposit(formData: FormData) {
   const id = String(formData.get("id") || "");
   if (!id) return;
   const value = (key: string) => String(formData.get(key) || "").trim() || null;
-  const rawStatus = String(formData.get("status") || "new");
-  const status = VALID.includes(rawStatus) ? rawStatus : "new";
+  // 狀態由「更新進度」處理；舊表格如仍附帶狀態才更新
+  const rawStatus = formData.get("status");
+  const status = rawStatus !== null && VALID.includes(String(rawStatus)) ? String(rawStatus) : null;
   await createAdminClient().from("deposit_bookings").update({
     owner_name: value("owner_name"),
     contact: value("contact"),
@@ -25,9 +26,9 @@ export async function updateDeposit(formData: FormData) {
     service_time: value("service_time"),
     pickup_address: value("pickup_address"),
     notes: value("notes"),
-    status,
+    ...(status ? { status } : {}),
   }).eq("id", id);
-  await logAudit("update_deposit", "deposit_bookings", id, `狀態=${status}`);
+  await logAudit("update_deposit", "deposit_bookings", id, status ? `狀態=${status}` : "編輯資料");
   revalidatePath("/deposits");
 }
 

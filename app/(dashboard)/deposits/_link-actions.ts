@@ -1,6 +1,6 @@
 "use server";
 
-// 接送服務 ↔ 火化預約：快速更新狀態、一鍵建立火化預約（同一專案編號）
+// 接送服務 → 火化預約：「更新進度」按已接送時以同一專案編號建立火化預約
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireModule } from "@/lib/auth";
@@ -8,22 +8,11 @@ import { logAudit } from "@/lib/audit";
 import { canonicalProjectNo, projectNoFromNotes } from "@/lib/order-label";
 
 type Result = { error?: string };
-const STATUSES = ["new", "contacted", "scheduled", "completed", "cancelled"];
 
 function revalidate() {
   revalidatePath("/deposits");
   revalidatePath("/bookings");
   revalidatePath("/");
-}
-
-export async function setDepositStatus(id: string, status: string): Promise<Result> {
-  await requireModule("deposits");
-  if (!id || !STATUSES.includes(status)) return { error: "狀態無效。" };
-  const { error } = await createAdminClient().from("deposit_bookings").update({ status }).eq("id", id);
-  if (error) return { error: `更新失敗：${error.message}` };
-  await logAudit("update_deposit", "deposit_bookings", id, `狀態=${status}`);
-  revalidate();
-  return {};
 }
 
 // 由接送服務建立火化預約：帶入主人、電話、毛孩、地址、日期及專案編號；方案及收費待與客人確認（不設金額，不會觸發付款提醒）

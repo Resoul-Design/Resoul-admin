@@ -14,7 +14,8 @@ import { Fragment, Suspense } from "react";
 import { DepositsToolbar } from "./_toolbar";
 import { DepositPayLink } from "./_pay-link";
 import { ManualPaidPanel } from "../_manual-paid";
-import { CreateCremationPanel, DepositStatusPanel } from "./_link-panels";
+import { ServiceProgress } from "../_service-progress";
+import { PROGRESS_COLUMNS, type ProgressData } from "@/lib/booking-progress";
 import { canonicalProjectNo, projectNoFromNotes } from "@/lib/order-label";
 import { FollowUpInline, type FollowUpItem } from "./_followup";
 import { TestFlagPanel, TestRecordsBar } from "../_test-controls";
@@ -143,7 +144,7 @@ function whatsappUrl(row: DepositRow) {
 }
 
 // 同一專案編號的火化預約（獸醫評估除外）
-type LinkedCremation = { id: string; status: string };
+type LinkedCremation = { id: string; status: string; progress: ProgressData | null };
 const CREMATION_STATUS: Record<string, string> = { new: "新收到", scheduled: "已排期", pickup: "已接送", cremating: "火化中", ready: "可取回", completed: "已完成", cancelled: "已取消" };
 function depositProjectNo(r: DepositRow) {
   return canonicalProjectNo(r.project_no, projectNo(r));
@@ -170,10 +171,20 @@ function depositActions(r: DepositRow, fu: FollowUpItem | undefined, staffName: 
   // 未付款但不在付款提醒（例如已提醒、等候客人）：付款連結放在操作內
   if (payable(r) && !(fu && needsPaymentLink(fu.kind))) list.push({ kind: "panel", key: "paylink", label: "🔗 付款連結", title: "付款連結", node: <DepositPayLink id={r.id} link={r.payment_link || null} /> });
   if (payable(r)) list.push({ kind: "panel", key: "markpaid", label: "✅ 確認已收款（人手）", title: "確認已收款", node: <ManualPaidPanel entity="deposit" id={r.id} expected={r.payment_amount != null ? Number(r.payment_amount) : 1800} /> });
-  list.push({ kind: "panel", key: "status", label: `🔄 更新狀態（${STATUS_LABEL[r.status] || r.status}）`, title: "更新接送服務狀態", node: <DepositStatusPanel id={r.id} status={r.status} /> });
+  // 一條進度線：已接送之後跟隨火化預約
+  const current = linked?.progress && linked.progress.picked_up_at ? CREMATION_STATUS[linked.status] || linked.status : STATUS_LABEL[r.status] || r.status;
+  list.push({
+    kind: "panel", key: "progress", label: `📍 更新進度（目前：${current}）`, title: "服務進度",
+    node: (
+      <ServiceProgress
+        entity="deposit" id={r.id} status={r.status} createdAt={r.created_at} cremationId={linked?.id || null} progress={linked?.progress || null}
+        scheduledText={serviceDateTime(r)} owner={r.owner_name || ""} petName={r.pet_name || ""} contact={r.contact || ""}
+        english={/Project no\./i.test(r.notes || "")} staffName={staffName}
+      />
+    ),
+  });
   const project = depositProjectNo(r);
-  if (linked) list.push({ kind: "link", key: "cremation", label: `🕊️ 查看火化預約（${CREMATION_STATUS[linked.status] || linked.status}）`, href: `/bookings?q=${encodeURIComponent(project)}` });
-  else if (canBook && project && r.status !== "cancelled") list.push({ kind: "panel", key: "create-cremation", label: "🕊️ 建立火化預約", title: "建立火化預約", node: <CreateCremationPanel id={r.id} projectNo={project} /> });
+  if (linked && canBook) list.push({ kind: "link", key: "cremation", label: `🕊️ 查看火化預約（${CREMATION_STATUS[linked.status] || linked.status}）`, href: `/bookings?q=${encodeURIComponent(project)}` });
   if (wa) list.push({ kind: "link", key: "wa", label: "💬 WhatsApp 客人", href: wa, whatsapp: true, confirm: WHATSAPP_CONFIRM });
   if (cal) list.push({ kind: "link", key: "cal", label: "📅 加入日曆", href: cal });
   if (r.payment_status === "paid" && r.shopify_order_name) list.push({ kind: "link", key: "invoice-pdf", label: "🧾 發票 PDF", href: `/print/invoices?refs=deposit:${r.id}` });
@@ -212,11 +223,16 @@ export default async function DepositsPage({ searchParams }: { searchParams: Pro
   const canBook = !!staff && hasModule(staff, ["bookings"]);
   const linkedByProject = new Map<string, LinkedCremation>();
   {
-    const { data: cb } = await supabase.from("cremation_bookings").select("id, case_no, notes, status, source, created_at").order("created_at", { ascending: true });
+    const full = await supabase.from("cremation_bookings").select("id, case_no, notes, status, source, created_at, " + PROGRESS_COLUMNS).order("created_at", { ascending: true });
+    // 未執行進度 migration 時退回基本欄位
+    const cb = (full.error ? (await supabase.from("cremation_bookings").select("id, case_no, notes, status, source, created_at").order("created_at", { ascending: true })).data : full.data) as unknown as (Record<string, string | null> & { id: string; status: string })[] | null;
     for (const b of cb || []) {
       if (String(b.source || "").includes("euthanasia")) continue;
       const no = canonicalProjectNo(b.case_no, projectNoFromNotes(b.notes));
-      if (no && !linkedByProject.has(no)) linkedByProject.set(no, { id: b.id, status: b.status });
+      if (no && !linkedByProject.has(no)) {
+        const progress = full.error ? null : { picked_up_at: b.picked_up_at, cremation_started_at: b.cremation_started_at, ready_at: b.ready_at, returned_at: b.returned_at, returned_to: b.returned_to };
+        linkedByProject.set(no, { id: b.id, status: b.status, progress });
+      }
     }
   }
   const linkedFor = (r: DepositRow) => linkedByProject.get(depositProjectNo(r));

@@ -37,8 +37,9 @@ export async function updateBooking(formData: FormData) {
     const v = String(formData.get(k) || "").trim();
     return v || null;
   };
-  const rawStatus = String(formData.get("status") || "new");
-  const status = VALID.includes(rawStatus) ? rawStatus : "new";
+  // 狀態由「更新進度」處理；舊表格如仍附帶狀態才更新
+  const rawStatus = formData.get("status");
+  const status = rawStatus !== null && VALID.includes(String(rawStatus)) ? String(rawStatus) : null;
   const plan = g("plan");
 
   const update: Record<string, unknown> = {
@@ -50,8 +51,8 @@ export async function updateBooking(formData: FormData) {
     service_date: g("service_date"),
     service_time: g("service_time"),
     pickup_address: g("pickup_address"),
-    status,
     notes: g("notes"),
+    ...(status ? { status } : {}),
   };
   // 收費金額（確認方案後填寫；已付款不可修改；獸醫評估不收費）
   const rawAmount = formData.get("payment_amount");
@@ -82,6 +83,6 @@ export async function updateBooking(formData: FormData) {
   }
 
   await supabase.from("cremation_bookings").update(update).eq("id", id);
-  await logAudit("update_booking", "cremation_bookings", id, `狀態=${status}`);
+  await logAudit("update_booking", "cremation_bookings", id, status ? `狀態=${status}` : "編輯資料");
   revalidate();
 }

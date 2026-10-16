@@ -82,15 +82,18 @@ export function EditBookingInline({ booking }: { booking: BookingData }) {
       <Field label="RSL 專案編號">
         <input name="case_no" defaultValue={projectNo} className={inputCls} placeholder="RSL-260922-AB12" pattern="RSL-[A-Za-z0-9]+-[A-Za-z0-9]+" title="請輸入 RSL 開頭的專案編號" />
       </Field>
-      <Field label="狀態">
-        <select name="status" defaultValue={b.status} className={inputCls}>
-          {STATUSES.map((s) => (
-            <option key={s.key} value={s.key}>
-              {s.label}
-            </option>
-          ))}
-        </select>
-      </Field>
+      {/* 火化預約狀態由「更新進度」處理；獸醫評估仍在此更改狀態 */}
+      {String(b.source || "").includes("euthanasia") && (
+        <Field label="狀態">
+          <select name="status" defaultValue={b.status} className={inputCls}>
+            {STATUSES.map((s) => (
+              <option key={s.key} value={s.key}>
+                {s.label}
+              </option>
+            ))}
+          </select>
+        </Field>
+      )}
 
       <Field label="主人姓名">
         <input name="owner_name" defaultValue={b.owner_name || ""} className={inputCls} />
