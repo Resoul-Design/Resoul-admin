@@ -1,7 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { getStaff } from "@/lib/auth";
+import { getStaff, hasModule } from "@/lib/auth";
 import { COMPANY, PLAN_CODES } from "@/lib/company";
 import { PrintButton } from "../../_print-button";
 import { canonicalProjectNo, projectNoFromNotes } from "@/lib/order-label";
@@ -43,7 +43,10 @@ export default async function BookingDocPage({
   params: Promise<{ id: string }>;
   searchParams: Promise<{ type?: string }>;
 }) {
-  if (!(await getStaff())) redirect("/login");
+  const staff = await getStaff();
+  if (!staff) redirect("/login");
+  // 須有火化預約、獸醫評估或專案管理權限
+  if (!hasModule(staff, ["bookings", "vet_assessments", "projects"])) redirect("/");
   const { id } = await params;
   const { type = "quote" } = await searchParams;
 

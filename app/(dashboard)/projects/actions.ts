@@ -25,11 +25,13 @@ export async function addEntry(formData: FormData) {
   const file = formData.get("file");
   if (file && typeof file === "object" && "size" in file && file.size > 0) {
     const f = file as File;
-    const ext = (f.name.split(".").pop() || "dat").toLowerCase();
+    // 只接受常見單據格式；副檔名只保留英數字，避免路徑字元或可執行的網頁檔
+    const raw = (f.name.split(".").pop() || "").toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 8);
+    const ext = ["pdf", "jpg", "jpeg", "png", "webp", "heic", "gif", "doc", "docx", "xls", "xlsx", "csv", "txt"].includes(raw) ? raw : "dat";
     const path = `${keyForPath}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
     const { error } = await supabase.storage
       .from("project-files")
-      .upload(path, f, { contentType: f.type || undefined });
+      .upload(path, f, { contentType: ext === "dat" ? "application/octet-stream" : f.type || undefined });
     if (!error) file_path = path;
   }
 

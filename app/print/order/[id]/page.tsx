@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { getStaff } from "@/lib/auth";
+import { getStaff, hasModule } from "@/lib/auth";
 import { shopifyGraphQL } from "@/lib/shopify";
 import { COMPANY } from "@/lib/company";
 import { PrintButton } from "../../_print-button";
@@ -34,7 +34,10 @@ export default async function OrderDocPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  if (!(await getStaff())) redirect("/login");
+  const staff = await getStaff();
+  if (!staff) redirect("/login");
+  // 須有紀念品訂單或專案管理權限
+  if (!hasModule(staff, ["orders", "projects"])) redirect("/");
   const { id } = await params;
   const gid = `gid://shopify/Order/${id}`;
 
