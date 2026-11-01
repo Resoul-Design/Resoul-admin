@@ -1,0 +1,726 @@
+<meta charset="utf-8">
+<title>RESOUL 營運手冊</title>
+<meta name="description" content="RESOUL 網站、後台、Shopify、Supabase、Vercel、GitHub 中英對照操作手冊（書面語）。">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;1,500&family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+  :root{
+    --bg:#faf6ef; --cream:#f2e9dc; --card:#fdfaf4; --ink:#3b2f27; --soft:#6f6156;
+    --faint:#9a8d80; --gold:#9c7f52; --gold-deep:#7d6437; --line:#e6dccb; --head:#f2e9dc;
+    --ok:#3f7d5a; --okbg:#e9f2ec; --warn:#b45309; --warnbg:#faf1e2; --danger:#b3453b; --dangerbg:#f8e9e6;
+    --serif:"Noto Serif TC","Songti TC",serif;
+    --sans:"Noto Sans TC",-apple-system,BlinkMacSystemFont,"PingFang TC","Microsoft JhengHei",sans-serif;
+    --script:"Cormorant Garamond","Noto Serif TC",serif;
+    --mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
+    --maxw:780px;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.75;font-size:15.5px;-webkit-font-smoothing:antialiased}
+  a{color:var(--gold-deep);text-underline-offset:3px}
+  code{font-family:var(--mono);font-size:.85em;background:var(--cream);border:1px solid var(--line);border-radius:5px;padding:.08em .38em;word-break:break-word}
+  h1,h2,h3{font-family:var(--serif);font-weight:600;letter-spacing:.01em;text-wrap:balance;color:var(--ink)}
+  .en{color:var(--soft);font-style:italic;font-size:.92em;display:block;margin-top:2px}
+
+  .wrap{max-width:1180px;margin:0 auto;padding:0 24px;display:grid;grid-template-columns:238px minmax(0,1fr);gap:44px}
+  @media(max-width:920px){.wrap{grid-template-columns:1fr;gap:0}}
+
+  header.top{border-bottom:1px solid var(--line);background:linear-gradient(180deg,#fdfaf4,#faf6ef)}
+  .top-in{max-width:1180px;margin:0 auto;padding:30px 24px 24px}
+  .brand{font-family:var(--script);font-style:italic;font-size:44px;line-height:1;color:var(--ink)}
+  .brand small{display:block;font-family:var(--sans);font-style:normal;font-size:11px;letter-spacing:.34em;text-transform:uppercase;color:var(--gold);margin-top:9px}
+  .kicker{font-family:var(--serif);font-size:21px;color:var(--soft);margin-top:12px}
+  .kicker .en{display:inline;margin:0}
+
+  nav.toc{align-self:start;position:sticky;top:0;max-height:100vh;overflow-y:auto;padding:30px 0 40px}
+  @media(max-width:920px){nav.toc{position:static;max-height:none;padding:14px 0 0;border-bottom:1px solid var(--line)}}
+  nav.toc ol{list-style:none;margin:0;padding:0;counter-reset:s}
+  nav.toc a{display:block;text-decoration:none;color:var(--soft);font-size:13.5px;padding:6px 12px 6px 36px;border-left:2px solid transparent;position:relative;border-radius:0 6px 6px 0}
+  nav.toc a::before{counter-increment:s;content:counter(s,decimal-leading-zero);position:absolute;left:10px;top:6px;font-family:var(--mono);font-size:10.5px;color:var(--faint)}
+  nav.toc a:hover{background:var(--cream);color:var(--ink)}
+  nav.toc a.active{color:var(--gold-deep);border-left-color:var(--gold);font-weight:500}
+  .toc-label{font-family:var(--sans);font-size:10.5px;letter-spacing:.24em;text-transform:uppercase;color:var(--faint);padding:0 12px 10px}
+  .toc .en{display:inline;font-size:11px;margin-left:5px}
+
+  main{padding:34px 0 90px;min-width:0}
+  section{margin:0 0 46px;scroll-margin-top:18px}
+  .sec-eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.18em;color:var(--gold);text-transform:uppercase}
+  section>h2{font-size:26px;margin:2px 0 4px;padding-top:6px}
+  section>h2 .en{display:inline;font-size:16px;font-weight:500}
+  .lead{color:var(--soft);max-width:var(--maxw);margin:8px 0 20px}
+  h3{font-size:17.5px;margin:28px 0 6px}
+  h3 .en{display:inline;font-size:13.5px;font-weight:500}
+  p,li{max-width:var(--maxw)}
+
+  ol.steps{counter-reset:step;list-style:none;padding:0;margin:14px 0;max-width:var(--maxw)}
+  ol.steps>li{counter-increment:step;position:relative;padding:2px 0 16px 42px;border-left:1px solid var(--line);margin-left:13px}
+  ol.steps>li:last-child{border-left-color:transparent}
+  ol.steps>li::before{content:counter(step);position:absolute;left:-13px;top:-2px;width:26px;height:26px;border-radius:50%;background:var(--gold);color:#fff;font-family:var(--mono);font-size:12px;display:grid;place-items:center}
+  ul.tight{margin:10px 0;padding-left:20px;max-width:var(--maxw)}
+  ul.tight li{margin:7px 0}
+
+  table{border-collapse:collapse;width:100%;max-width:var(--maxw);margin:16px 0;font-size:14px}
+  .tablewrap{overflow-x:auto;max-width:var(--maxw)}
+  th,td{text-align:left;padding:10px 12px;border:1px solid var(--line);vertical-align:top}
+  th{background:var(--head);color:var(--soft);font-weight:600;font-size:12.5px}
+  td code{white-space:nowrap}
+  td .en{font-size:12px}
+
+  .callout{border-radius:12px;padding:13px 16px 13px 18px;margin:16px 0;max-width:var(--maxw);border:1px solid;border-left-width:5px;font-size:14.5px}
+  .callout .tag{font-weight:700;font-size:12.5px;letter-spacing:.03em;display:block;margin-bottom:3px}
+  .callout .en{margin-top:4px}
+  .callout.tip{background:var(--okbg);border-color:#c7ddcd;color:#2f5f45}
+  .callout.tip .tag{color:var(--ok)}
+  .callout.warn{background:var(--warnbg);border-color:#ecd7b3;color:#7a4d10}
+  .callout.warn .tag{color:var(--warn)}
+  .callout.danger{background:var(--dangerbg);border-color:#e8c7c1;color:#8a352d}
+  .callout.danger .tag{color:var(--danger)}
+
+  .arch{display:grid;gap:11px;max-width:var(--maxw);margin:16px 0}
+  .arch-row{display:grid;grid-template-columns:1fr 1fr;gap:11px}
+  @media(max-width:560px){.arch-row{grid-template-columns:1fr}}
+  .node{border:1px solid var(--line);border-radius:12px;padding:12px 15px;background:var(--card)}
+  .node b{font-family:var(--serif);font-size:15px}
+  .node span{display:block;color:var(--soft);font-size:12.5px;margin-top:3px}
+  .node.accent{border-color:var(--gold);background:linear-gradient(180deg,#fdfaf4,#f7efe0)}
+  .flowline{text-align:center;color:var(--faint);font-family:var(--mono);font-size:11.5px;letter-spacing:.06em}
+
+  footer{border-top:1px solid var(--line);color:var(--faint);font-size:12.5px;padding:22px 0 60px;max-width:var(--maxw)}
+
+  @media print{
+    @page{margin:16mm}
+    body{background:#fff;font-size:11pt;line-height:1.6}
+    .wrap{display:block;max-width:none;padding:0}
+    nav.toc{display:none}
+    header.top{background:#fff;border-bottom:2px solid var(--gold)}
+    .top-in{padding:0 0 16px}
+    main{padding:8px 0 0}
+    section{margin-bottom:20px;break-inside:avoid}
+    h1,h2,h3{break-after:avoid}
+    .callout,table,.arch,ol.steps>li{break-inside:avoid}
+    a{color:var(--ink);text-decoration:none}
+    .maxw,p,li,.lead,table,.callout,.arch{max-width:none}
+  }
+</style>
+
+<header class="top">
+  <div class="top-in">
+    <div class="brand">Resoul<small>your last greatest love to show</small></div>
+    <div class="kicker">營運手冊 · 網站與系統操作指南<span class="en">Operations Manual · Website &amp; Systems Guide（中英對照）</span></div>
+  </div>
+</header>
+
+<div class="wrap">
+  <nav class="toc" aria-label="目錄">
+    <div class="toc-label">目錄 Contents</div>
+    <ol>
+      <li><a href="#overview">系統概覽<span class="en">Overview</span></a></li>
+      <li><a href="#accounts">帳戶與網址<span class="en">Accounts</span></a></li>
+      <li><a href="#admin">後台操作<span class="en">Admin</span></a></li>
+      <li><a href="#staff">新增員工帳號<span class="en">Staff</span></a></li>
+      <li><a href="#shopify">Shopify（商店・付款）<span class="en">Shopify</span></a></li>
+      <li><a href="#text">修改文字<span class="en">Text</span></a></li>
+      <li><a href="#images">修改圖片<span class="en">Images</span></a></li>
+      <li><a href="#deploy">部署（自動更新）<span class="en">Deploy</span></a></li>
+      <li><a href="#supabase">Supabase 資料庫<span class="en">Database</span></a></li>
+      <li><a href="#env">環境變數<span class="en">Env vars</span></a></li>
+      <li><a href="#faq">常見問題排解<span class="en">Troubleshooting</span></a></li>
+      <li><a href="#security">安全提醒<span class="en">Security</span></a></li>
+      <li><a href="#sync">資料同步<span class="en">Data sync</span></a></li>
+      <li><a href="#health">系統健康與例行<span class="en">Health &amp; routine</span></a></li>
+      <li><a href="#glossary">名詞解釋<span class="en">Glossary</span></a></li>
+      <li><a href="#todo">待辦事項與交接清單<span class="en">To-do</span></a></li>
+    </ol>
+  </nav>
+
+  <main>
+    <section id="overview">
+      <div class="sec-eyebrow">01 / Overview</div>
+      <h2>一、系統概覽<span class="en">System overview</span></h2>
+      <p class="lead">RESOUL 由五個部分組成。先理解每個部分負責什麼，之後所有操作都會變得清晰。<span class="en">RESOUL runs on five parts. Once you understand what each does, every task below makes sense.</span></p>
+      <div class="arch">
+        <div class="arch-row">
+          <div class="node accent"><b>網站 Landing</b><span>客人看到的網站：首頁、火化善終旅程、上門安樂死（含服務收費）、<b>安排預約接送</b>（獨立付款頁）、情緒支援、專業輔導轉介及資源、主人評價及故事分享、Google 評價、網誌。<span class="en">The public site: home, cremation, home assessment and euthanasia (with its service fees), the standalone pick-up booking page, grief support, professional counselling and resources, owner reviews and story sharing, Google reviews, blogs.</span></span></div>
+          <div class="node accent"><b>後台 Admin</b><span>內部管理系統：接送服務、火化預約、獸醫評估、紀念品訂單（含 Shopify 草稿訂單）、倉存、客戶、專案、留言與 Google 評價、員工、報表。<span class="en">Internal system: pick-ups, cremation bookings, vet assessments, orders (incl. Shopify draft orders), stock, customers, projects, moderation &amp; Google reviews, staff, reports.</span></span></div>
+        </div>
+        <div class="flowline">↑ GitHub（程式碼 code）→ Vercel（自動上線 hosting）↑</div>
+        <div class="arch-row">
+          <div class="node"><b>Supabase</b><span>資料庫：預約、接送訂金、留言、員工、付款狀態（專案 diyxcx）。<span class="en">Database (project diyxcx).</span></span></div>
+          <div class="node"><b>Shopify</b><span>商店與付款：產品、價錢、結帳、發票編號（Shopify 訂單號）。<span class="en">Shop &amp; payments; issues the invoice (order) number.</span></span></div>
+        </div>
+      </div>
+
+      <h3>三種編號，各有用途（最重要）<span class="en">Three numbers, three jobs (most important)</span></h3>
+      <p>系統內有三種編號，<b>用途各不相同，切勿混用</b>。對單時，先看「專案編號」確認是哪一個客人的個案，再看「發票編號」確認是哪一次付款。<span class="en">There are three distinct numbers — never mix them up. When reconciling, use the project number to identify the customer's case, then the invoice number to identify a specific payment.</span></p>
+      <div class="tablewrap"><table>
+        <thead><tr><th>編號 Number</th><th>格式／例子 Format</th><th>何時產生 Created</th><th>用途 Purpose</th></tr></thead>
+        <tbody>
+          <tr><td><b>專案編號</b><span class="en">Project no.</span></td><td><code>RSL-YYMMDD-XXXXXXXX</code><br><span class="en">e.g. RSL-260922-X7K2Q9MD</span></td><td>客人首次預約時由系統自動產生；回訪客人可填回原有編號。直接在網上商店購買、未有編號的紀念品訂單，系統亦會自動產生新編號（客人之後安排預約接送時可填回此編號，網站以電話核對）。<span class="en">Generated at a customer's first booking; returning clients can re-enter theirs. Keepsake orders bought directly in the online shop without one also get a new number automatically (the customer can re-enter it when booking a pick-up; the site checks it against their phone).</span></td><td>同一客人整個善終旅程（接送、火化、紀念品）<b>共用同一個</b>，用作識別個案。<span class="en">Shared across the whole journey (pick-up, cremation, keepsakes) to identify the case.</span></td></tr>
+          <tr><td><b>付款參考</b><span class="en">Payment ref.</span></td><td><code>PAY-…</code><br><span class="en">e.g. PAY-M1K2-AB12CD34</span></td><td>每次付款時產生。<span class="en">Created for each payment.</span></td><td>把 Shopify 付款對回資料庫的記錄；只作系統核對，一般無須告知客人。<span class="en">Matches a Shopify payment back to its record; internal only.</span></td></tr>
+          <tr><td><b>發票編號</b><span class="en">Invoice no.</span></td><td>Shopify 訂單號<br><span class="en">e.g. #RS-1012</span></td><td>每次在 Shopify 付款時產生。<span class="en">Created for each Shopify payment.</span></td><td>正式收費單據；<b>每次付款各一個</b>，因此可與專案編號不同。<span class="en">The formal bill; one per payment, so it can differ from the project number.</span></td></tr>
+        </tbody>
+      </table></div>
+      <div class="callout warn"><span class="tag">注意 NOTE · 舊編號</span>舊制的 <code>RS-YYYYMM-NNN</code>、<code>C-####</code>、<code>P-####</code> 已停用，不再作為專案編號。後台只會把 <code>RSL-</code> 開頭的號碼顯示為專案編號；舊記錄若未有 RSL 編號，專案編號欄會顯示「—」。<span class="en">The old RS-YYYYMM-NNN, C-#### and P-#### formats are retired. The admin only shows RSL- numbers as project numbers; old records without one show "—".</span></div>
+
+      <h3>一單「安排預約接送」如何流動<span class="en">How one pick-up booking flows</span></h3>
+      <ol class="steps">
+        <li>客人在網站「<b>安排預約接送</b>」頁填寫資料，並繳付 <b>HK$1,800</b> 訂金。首次預約時，系統自動產生<b>專案編號</b> <code>RSL-…</code>；回訪客人可填回原有編號。<span class="en">The customer fills the pick-up booking page and pays a HK$1,800 deposit. A project number RSL-… is generated on a first booking; returning clients can enter theirs.</span></li>
+        <li>資料經伺服器寫入 <b>Supabase</b>（狀態：待付款），並附上<b>付款參考</b> <code>PAY-…</code>。<span class="en">The server saves it to Supabase (pending) with a payment reference PAY-….</span></li>
+        <li>客人跳轉至 <b>Shopify</b> 結帳付款，Shopify 產生<b>發票編號</b>（Shopify 訂單號）。<span class="en">They pay on Shopify checkout; Shopify issues the invoice (order) number.</span></li>
+        <li>付款成功後，Shopify 自動通知網站（webhook），以付款參考對回該筆記錄，標記為<b>已付款</b>，並補上發票編號與金額。<span class="en">On success, a webhook matches the payment reference, marks the record paid, and adds the invoice number and amount.</span></li>
+        <li>你在後台「<b>接送服務</b>」看到已付款預約，安排接送；其後的火化預約與紀念品沿用<b>同一個專案編號</b>。<span class="en">You see it under Pick-up services and arrange collection; later cremation and keepsakes reuse the same project number.</span></li>
+      </ol>
+    </section>
+
+    <section id="accounts">
+      <div class="sec-eyebrow">02 / Access</div>
+      <h2>二、帳戶與網址<span class="en">Accounts &amp; URLs</span></h2>
+      <p class="lead">所有服務都連接至客戶帳戶 <code>resouldesigner@gmail.com</code>（並非私人帳戶）。建議把下表儲存或列印。<span class="en">Everything is under the client account resouldesigner@gmail.com. Save or print this table.</span></p>
+      <div class="tablewrap"><table>
+        <thead><tr><th>服務 Service</th><th>網址 / 位置 URL</th><th>用途 Purpose</th></tr></thead>
+        <tbody>
+          <tr><td>後台管理 Admin</td><td><code>resoul-admin-five.vercel.app</code></td><td>日常營運；以 <code>resouldesigner@gmail.com</code> 加密碼登入。<span class="en">Daily operations; log in with that email + password.</span></td></tr>
+          <tr><td>消費者網站 Website</td><td><code>resoul-landing-beta.vercel.app</code></td><td>客人瀏覽的網站。<span class="en">The public-facing site.</span></td></tr>
+          <tr><td>Shopify</td><td><code>qs1nmv-b3.myshopify.com</code></td><td>產品、價錢、訂單、付款。<span class="en">Products, prices, orders, payments.</span></td></tr>
+          <tr><td>Supabase</td><td>supabase.com → 專案 diyxcx</td><td>資料庫；員工登入帳號。<span class="en">Database; staff login accounts.</span></td></tr>
+          <tr><td>Vercel</td><td>vercel.com → 團隊 resouldesigner-1624</td><td>hosting、環境變數、重新部署。<span class="en">Hosting, env vars, redeploys.</span></td></tr>
+          <tr><td>GitHub</td><td><code>github.com/Resoul-Design</code></td><td>程式碼：Resoul-landing、Resoul-admin。<span class="en">Code repositories.</span></td></tr>
+        </tbody>
+      </table></div>
+      <div class="callout tip"><span class="tag">提示 TIP · 核心觀念</span>修改文字或圖片時，改的是 <b>GitHub</b> 內的程式碼；一旦儲存，<b>Vercel</b> 便自動把新版本發佈上線，你不需要自行「上傳網站」。<span class="en">You edit text/images in the code on GitHub; once saved, Vercel publishes automatically — you never manually upload the site.</span></div>
+    </section>
+
+    <section id="admin">
+      <div class="sec-eyebrow">03 / Admin</div>
+      <h2>三、後台操作<span class="en">Using the admin</span></h2>
+      <p class="lead">登入後，功能選單位於頁面頂部，並按用途分組。闊螢幕顯示橫向選單；較窄的螢幕或手機，請按選單圖示（☰）。手機版的列表會自動改為<b>卡片</b>顯示，毋須左右捲動。<span class="en">After logging in, the grouped menu runs along the top; on narrow screens use the ☰ icon. On mobile, lists switch to cards — no sideways scrolling.</span></p>
+
+      <h3>選單分組<span class="en">Menu groups</span></h3>
+      <div class="tablewrap"><table>
+        <thead><tr><th>分組 Group</th><th>項目 Items</th></tr></thead>
+        <tbody>
+          <tr><td>總覽<span class="en">Overview</span></td><td>登入後首頁。<span class="en">Home dashboard.</span></td></tr>
+          <tr><td>日常營運<span class="en">Daily operations</span></td><td>接送服務、火化預約、獸醫評估、紀念品訂單、倉存・出貨、回覆助手<span class="en">Pick-up services, Cremation bookings, Vet assessments, Keepsake orders, Stock &amp; shipping, Reply assistant</span></td></tr>
+          <tr><td>內容<span class="en">Content</span></td><td>主人評價及故事分享、文章記錄、網站內容<span class="en">Owner reviews & stories, Articles, Site content</span></td></tr>
+          <tr><td>人事財務<span class="en">People &amp; finance</span></td><td>員工管理、財務管理、專案管理、客戶檔案<span class="en">Staff, Finance, Projects, Customer files</span></td></tr>
+          <tr><td>系統<span class="en">System</span></td><td>報表與匯出、審計記錄、同步狀態、使用教學<span class="en">Reports &amp; export, Audit log, Sync status, Guide</span></td></tr>
+        </tbody>
+      </table></div>
+      <p>每位員工只會看到自己有權限的項目（權限由管理員在「員工管理」設定）。每次操作及匯出 CSV 時，系統都會再檢查權限；沒有權限時會顯示「沒有此功能的使用權限」。權限名稱與導覽列按鈕相同；「接送服務」、「火化預約」、「獸醫評估」各自獨立設定。<span class="en">Each staff member only sees permitted items (set under Staff). The system re-checks permission on every action and CSV export; without it you will see a &quot;no permission&quot; message. Permission names match the menu buttons; Pick-up service (接送服務), Cremation bookings (火化預約) and Vet assessments (獸醫評估) are set separately.</span></p>
+      <h3>總覽（登入後首頁）<span class="en">Overview</span></h3>
+      <p>登入後先看到「總覽」：今日／近期的預約、待辦與重點數字；如有需要人手處理的危機留言，頂部會出現紅色提示。建議每天上班先看一次。<span class="en">You land on Overview: today's/upcoming bookings, follow-ups and key numbers; a red banner flags crisis posts needing attention. Start here each day.</span></p>
+
+      <h3>接送服務（安排預約接送訂金）<span class="en">Pick-up services (deposit bookings)</span></h3>
+      <ul class="tight">
+        <li>列出客人在網站「安排預約接送」頁提交並繳付 HK$1,800 訂金的預約。欄位：建立時間、<b>專案編號</b>（下方附付款參考）、主人・電話、寵物、希望日期・時段、金額、付款、狀態。<span class="en">Lists deposit bookings from the website's pick-up page. Columns: created, project no. (with payment ref beneath), owner &amp; phone, pet, preferred date &amp; time, amount, payment, status.</span></li>
+        <li>頂部工具列：可搜尋專案編號、主人、電話、毛孩或付款參考（打字即時篩選），按狀態篩選（包括「未付款」），以及匯出 CSV。<span class="en">Toolbar: search by project no., owner, phone, pet or payment ref (filters as you type), filter by status (including Unpaid) and export CSV.</span></li>
+        <li>每行一個「<b>操作</b>」掣，按下開啟小視窗，內有：<b>訂金跟進</b>（如有）、<b>WhatsApp 客人</b>、<b>加入日曆</b>、<b>發票</b>（開啟對應 Shopify 訂單）、<b>編輯資料</b>。<span class="en">Each row has one Actions (操作) button that opens a small window with: deposit follow-up (if any), WhatsApp, Add to calendar, Invoice (opens the Shopify order) and Edit.</span></li>
+        <li>狀態：新收到、已聯絡、已排期、已完成、已取消。<span class="en">Statuses: New, Contacted, Scheduled, Completed, Cancelled.</span></li>
+        <li><b>訂金跟進</b>：需要跟進的訂金在表格中以淡黃色標示，該行「操作」掣變成黃色「🔔」掣並寫明要做的事（安排排期／重新付款／提醒付款／致電跟進），頁頂摘要列顯示「今日要跟進 N 張」並可按「只顯示要跟進」篩選。共四類——① <b>已付款、未排期</b>（已付款但仍為「新收到」，最優先）；② <b>付款失敗</b>；③ <b>未付款</b>（未付款、未提醒過，落單後即時列出）；④ <b>已提醒、仍未付款</b>（提醒後 2 日仍未付）。已取消、已完成、已退款及已標記「不再跟進」的不會列出；總覽頁亦會提示待跟進數量。<span class="en">Deposit follow-ups: rows needing follow-up are tinted yellow and the row's Actions button turns into a yellow 🔔 button naming the action (schedule / re-pay / payment reminder / call); the summary bar shows today's count and a “show follow-ups only” filter. Four kinds — (1) Paid, not scheduled (paid but still New; top priority); (2) Payment failed; (3) Unpaid (not paid and not yet reminded; listed immediately after booking); (4) Reminded, still unpaid (2 days after a reminder). Cancelled, completed, refunded and closed items are excluded; the dashboard also shows the count.</span></li>
+        <li><b>統一跟進</b>：火化服務、獸醫評估及紀念品訂單沿用同一套四類跟進：火化預約——已付款未排期（安排排期）、付款失敗（重新付款）、未付款（提醒付款；有收費金額即時列出，方案待確認、未有金額的不提醒）、已提醒仍未付款（致電跟進），「產生付款連結」會以 Shopify 草稿訂單按預約方案及金額開付款頁，帶同一付款參考，客人付款後自動標記已付款；獸醫評估不收費，改為未聯絡（聯絡客人，即時列出）及已聯絡未有回覆（致電跟進）；紀念品訂單——已付款未出貨（安排出貨）、未付款草稿（提醒付款，即時列出，使用原有付款頁）及已提醒仍未付款（致電跟進）。各列表頁頂顯示「今日要跟進 N 張」並可按「只顯示要跟進」；總覽頁合計四類並可直接跳到各頁。已提醒、等候客人回應期間（提醒後 2 日內），該行「操作」掣左邊會顯示灰色提示，例如「已提醒 10/3 · 10/5 起致電跟進」（獸醫評估為「已聯絡」），表示並非遺漏；到期後會轉為「已提醒、仍未付款」（致電跟進）。需先於 Supabase 執行 db/migration_follow_ups.sql。<span class="en">Cremation, vet assessments and keepsake orders use the same four follow-up types: cremation — paid but not scheduled, payment failed, unpaid (listed immediately once a fee amount is set; bookings with the plan still to be confirmed and no amount are not reminded; Generate payment link creates a Shopify draft for the plan and amount with the same payment ref, so payment is marked automatically) and reminded but still unpaid; vet assessments have no fee, so they use not contacted (listed immediately) and contacted with no reply; keepsakes — paid but not shipped, unpaid drafts (listed immediately, using the existing payment page) and reminded but unpaid. Each list shows today's count with a follow-ups-only filter, and the dashboard totals all four with links. While waiting after a reminder (2 days), a grey note left of the Actions button shows e.g. “已提醒 10/3 · 10/5 起致電跟進” (vet: 已聯絡), so it is clearly not missed; afterwards it becomes Reminded, still unpaid (call). Requires db/migration_follow_ups.sql.</span></li>
+        <li>操作視窗：每行「操作」先顯示範圍——📋 狀態及服務（更新狀態、火化預約、連結專案）、💬 聯絡及排期（WhatsApp、加入日曆）、💳 付款及單據（付款連結、發票 PDF、Shopify 訂單）、⚙️ 資料（編輯資料、測試標記），按入再揀功能；有跟進事項（🔔）時置頂，一按即達；功能少於 5 項時直接列出。各頁共用。<span class="en">Actions window: each row's Actions first shows areas — 📋 Status & services (update status, cremation booking, link project), 💬 Contact & scheduling (WhatsApp, add to calendar), 💳 Payments & documents (payment link, invoice PDF, Shopify order), ⚙️ Data (edit, test flag) — then the functions inside; follow-ups (🔔) stay on top for one-tap access, and rows with fewer than 5 functions list them directly. Shared by all pages.</span></li>
+        <li>操作：按該行「<b>🔔</b>」掣開啟視窗，再按第一項「<b>🔔 …</b>」進入訂金跟進。②③ 先按「<b>產生付款連結</b>」（後台以 Shopify 草稿訂單開一條 HK$1,800 付款連結，帶同一付款參考；客人付款後自動標記已付款；7 日內重用同一條）→ 訊息範本（可按「中文／English」切換；客人在英文版網站落單時預設英文；以同事自己名稱署名，可先修改）自動填入連結 → 按「<b>開啟 WhatsApp</b>」，由同事自己按傳送 → 按「<b>標記已提醒</b>」。① 聯絡客人後按「<b>標記已聯絡</b>」，再按現有流程排期。④ 不再起草提醒，可致電問候，或按「<b>不再跟進</b>」／於「編輯」改為已取消。每張訂金只提醒一次，避免令客人感到被催逼。<span class="en">Actions: click the row's 🔔 button, then the first 🔔 item to open the follow-up. For (2)(3) click Generate payment link (the admin creates a Shopify draft order for HK$1,800 carrying the same payment ref, so payment is marked automatically; the link is reused for 7 days) → the template (switch 中文／English; English is the default for customers who booked on the English site), signed with your own name and editable, fills in the link → Open WhatsApp and send it yourself → Mark reminded. For (1), after contacting the customer click Mark contacted, then schedule as usual. (4) gets no second reminder: call the customer, or click Stop following up / set Cancelled via Edit. Remind each deposit only once so customers never feel pressured.</span></li>
+        <li>付款連結：在「🔔 提醒付款」視窗內產生後，會顯示連結及「🔗 開啟」「複製」掣；列表本身不再顯示。已提醒、等候客人期間（或其他未付款情況），可按「操作 → 🔗 付款連結」開啟或複製（未有連結時會先自動產生）。<span class="en">Payment links: once created in the 🔔 payment reminder window, the link appears there with 🔗 Open and Copy buttons; the list itself no longer shows it. While waiting after a reminder (or any other unpaid case), use Actions → 🔗 付款連結 to open or copy it (it is created first if missing).</span></li>
+        <li>一條進度線：接送服務及火化預約都用「操作 → 📋 狀態及服務 → 📍 更新進度」，同一條時間線：新收到 → 已聯絡 → 已排期 → 已接送 → 火化中 → 可取回 → 已交還（火化預約不設「已聯絡」）。每次只按「下一步」，按錯可「撤回上一步」；「取消預約」及「恢復預約」亦在此。接送服務按「已接送」時，系統以同一專案編號自動建立火化預約（方案及收費標示為待與客人確認，不設金額、不觸發付款提醒；已付接送訂金寫於備註以便抵扣），接送服務同時變為「已完成」，之後的進度在任何一頁按「下一步」均會更新火化預約。已有火化預約時，專案編號下顯示「🕊️ 火化預約：狀態」，按下可直達。確認方案後，到「火化預約 → 編輯資料」揀方案及填「收費金額」，再產生付款連結。編輯資料不再設狀態欄（獸醫評估除外）。<span class="en">One progress line: pick-up services and cremation bookings both use Actions → 📋 Status & services → 📍 更新進度 with one timeline: New → Contacted → Scheduled → Collected → Cremating → Ready → Returned (cremation bookings skip Contacted). Press Next each time and Undo last step if needed; Cancel booking and Restore booking are also here. When a pick-up service is marked Collected, a cremation booking with the same project number is created automatically (plan and fee marked to be confirmed, no amount and no payment reminders; a paid pick-up deposit is noted for deduction) and the pick-up service becomes Completed; later steps update the cremation booking from either page. When a cremation booking exists, 🕊️ 火化預約: status appears under the project number. Once the plan is confirmed, choose it and enter the fee in Cremation → Edit, then create a payment link. Edit forms no longer have a status field (except vet assessments).</span></li>
+        <li>付款金額核對：Shopify 付款通知會核對金額——接送訂金須為 HK$1,800，火化預約須達「收費金額」。實付不足或火化未設收費金額時，不會標記已付款，改為「付款失敗」，並在備註寫明應付及實付金額（例如「⚠️ 付款金額不符：應付 HK$1,800，#1234 實付 HK$10」）。<span class="en">Payment amount check: Shopify payment notices are checked — pick-up deposits must be HK$1,800 and cremation bookings must reach the fee amount. If underpaid, or a cremation booking has no fee set, it is not marked paid; it becomes Payment failed with the expected and actual amounts noted (e.g. “⚠️ 付款金額不符：應付 HK$1,800，#1234 實付 HK$10”).</span></li>
+        <li>人手確認收款：客人以現金、FPS、PayMe 等付款，或付款金額不符而經同事確認時，按「操作 → 💳 付款及單據 → ✅ 確認已收款（人手）」，輸入金額及收款方式即標記已付款；會記錄於備註及操作記錄（接送服務及火化預約適用）。<span class="en">Manual payment confirmation: for cash, FPS, PayMe and similar payments, or after checking an amount mismatch, use Actions → 💳 Payments & documents → ✅ 確認已收款（人手）, enter the amount and method to mark it paid; this is recorded in the notes and audit log (pick-up services and cremation bookings).</span></li>
+        <li>接送訂金抵扣：客人已付的接送訂金（HK$1,800）可抵扣一張火化預約或一張紀念品草稿訂單。於該火化預約或紀念品草稿訂單按「操作 → 💳 付款及單據 → 💰 套用接送訂金」，系統會列出同一專案編號或同一電話、已付款而未使用的接送訂金，由同事揀選；套用後 Shopify 付款頁會加入「接送訂金抵扣」折扣，客人只需支付餘額。每筆訂金只可使用一次、只可用於一張單；客人付款前可按「取消抵扣」改用於其他單。付款核對會自動扣除抵扣額，不會誤判為金額不符。接送服務列表的「💰 訂金抵扣狀態」可查看訂金是否已使用。需先於 Supabase 執行 <code>db/migration_20261101_deposit_credit.sql</code>。<span class="en">Deposit credit: a paid pick-up deposit (HK$1,800) can be credited against one cremation booking or one unpaid souvenir draft order. On that booking or draft, use Actions → 💳 Payments & documents → 💰 套用接送訂金; the system lists paid, unused deposits with the same project number or phone for staff to choose. Once applied, the Shopify payment page shows a 接送訂金抵扣 discount and the customer pays only the balance. Each deposit can be used once, on one order only; before payment, 取消抵扣 releases it for another order. The payment check deducts the credit automatically, so it is not flagged as a mismatch. 💰 訂金抵扣狀態 on the pick-up list shows whether a deposit has been used. Requires db/migration_20261101_deposit_credit.sql in Supabase.</span></li>
+        <li>需先於 Supabase 執行 <code>db/migration_deposit_followup.sql</code>；未執行時頁面會顯示提示，原有列表照常使用。署名取自「員工管理」的員工名稱。訊息範本為固定內容，不經 AI。<span class="en">Requires db/migration_deposit_followup.sql in Supabase; until then a notice is shown and the list works as before. The signature uses the staff name set under Staff. Templates are fixed text — no AI is used.</span></li>
+      </ul>
+
+      <h3>新增訂單及表格格式<span class="en">New orders &amp; table layout</span></h3>
+      <ul class="tight">
+        <li><b>＋ 新增訂單</b>（接送服務及火化預約頁右上）：客人經 WhatsApp 或電話預約時使用。接送服務只可選「預約接送訂金」；火化預約只可選風／雲／星之旅及體重款式。填主人稱呼、電話（電郵、毛孩、日期、時段、地址選填；回訪客人可填舊專案編號，新客人留空自動產生 RSL- 編號）→「建立訂單及付款連結」。系統先在列表建立「待付款」記錄，再開 Shopify 付款頁（帶同一付款參考），客人付款後自動標記為已付款。建立後可按「WhatsApp 傳付款連結」（由同事自行傳送）、複製連結，或有電郵時由 Shopify 寄付款電郵。<span class="en">+ New order (top right of Pick-up services and Cremation bookings): for bookings made by WhatsApp or phone. Pick-up services only offer the HK$1,800 deposit; Cremation bookings only offer Breeze / Cloud / Star with weight options. Enter the owner name and phone (email, pet, date, time slot and address optional; returning customers can enter their project no., new ones get an RSL- number automatically) → Create order & payment link. A Pending record is created first, then a Shopify payment page carrying the same payment ref, so payment is marked automatically. Afterwards: send via WhatsApp (staff press send), copy the link, or have Shopify email it if an email was given.</span></li>
+        <li>表格格式：接送服務、火化預約、獸醫評估及紀念品訂單統一欄位（建立時間、編號、主人・電話、寵物／內容、日期・時段、金額、付款、狀態），每筆記錄第二行右方有一個「操作」掣，按下以小視窗列出跟進、WhatsApp、加入日曆、發票及編輯（紀念品訂單為 WhatsApp 及編輯）。<span class="en">Table layout: Pick-up services, Cremation bookings, Vet assessments and Keepsake orders share the same columns (created, number, owner & phone, pet/items, date & slot, amount, payment, status); each record's second line has one Actions button that opens a small window with follow-up, WhatsApp, calendar, invoice and edit (keepsake orders: WhatsApp and Edit).</span></li>
+      </ul>
+
+      <h3>回覆助手（覆客人）<span class="en">Reply assistant</span></h3>
+      <ul class="tight">
+        <li>位置：後台 →「日常營運」→「<b>回覆助手</b>」（需「回覆助手」權限；此權限可查看所有接送及預約客人的稱呼和電話，只授予需要回覆客人的同事）。不經 AI，所有內容來自回覆知識庫。<span class="en">Location: Admin → Daily operations → Reply assistant (requires the Reply assistant permission, which can see every pick-up and booking customer's name and phone — grant it only to staff who reply to customers). No AI is used; all text comes from the reply knowledge base.</span></li>
+        <li>步驟：① 在「客人」搜尋主人、毛孩、電話或專案編號並選擇記錄（找不到可直接填稱呼及電話）；② 可貼上客人 WhatsApp 訊息——系統會按訊息自動選擇中文或英文，並檢查危機字眼；③ 在「回覆知識庫」按分類或關鍵字找內容，按「<b>插入</b>」，毛孩名、預約日期、時段、專案編號等會自動填入；④ 修改後按「<b>開啟 WhatsApp</b>」，由同事自行檢查及按傳送（亦可「複製回覆」）。<span class="en">Steps: (1) search the customer by owner, pet, phone or project no. and select the record (or type the name and phone); (2) optionally paste the customer's WhatsApp message — the reply language is chosen automatically and crisis words are checked; (3) find content in the knowledge base by category or keyword and click Insert — pet name, booking date, time slot and project no. are filled in; (4) edit, then Open WhatsApp and send it yourself (or Copy).</span></li>
+        <li>如出現紅色「<b>客人訊息可能涉及情緒危機</b>」提示：請由同事親自關心及跟進，切勿只用範本回覆；如有即時危險，建議致電 999 或撒瑪利亞防止自殺會 24 小時熱線 2389 2222。<span class="en">If the red possible-crisis alert appears: follow up personally — never reply with a template alone; if there is immediate danger, advise calling 999 or the Samaritan Befrienders Hong Kong 24-hour hotline 2389 2222.</span></li>
+        <li>回覆知識庫：回覆助手右上「<b>管理回覆知識庫</b>」可新增、修改、隱藏或刪除內容，每則有中文及英文版本。可用代號：{稱呼} {毛孩} {日期} {時段} {專案編號} {同事} {網站}。初稿按網站 2026-10-01 的收費、流程、火化須知及常見問題整理（24 則）；收費範本使用收費代號（{風之旅起價} {雲之旅起價} {星之旅起價} {火化收費表} {獸醫收費表} {情緒支援收費表}），插入時自動填入「網站內容」的最新收費（需執行 <code>db/migration_site_content.sql</code>）；其他安排有變時，須同步修改知識庫及網站。需先於 Supabase 執行 <code>db/migration_reply_snippets.sql</code>。<span class="en">Reply knowledge base: Manage reply knowledge base (top right of the assistant) to add, edit, hide or delete entries, each in Chinese and English. Tokens: {稱呼} {毛孩} {日期} {時段} {專案編號} {同事} {網站}. The first draft (24 entries) follows the website's prices, process, cremation notes and FAQ as of 2026-10-01; price entries use price tokens ({風之旅起價} {雲之旅起價} {星之旅起價} {火化收費表} {獸醫收費表} {情緒支援收費表}) that fill in the latest prices from Site content (requires db/migration_site_content.sql); when other arrangements change, update both the knowledge base and the website. Requires db/migration_reply_snippets.sql in Supabase.</span></li>
+      </ul>
+
+      <h3>火化預約<span class="en">Cremation bookings</span></h3>
+      <ul class="tight">
+        <li>火化預約記錄：<b>專案編號</b>、主人／電話、毛孩、方案、價錢、付款狀態、服務日期與希望時段。每行「<b>操作</b>」掣內有：<b>加入日曆</b>、<b>發票</b>（連去對應 Shopify 訂單，可在 Shopify 列印正式發票；只有已付款並已補上訂單號者才顯示）、<b>WhatsApp 客人</b>、<b>編輯</b>。<span class="en">Project no., owner/phone, pet, plan, price, payment, service date &amp; time. Per-row Actions button: Add to calendar, Invoice (to the Shopify order; shown only when paid), WhatsApp, Edit.</span></li>
+        <li><b>搜尋與篩選</b>：可用關鍵字（主人／電話／毛孩／專案編號）搜尋並按狀態篩選；每頁 25 筆。<span class="en">Search by keyword (owner/phone/pet/project no.) and filter by status; 25 per page.</span></li>
+        <li>報價單／發票／收據的分別：報價單＝付款前估價；發票＝正式收費單據；收據＝已收款證明。<span class="en">Quotation = estimate before payment; Invoice = the bill; Receipt = proof of payment.</span></li>
+        <li><b>WhatsApp 客人</b>：開啟 WhatsApp 並預填訊息（不會自動發送）。<b>測試期間：只作開啟草稿，切勿發送</b>。<span class="en">WhatsApp opens a pre-filled draft (never auto-sends). During testing, only open the draft.</span></li>
+      </ul>
+
+      <h3>獸醫評估<span class="en">Vet assessments</span></h3>
+      <p>「上門安樂死」的查詢，與火化預約<b>分開檢視</b>，避免兩類個案混在一起。兩者存於同一資料表，按來源自動區分；操作方式與火化預約相同。<span class="en">At-home vet assessment &amp; euthanasia enquiries are listed separately from cremation bookings. They share one table, split automatically by source; the actions work the same way.</span></p>
+
+      <h3>預約狀態的意思<span class="en">Booking statuses</span></h3>
+      <ul class="tight">
+        <li>新收到＝剛提交未處理；已排期＝已定接送／火化日期；已接送＝毛孩已接到 Resoul；火化中＝儀式／火化進行中；可取回＝骨灰已準備好、待主人取回；已完成＝骨灰已交還、服務完成；已取消＝作廢。<span class="en">New / Scheduled / Picked up / Cremating / Ready for collection / Completed (ashes returned) / Cancelled.</span></li>
+      </ul>
+      <h3>火化進度及骨灰交還<span class="en">Cremation progress &amp; ashes return</span></h3>
+      <p>在火化預約按「操作」→「📍 更新進度」，以時間線逐步按「下一步」：新收到 → 已排期 → 已接送 → 火化中 → 可取回 → 已交還（每步記錄時間，並自動更新狀態；按錯可按「撤回上一步」）。標記「可取回」後，視窗會出現通知客人的 WhatsApp 草稿（中文／English，以同事名字署名，可先修改），由同事自行傳送；「可取回」的預約在「操作」視窗內以黃色提示，亦可用狀態篩選「可取回」找出未交還個案。骨灰只供自取：標記「已交還」時須填寫簽收人（預設為主人）。需先於 Supabase 執行 db/migration_cremation_progress.sql。<span class="en">in Cremation bookings click Actions → 📍 Update progress and press Next along the timeline: New → Scheduled → Picked up → Cremating → Ready for collection → Returned (each step is time-stamped and updates the status; use Undo last step if needed). After marking Ready, the window shows a WhatsApp draft (中文／English, signed with your name, editable) to notify the family, which you send yourself; filter by status Ready to find ashes not yet collected. Collection is in person only: marking Returned requires the name of the person collecting (defaults to the owner). Requires db/migration_cremation_progress.sql in Supabase.</span></p>
+      <h3>更改狀態、日期或內容<span class="en">Change status, date or details</span></h3>
+      <ol class="steps">
+        <li>在列表找到該筆預約，按右方「操作」→「編輯資料」。<span class="en">Find the booking and click Actions → Edit.</span></li>
+        <li>更改狀態、服務日期、時段、方案、金額或備註。<span class="en">Change status, date, time, plan, amount or notes.</span></li>
+        <li>按「儲存」，即時反映在列表與客戶檔案。<span class="en">Save — reflected at once in the list and customer file.</span></li>
+      </ol>
+      <div class="callout tip"><span class="tag">提示 TIP</span>付款狀態通常由系統自動更新（付款後由 webhook 標記「已付款」），一般無須人手改；只有特殊情況（如線下收款）才手動調整。<span class="en">Payment status updates automatically via webhook; edit by hand only for special cases.</span></div>
+      <h3>加入 Google Calendar<span class="en">Add to Google Calendar</span></h3>
+      <ol class="steps">
+        <li>在列表找到該筆預約，按該行「加入 Google Calendar」。<span class="en">Find the booking, click "Add to Google Calendar".</span></li>
+        <li>系統開啟新日曆事件，自動填入日期、毛孩、主人、電話、方案與<b>專案編號</b>；確認後按「儲存」。<span class="en">A pre-filled event opens (date, pet, owner, phone, plan, project no.); review and Save.</span></li>
+      </ol>
+      <h3>紀念品訂單與倉存<span class="en">Keepsake orders &amp; stock</span></h3>
+      <ul class="tight">
+        <li>紀念品訂單：由 Shopify 同步、存於 Supabase。支援關鍵字搜尋（訂單／專案編號／客戶／電話／產品）、狀態篩選、每頁 25 筆與「匯出 CSV」。每行「<b>操作</b>」掣內有 WhatsApp 客人、<b>編輯</b>（開啟 Shopify 訂單）；手機版卡片格式與接送服務一致。後台「＋ 新增訂單」建立的草稿（客人未付款）亦會列在最前，付款欄顯示「待付款」、出貨欄顯示「草稿」，「操作」內可 WhatsApp 傳付款連結、開啟付款頁或開啟 Shopify 草稿；客人付款後草稿會變成正式訂單。待付款草稿亦會在專案管理、專案明細、客戶檔案及全後台搜尋列出，但不計入收入。<span class="en">Orders synced from Shopify; search (order/project no./customer/phone/product), filter, pagination, CSV; the row's Actions button has WhatsApp and Edit (opens the Shopify order); mobile cards match Pick-up services. Unpaid drafts created with + New order are listed first (payment: Pending, fulfilment: Draft), with actions to WhatsApp the payment link, open the payment page or open the Shopify draft; once paid they become regular orders. Unpaid drafts also appear in Projects, project detail, Customers and global search, but are not counted as income.</span></li>
+        <li><b>已取消</b>訂單會標示並自動隱藏操作按鈕。若有新訂單未見到，按右上「同步 Shopify 訂單」重新匯入。<span class="en">Cancelled orders are marked and hide the actions; click "Sync Shopify orders" if a new one isn't showing.</span></li>
+        <li>新增 Shopify 草稿訂單（管理員或有「紀念品訂單」權限的員工）：按「＋ 新增訂單」，填寫主人名稱、客人電郵、電話、專案編號（選填；回訪客人填原有編號，留空則自動產生新編號）及寵物名稱，再按「產品類型 → 產品 → 款式」揀選商品及數量。建立後不會自動寄信；可先檢查付款頁，再按「寄付款連結電郵」寄給客人。<span class="en">New Shopify draft order (admins, or staff with the Souvenir orders permission): click &quot;＋ 新增訂單&quot;, enter the owner's name, email, phone, project no. (optional: enter a returning client's existing number, or leave blank to generate a new one) and pet name, then pick items by product type → product → variant. Nothing is emailed automatically — check the payment page first, then click &quot;寄付款連結電郵&quot; to send it.</span></li>
+        <li>倉存 · 出貨：讀取 Shopify 全部產品，按產品類型分組＋篩選；每件顯示圖片、狀態、售價與庫存（≤3 紅色）。<span class="en">Stock: all Shopify products, grouped by type with a filter; ≤3 in red.</span></li>
+      </ul>
+      <h3>客戶檔案<span class="en">Customer files</span></h3>
+      <p>客戶以電話尾 8 位識別（「9123 4567」與「+85291234567」視為同一人；無電話時以姓名識別）。列表包括火化、獸醫評估、接送、紀念品訂單及待付款草稿，「記錄數」為全部記錄，「累計消費」只計已付款。按客戶姓名或「查看」進入。頂部統計格顯示接送、火化、獸醫評估及產品的次數與已付消費。下方四個表（接送服務、獸醫評估、火化預約、產品銷售記錄）欄位一致：日期及時間、專案編號、訂單編號（Shopify 發票編號）、內容（產品／毛孩）、狀態、付款、金額；狀態一律以中文顯示，產品記錄以電話尾 8 位對回 Shopify 訂單。手機版以卡片顯示同樣資料。<span class="en">Stat tiles show counts and paid spend for pick-ups, cremation, vet assessments and products. The four tables below (pick-ups, vet assessments, cremation, product sales) share the same columns: date and time, project no., order no. (Shopify invoice number), content (product / pet), status, payment and amount; statuses are always in Chinese, and product orders are matched to Shopify by the phone's last 8 digits. On mobile the same details show as cards. Customers are identified by the last 8 digits of their phone (different formats count as one person; name if no phone). The list includes cremation, vet, pick-up, keepsake orders and unpaid drafts; Records counts all of them, Total spend counts paid only.</span></p>
+      <h3>留言審核<span class="en">Moderation</span></h3>
+      <div class="callout warn"><span class="tag">注意 NOTE</span>紀念貼文預設「顯示中」，請在「顯示中」或「全部」分頁查看。每則卡顯示毛孩名、年份、一句話、作者與私隱；有相片可按相片放大。操作：核准顯示／隱藏（可還原）／刪除（永久）。<span class="en">Posts default to Visible; each card shows pet/years/one-line/author/privacy and click-to-enlarge photo. Actions: Approve / Hide / Delete (permanent).</span></div>
+      <p>客人可選兩種私隱：<b>公開</b>（審核後顯示於故事分享頁）、<b>只限連結</b>（不公開列出，只有持 <code>?s=…</code> 連結者可看）。公開及只限連結的故事卡都會顯示該故事的專屬連結及「<b>複製分享連結</b>」掣，可直接複製傳給客人；客人忘記網址時，先核對毛孩名、主人稱呼及分享日期，再把連結傳回客人。連結只在故事「顯示中」時才可開啟。<span class="en">Two privacy options: Public (listed after review) or Link-only (unlisted; viewable only via its ?s=… link). Public and Link-only cards both show the story's own link with a copy button (複製分享連結) that you can send to the customer — if a customer forgets the address, verify the pet name, owner name and sharing date, then send the link back. The link only opens while the story is Visible.</span></p>
+      <h3>專案管理與財務<span class="en">Projects &amp; finance</span></h3>
+      <ul class="tight">
+        <li>專案管理列表顯示專案編號、主人、寵物、收入、支出、淨額；同一 RSL 專案會合併為一列，按「查看 N 筆」可見該專案的接送服務、火化、獸醫評估及紀念品記錄，每筆再按「查看」進入詳細版面（資料、收入／支出／淨額、新增收支明細及收據）。接送服務的已付訂金會自動計入收入；未付款的紀念品草稿只顯示資料及付款連結，客人付款後在正式訂單記錄收支。<span class="en">The Projects list shows project no., owner, pet, income, expense and net; one RSL project is one row, and View N opens its pick-up, cremation, vet and keepsake records, each with a detail page (info, income/expense/net, add entries and receipts). Paid pick-up deposits count as income automatically; unpaid keepsake drafts show details and the payment link only, with entries recorded on the order once paid.</span></li>
+        <li>每一單<b>火化預約</b>與每一張<b>紀念產品訂單</b>都是一個「專案」，記錄收入、支出、淨額。<span class="en">Each cremation booking and product order is a project tracking income/expense/net.</span></li>
+        <li><b>專案編號 vs 付款參考／發票</b>：列表主欄「專案編號」＝ <code>RSL-…</code>（接送、火化、紀念品共用）；詳情頁另列「付款參考／發票」，每次付款各有一個，可以不同（見第一節「三種編號」）。<span class="en">The main column is the RSL- project number (shared across the journey); the detail page lists the payment ref/invoice separately — one per payment (see section 1).</span></li>
+        <li><b>收入自動計算</b>：已付款金額自動計為收入（詳情頁顯示「已付款自動計入」）；手動明細優先。已取消／已退款則收入歸 $0。<span class="en">Paid amount auto-counts as income; manual entries override; cancelled/refunded = $0.</span></li>
+        <li>詳情頁可新增收入／支出明細（可上載收據），三格（收入綠／支出琥珀／淨額）即時更新，並有合計列。<span class="en">Add income/expense entries (with receipts); tiles and a totals row update live.</span></li>
+        <li>財務管理頁：每月預計／實際收支＋近 6 個月表；產品銷售另計。<span class="en">Finance shows monthly projected/actual + a 6-month table; product sales counted separately.</span></li>
+      </ul>
+      <h3>測試記錄<span class="en">Test records</span></h3>
+      <ul class="tight">
+        <li>Shopify 測試付款的訂單會自動標記為「測試」；亦可在接送服務、火化預約、獸醫評估或紀念品訂單每行「操作」→「🧪 標記為測試」手動標記，隨時可取消。取消標記後，該訂單即計入財務頁及總覽的營業額（即使在 Shopify 以測試付款完成）。<span class="en">Orders paid with Shopify test payments are marked as test automatically; you can also mark a row via Actions → 🧪 Mark as test in pick-ups, cremation, vet assessments or keepsake orders, and undo it any time. Once unmarked, the order counts towards revenue on the Finance and Overview pages, even if it was paid with a Shopify test payment.</span></li>
+        <li>測試記錄不計入收入、報表、總覽、專案、客戶檔案、跟進、回覆助手及 CSV 匯出；列表預設隱藏，列表上方「查看測試記錄」可查看（專案管理亦適用）。財務頁及總覽亦不計入連結測試記錄的專案收支。審計記錄所有操作均以中文描述。<span class="en">Test records are excluded from income, reports, the overview, projects, customer files, follow-ups, the reply assistant and CSV exports; lists hide them by default, and 查看測試記錄 above the list shows them (projects included). Finance and the overview also exclude project entries linked to test records. Every audit log entry is described in Chinese.</span></li>
+        <li>管理員查看測試記錄時可按「刪除全部測試記錄」永久刪除（只限接送及預約；紀念品訂單會由 Shopify 同步回來，只會保持隱藏）。<span class="en">When viewing test records, admins can permanently delete them all (pick-ups and bookings only; keepsake orders sync back from Shopify, so they stay hidden instead).</span></li>
+      </ul>
+      <h3>發票 PDF<span class="en">Invoice PDFs</span></h3>
+      <ul class="tight">
+        <li>已付款並有 Shopify 訂單號的接送、火化及紀念品記錄，「操作」內有「🧾 發票 PDF」；開啟後按「列印 / 儲存 PDF」。發票由後台記錄產生，即使 Shopify 訂單已刪除仍可列印。<span class="en">Paid pick-ups, cremation bookings and keepsake orders with a Shopify order number have 🧾 Invoice PDF under Actions; click Print / Save PDF. Invoices are built from admin records, so they still work if the Shopify order was deleted.</span></li>
+        <li>報表與匯出 →「批量發票 PDF」：選擇付款日期範圍及類別，一次過開啟所有發票（不包括測試記錄）。<span class="en">Reports → 批量發票 PDF: pick a payment date range and categories to open all invoices at once (test records excluded).</span></li>
+        <li>同步 Shopify 訂單時會一併保存產品代碼、單價及款式，日後 Shopify 刪單亦不會遺失發票資料。<span class="en">Syncing Shopify orders now also saves item codes, unit prices and variants, so invoice details survive if a Shopify order is deleted.</span></li>
+      </ul>
+      <h3>紀念品訂單連結專案<span class="en">Link keepsake orders to a project</span></h3>
+      <ul class="tight">
+        <li>舊客在網上商店購買時，系統會自動派新的專案編號。可在紀念品訂單「操作」→「🔗 連結專案」改用客人原有編號（系統會確認編號存在），訂單即歸入同一專案。<span class="en">When a returning client buys in the online shop, a new project number is assigned. Use Actions → 🔗 Link project on the keepsake order to switch to their existing number (it must already exist); the order then joins that project.</span></li>
+      </ul>
+      <h3>客戶檔案合併<span class="en">Merge customer files</span></h3>
+      <ul class="tight">
+        <li>同一位客人用過不同電話或名稱時，在其中一個客戶檔案按「合併客戶」，輸入另一個電話或名稱即可合併；已合併的會列出，可「取消合併」。合併只影響客戶檔案的歸類及統計，不會修改預約或訂單本身。<span class="en">If one client used different phones or names, open one customer file, click 合併客戶 and enter the other phone or name. Merged entries are listed and can be unmerged. Merging only affects how customer files group and total records; bookings and orders are not changed.</span></li>
+      </ul>
+      <h3>網站內容：版本記錄及公告日期<span class="en">Site content: version history and notice dates</span></h3>
+      <ul class="tight">
+        <li>每次儲存前，系統會保留上一個版本（每區塊最近 20 個）。區塊標題旁「版本記錄」可查看並「還原」；還原前的內容亦會保留，可再還原。<span class="en">Each save keeps the previous version (latest 20 per section). Use 版本記錄 beside the section title to view and restore; the content before a restore is kept too.</span></li>
+        <li>頁頂公告可設開始及結束日期（香港日期）：開始日期當日起顯示，結束日期完結後自動收起；留空即即時顯示／一直顯示。<span class="en">The top notice can have start and end dates (Hong Kong date): it shows from the start date and hides automatically after the end date; leave blank to show now / indefinitely.</span></li>
+      </ul>
+      <h3>客人自助查詢進度<span class="en">Customer progress lookup</span></h3>
+      <ul class="tight">
+        <li>網站「查詢進度」頁（/track，英文 /track-en；全站頁尾及「預約已收到」頁有連結）：客人輸入專案編號及預約時登記的電話（尾 8 位須相符），即可查看服務階段及日期：已收到預約、已付訂金、已安排接送、已接送、火化中、骨灰可取回、已交還；上門安樂死查詢則顯示已收到、已安排上門、已完成。同一專案如同時有上門安樂死、接送及火化、紀念品訂單，會各自以一張進度卡顯示（紀念品：已下單、已付款、製作／準備中、已出貨）。訂金未付時，卡內顯示後台已產生的付款連結（「前往付款」）；未有連結則顯示 WhatsApp 索取付款連結掣。<span class="en">The website's Track progress page (/track, /track-en; linked in every footer and the booking-received page) lets a client enter their project number and the phone used when booking (last 8 digits must match) to see service stages and dates: booking received, deposit paid, pick-up arranged, collected, cremation in progress, ashes ready, returned home; home euthanasia enquiries show received, home visit arranged, completed. If a project has home euthanasia, pick-up and cremation, and keepsake orders, each appears as its own progress card (keepsakes: ordered, paid, being prepared, shipped). If the deposit is unpaid, the card shows the payment link already created in the admin (Pay now), or a WhatsApp button to request one if none exists.</span></li>
+        <li>進度直接跟後台資料：火化進度在火化預約「進度」記錄；接送安排跟接送服務的狀態。只會顯示毛孩名稱、階段及日期，不會顯示地址、電話或付款資料；每個來源每小時最多查詢 20 次。<span class="en">Progress follows the admin records: cremation stages come from the booking's progress, and pick-up arrangements from the pick-up status. Only the companion's name, stages and dates are shown, never address, phone or payment details; each source can look up at most 20 times an hour.</span></li>
+      </ul>
+      <h3>服務後邀請評價<span class="en">Post-service review invitations</span></h3>
+      <ul class="tight">
+        <li>總覽頁「⭐ 邀請評價」列出服務完成 3 日後（火化：已交還骨灰；接送：狀態已完成）、最近 90 日內的客人。按「💬 WhatsApp 邀請」開啟預填訊息（附 Google 評價連結，中英按客人語言），傳送後按「已邀請」；不適合邀請的按「略過」。同一電話只會出現一次，測試記錄不會列出。<span class="en">The overview's ⭐ 邀請評價 card lists clients whose service finished at least 3 days ago (cremation: ashes returned; pick-up: completed) within the last 90 days. Click 💬 WhatsApp 邀請 to open a prefilled message with the Google review link (in the client's language), then click 已邀請 after sending, or 略過 if not suitable. Each phone appears only once; test records are excluded.</span></li>
+        <li>評價連結預設為 Resoul 的 Google 地圖頁。如在 Google 商家檔案取得「撰寫評論」直接連結，可在 Vercel（Admin）設定 <code>NEXT_PUBLIC_GOOGLE_REVIEW_URL</code> 取代。需先於 Supabase 執行 <code>db/migration_review_invites.sql</code>。<span class="en">The review link defaults to Resoul's Google Maps page. If you get a direct 'write a review' link from the Google Business Profile, set NEXT_PUBLIC_GOOGLE_REVIEW_URL in Vercel (Admin) to replace it. Requires db/migration_review_invites.sql in Supabase.</span></li>
+      </ul>
+      <h3>其他版面<span class="en">Other pages</span></h3>
+      <ul class="tight">
+        <li>文章記錄：管理網誌文章（來自 Shopify Blog）及網誌分類，並顯示每篇文章的標籤。員工管理：新增／停用員工、修改姓名、設定權限（姓名會用於訂金跟進及回覆助手的訊息署名，修改後按該行「存」）。<span class="en">Articles (from Shopify Blog); Staff: add/disable, edit names and set permissions (names sign deposit follow-up and reply messages; click Save on the row).</span></li>
+        <li><b>營運指標</b>：可按「← 上月／下月 →」選擇月份，並與上月比較（綠色↑代表改善、紅色↓代表轉差）。指標包括：新查詢（接送／火化／獸醫）、訂金付款率、訂金轉火化率（以 RSL 專案編號或電話對應）、紀念品加購率、收入（火化、接送訂金、紀念品，以及平均每宗火化收入；與財務管理同一計法）、方案分佈，以及平均處理時間（已完成個案由收到預約至服務日的日數）。下方「累計概況」維持原有統計及匯出。<span class="en">Operating metrics (top of Reports): pick a month with ← / → and compare with the previous month (green ↑ better, red ↓ worse). Metrics: new inquiries (pick-up / cremation / vet), deposit payment rate, deposit-to-cremation rate (matched by RSL project number or phone), keepsake attach rate, income (cremation, pick-up deposits, keepsakes and average per cremation; same basis as Finance), plan mix and average days from booking to service for completed cases. The cumulative overview and exports remain below.</span></li>
+        <li><b>報表與匯出</b>：按服務類別分開統計——<b>獸醫評估、火化預約、接送服務、紀念品訂單</b>（各顯示筆數與已記錄收入），並列出評估與火化的狀態分佈、火化收支。可分別<b>匯出 CSV</b>：獸醫評估、火化預約、接送服務、紀念品訂單（會計對數用）。<span class="en">Reports split by service — vet assessments, cremation bookings, pick-ups, keepsake orders (counts and recorded income) — with status breakdowns and cremation income. Export each category as CSV separately.</span></li>
+        <li><b>審計記錄</b>：紀錄後台重要操作（訂單及預約資料更新、訂金跟進、收支增刪、留言審核、評價及知識庫修改、員工／權限變更），每項以一句中文說明改了甚麼（例如「更新火化預約「陳小姐・BB・RSL-…」資料，狀態為「已排期」」），並顯示操作同事姓名及時間，方便日後追查。<span class="en">Audit log: key admin actions (booking/order updates, deposit follow-ups, finance entries, moderation, review and knowledge-base edits, staff/permission changes), each described in one Chinese sentence with the staff member's name and time.</span></li>
+        <li><b>全後台搜尋</b>：頁頂「🔍」掣（或在任何頁面按「/」鍵）開啟，可輸入電話（852、空格、橫線均可）、主人或毛孩名、RSL 專案編號、PAY 付款參考或 Shopify 訂單號；結果按接送服務、火化預約、獸醫評估、紀念品訂單分組，只顯示同事有權限的類別。用方向鍵選擇、Enter 開啟，會轉到該列表並自動篩選該筆記錄。<span class="en">Global search: the 🔍 button at the top (or press / on any page) searches phone numbers (any format), owner/pet names, RSL project numbers, PAY payment refs and Shopify order numbers; results are grouped by pick-up, cremation, vet and keepsake orders, limited to the categories the staff member can access. Use arrow keys and Enter to open the filtered list.</span></li>
+        <li>同步狀態頁亦會比對網站火化收費（網站內容）與 Shopify 火化方案價錢，列出價錢不同、只在 Shopify 或只在網站的體重級別；並列出已上架但未設產品類型的產品。<span class="en">The Sync status page also compares the website's cremation fees (Site content) with the Shopify cremation plan prices, listing weight bands that differ or exist on only one side, and lists active products without a product type.</span></li>
+        <li><b>同步狀態</b>：一頁檢查 Shopify／Supabase／環境變數／webhook 是否已連接（見第十四節）。<span class="en">Sync status: one page to check connections (see section 14).</span></li>
+        <li><b>使用教學</b>：在後台直接閱讀本手冊的網頁版（管理員及已獲「使用教學」權限的員工可查看；未登入或無權限均無法開啟。現有員工可於 Supabase 執行 db/migration_guide_permission.sql 一次過開通）；右上「新分頁開啟」可在獨立分頁閱讀。<span class="en">Guide (使用教學): read this manual inside the admin (admins and staff with the Guide permission; run db/migration_guide_permission.sql to grant it to existing staff); 新分頁開啟 opens it in a new tab.</span></li>
+      </ul>
+      <h3>網站內容（收費、常見問題、分類、公告）<span class="en">Site content (prices, FAQ, categories, notice)</span></h3>
+      <p>後台 → 內容 → <b>網站內容</b>，可直接修改網站以下內容，毋須修改檔案：<span class="en">Admin → Content → Site content lets you edit the following without touching any files:</span></p>
+      <ul class="tight">
+        <li>收費：火化收費（按體重，顯示於善終旅程及安排預約接送頁）、上門安樂死收費（劃一基本收費 HK$3,300 及附加費用，可增減附加項目）、情緒支援收費。比較表的「參考價格」自動使用每個旅程的最低價。<span class="en">Prices: cremation fees by weight (cremation and booking pages), home euthanasia fees (flat base fee of HK$3,300 plus additional charges, which can be added or removed) and grief-support fees. The comparison table's "From" prices use each journey's lowest price automatically.</span></li>
+        <li>紀念精品：善終旅程頁「紀念精品」分段的分類卡。<span class="en">Keepsakes: the category cards in the cremation page's Keepsakes section.</span></li>
+        <li>商店分類：網上商店頁的分類卡（名稱、說明、背景圖片及對應的 Shopify 產品類型）。分類以 Shopify「產品類型」為準：一張卡只對應一個類型時，商店的篩選掣亦使用該卡的名稱；亦可改用 Shopify 標籤或後備關鍵字，全部留空＝顯示全部產品。<span class="en">Shop categories: the online shop's category cards (name, description, background image and the matching Shopify product type). Categories follow Shopify product types: when a card matches one type, the shop's filter button uses the card's name too; tags or fallback keywords can be used instead, and leaving all empty shows every product.</span></li>
+        <li>常見問題：善終旅程（同時用於安排預約接送頁）、上門安樂死、情緒支援三頁。情緒支援的四個分組對應頁面上的心情篩選掣，只可修改標題及問題，不可增減分組。<span class="en">FAQ: cremation (also used on the booking page), home euthanasia and emotional support. The four emotional-support groups match the mood filter buttons, so only titles and questions can change, not the number of groups.</span></li>
+        <li>頁頂公告：開啟後於全站最頂顯示一行公告（例如假期安排），可附連結；英文欄留空時，英文網站不顯示。<span class="en">Top notice: when switched on, a one-line notice (e.g. holiday arrangements) shows at the top of every page, with an optional link; leave the English field empty to hide it on the English site.</span></li>
+      </ul>
+      <p>每個區塊修改後按「儲存」，網站約一分鐘內更新。中英文須一併填寫；常見問題的英文留空時，該題不會在英文網站顯示。權限名稱為「網站內容」，可在員工管理授權。需先於 Supabase 執行 <code>db/migration_site_content.sql</code>；未執行時頁面會顯示黃色提示，亦未能儲存。<span class="en">Click Save after editing a section; the website updates within about a minute. Fill in both Chinese and English; an FAQ item without English is hidden on the English site. The permission is called 網站內容 (Site content) and can be granted in Staff. Requires db/migration_site_content.sql in Supabase; until then the page shows a yellow notice and cannot save.</span></p>
+      <div class="callout warn"><span class="tag">注意 NOTE</span>網上付款金額以 Shopify 產品價錢為準：修改火化收費時，須同步修改 Shopify 火化方案（風／雲／星之旅）各體重的價錢；接送訂金 HK$1,800 由 Shopify「預約接送訂金」產品設定，不在此頁修改。網頁原始檔仍保留原有內容（供搜尋器使用及讀取失敗時顯示），後台修改較多時，可請開發人員同步更新原始檔。<span class="en">Online payments use the Shopify product prices: when changing cremation fees, also update each weight's price on the Shopify cremation plans (Breeze / Cloud / Star). The HK$1,800 deposit is set on the Shopify deposit product, not here. The page source keeps the original content (for search engines and as a fallback); after many edits, ask the developer to sync the source files.</span></div>
+    </section>
+
+    <section id="staff">
+      <div class="sec-eyebrow">04 / Staff</div>
+      <h2>四、新增員工帳號<span class="en">Add a staff login</span></h2>
+      <p class="lead">員工登入分兩個步驟：先在 Supabase 建立登入帳號，再在資料表加入一行授權記錄。<span class="en">Two steps: create the login in Supabase, then add an authorising row.</span></p>
+      <ol class="steps">
+        <li>登入 Supabase，進入專案 diyxcx，選擇 <b>Authentication → Users → Add user</b>。<span class="en">Supabase → project diyxcx → Authentication → Users → Add user.</span></li>
+        <li>填入員工電郵與密碼，勾選「Auto Confirm User」，按 Create。<span class="en">Enter email and password, tick "Auto Confirm User", Create.</span></li>
+        <li>在用戶列表複製新用戶的 <b>UID</b>（一串英數字）。<span class="en">Copy the new user's UID.</span></li>
+        <li>進入 <b>Table Editor → staff</b>，按 Insert row。<span class="en">Go to Table Editor → staff → Insert row.</span></li>
+        <li>填入：<code>id</code> = 該 UID；<code>email</code> = 員工電郵；<code>role</code> = <code>admin</code>（全部權限）或 <code>staff</code>；<code>active</code> = true。按 Save。<span class="en">id = the UID; email; role = admin or staff; active = true. Save.</span></li>
+        <li>若角色為 <code>staff</code>，回到後台「員工管理」勾選其可存取的功能。<span class="en">For a staff role, tick their module access in the admin's Staff area.</span></li>
+      </ol>
+      <div class="callout warn"><span class="tag">注意 NOTE · 次序很重要</span>必須<b>先</b>在 Authentication 建立帳號，才能在 staff 表加入對應記錄（因為需要該 UID）。若沒有 staff 記錄，或 <code>active</code> 為 false，登入後會被退回登入頁。<span class="en">Create the Authentication user first; without a staff row, or with active=false, login bounces back.</span></div>
+    </section>
+
+    <section id="shopify">
+      <div class="sec-eyebrow">05 / Shopify</div>
+      <h2>五、Shopify（商店與付款）<span class="en">Shopify (shop &amp; payments)</span></h2>
+      <h3>產品與價錢<span class="en">Products &amp; prices</span></h3>
+      <p>所有產品、款式、售價、產品相片與庫存，都在 <b>Shopify 後台 → Products</b> 設定。火化方案（風之旅／雲之旅／星之旅）同樣是 Shopify 產品。改價、上下架、更換相片都在此處。<span class="en">Products, variants, prices, photos and stock all live in Shopify admin → Products. The cremation plans are also products here.</span></p>
+      <div class="callout tip"><span class="tag">提示 TIP · 分類</span>後台「倉存」按<b>產品類型 (Product type)</b> 分組。想產品歸入某分類，只需在 Shopify 產品設定填好「產品類型」欄位。<span class="en">The admin Inventory groups by Product type — set that field in Shopify to file a product under a category.</span></div>
+      <h3>付款用產品（重要）<span class="en">Products used for payment (important)</span></h3>
+      <ul class="tight">
+        <li><b>預約接送訂金</b>（產品名「預約接送訂金｜安排預約接送」，HK$1,800）：「安排預約接送」頁用此產品收取訂金。<span class="en">Pick-up booking deposit (HK$1,800): used by the pick-up booking page.</span></li>
+        <li><b>火化方案</b>（風之旅／雲之旅／星之旅）：按體重分款式的火化方案產品。<span class="en">Cremation plans (Breeze/Cloud/Star), with weight-based variants.</span></li>
+      </ul>
+      <div class="callout warn"><span class="tag">重要 IMPORTANT</span>以上產品必須為 <b>Active（上架）</b> 並已<b>發佈到「我的商店 Headless」銷售管道</b>，客人的付款頁才能建立成功。若被設為草稿(Draft)或未發佈，付款時會顯示「商品不存在」而無法付款。<span class="en">These products must be Active and published to the 'Headless' sales channel, or checkout shows 'product does not exist'.</span></div>
+      <h3>付款與退款自動同步（webhook）<span class="en">Auto-sync of payment &amp; refund</span></h3>
+      <ul class="tight">
+        <li><b>訂單付款 (orders/paid)</b> → Landing <code>/api/shopify-webhook</code>：客人一付款，系統以<b>付款參考</b>對回對應的接送訂金或火化預約，自動變「已付款」並補上<b>發票編號</b>（Shopify 訂單號）與金額。<span class="en">orders/paid → Landing /api/shopify-webhook: matches the payment reference to the deposit or cremation record, marks it paid, and adds the invoice number and amount.</span></li>
+        <li><b>訂單更新 (orders/updated)</b> → Admin <code>/api/webhooks/shopify/orders-updated</code>：Shopify 取消或退款時，對應火化預約自動變「已取消／已退款」；產品訂單亦更新狀態。<span class="en">orders/updated → Admin endpoint: cancel/refund flips the booking and updates product orders.</span></li>
+        <li>兩者在 Shopify → Settings → Notifications → Webhooks 設定；只需一次。若失效，多數是簽署密鑰與 Vercel 環境變數不一致。已在 Shopify 永久刪除的訂單無法同步。<span class="en">Both set once in Shopify Settings; failures are usually a signing-secret mismatch. Deleted orders can't sync.</span></li>
+      </ul>
+      <h3>「再次購買」導向自家商店<span class="en">"Buy again" → your own shop</span></h3>
+      <p>Shopify 主題檔 <code>layout/theme.liquid</code> 已加入一段導向程式，令客人從 Shopify 網店的任何瀏覽頁跳回 RESOUL 自家商店；結帳、購物車與會員頁不受影響。日後更換自家網域，只需修改該段程式中的網址。<span class="en">The theme's layout/theme.liquid redirects storefront browsing back to RESOUL's shop; checkout/cart/account are unaffected.</span></p>
+      <h3>服務收費頁已隱藏<span class="en">Pricing page hidden</span></h3>
+      <p>服務收費頁（pricing.html）已按客人要求隱藏：<code>vercel.json</code> 的 <code>redirects</code> 把 <code>/pricing</code>、<code>/pricing-en</code> 轉往火化善終旅程的收費段；各頁導覽的「服務收費」連結以註解保留（標記「服務收費頁已隱藏」），sitemap 亦已註解。上門獸醫評估收費已移至上門安樂死頁，情緒支援收費在專業輔導轉介及資源頁。如要重開：刪除該兩條轉址並還原註解。<span class="en">The pricing page (pricing.html) is hidden at the client's request: the redirects in vercel.json send /pricing and /pricing-en to the cremation fees section; the nav links are kept as comments (marked 服務收費頁已隱藏) and the sitemap entries are commented out. Vet assessment fees now live on the home assessment and euthanasia page, and grief-support fees on the counselling and resources page. To reopen: delete those two redirects and restore the comments.</span></p>
+      <p>舊 Framer 網址轉址：resoul.hk 改指向新網站後，舊連結會自動轉往新頁面——/serviceandpricing → 火化收費方案、/contact → 首頁、/blog-index 及 20 篇舊文章 → 網誌、/zh/… → 對應中文頁或中文網誌（規則在 vercel.json 的 redirects）。/about、/products 新網站本身有同名頁面，直接顯示新網站中文版。<span class="en">Old Framer URL redirects: once resoul.hk points to the new site, old links redirect automatically — /serviceandpricing → cremation plans, /contact → home, /blog-index and the 20 old articles → blog, /zh/… → the matching Chinese page or Chinese blog (rules in vercel.json redirects). /about and /products exist on the new site and show its Chinese pages.</span></p>
+      <h3>服務資訊頁已隱藏<span class="en">Service information page hidden</span></h3>
+      <p>服務資訊導覽頁（service-info.html／service-info-en.html）已隱藏：其內容與善終旅程頁頂的快捷列重複，<code>vercel.json</code> 的 <code>redirects</code> 把 <code>/service-info</code>、<code>/service-info-en</code> 轉往善終旅程頁，sitemap 亦已註解（標記「服務資訊頁已隱藏」）。如要重開：刪除該兩條轉址並還原 sitemap 註解。<span class="en">The service information hub page (service-info.html / service-info-en.html) is hidden because it duplicates the cremation page's jump bar: the redirects in vercel.json send /service-info and /service-info-en to the cremation page, and the sitemap entries are commented out (marked 服務資訊頁已隱藏). To reopen: delete those two redirects and restore the sitemap entries.</span></p>
+      <h3>網上商店（紀念品商店頁）<span class="en">Online shop (memorial shop page)</span></h3>
+      <p>紀念品商店頁（<code>shop.html</code>／<code>shop-en.html</code>，網址 <code>/shop</code>、<code>/shop-en</code>）已於 2026-10-06 重新開放：頁面直接從 Shopify 讀取產品，客人選好後前往 Shopify 安全結帳頁付款。導覽列「服務」內的「網上商店」（英文版 Online shop），以及火化善終旅程「紀念精品」分段的「前往網上商店」按鈕，均連往此頁（同一分頁開啟）。商店分類以 Shopify 產品的「產品類型」為準（12 類，可於後台「網站內容 → 商店分類」修改）；「預約服務」及「火化服務」類產品（接送訂金、火化方案）在各自頁面付款，不會在商店顯示；未設定產品類型的產品只會在「全部」出現。<span class="en">The memorial shop page (shop.html / shop-en.html at /shop and /shop-en) reopened on 2026-10-06. It loads products from Shopify and sends customers to Shopify's secure checkout. The 網上商店 / Online shop link under Services and the 前往網上商店 / Visit our online shop button in the cremation page's Keepsakes section both open this page in the same tab. Shop categories follow each Shopify product's product type (12 types, editable in Admin → Site content → Shop categories); deposit and cremation-plan products (types 預約服務 and 火化服務) are paid on their own pages and hidden from the shop; products without a product type appear only under All.</span></p>
+      <div class="callout warn"><span class="tag">注意 NOTE</span>Shopify 網店（resoulhk.myshopify.com）仍開啟密碼保護。商店頁可以照常顯示產品，但正式接受網上付款前，須於 Shopify → 網上商店 → 偏好設定取消密碼，並試付一次確認結帳正常。<span class="en">The Shopify store is still password-protected. The shop page still shows products, but before taking online payments, remove the password in Shopify → Online Store → Preferences and run one test checkout.</span></div>
+      <div class="callout tip"><span class="tag">暫時隱藏 HIDE AGAIN</span>如需再次隱藏商店：在 <code>vercel.json</code> 的 <code>redirects</code> 加回 <code>{"source": "/shop", "destination": "/", "permanent": false}</code> 及 <code>{"source": "/shop-en", "destination": "/index-en", "permanent": false}</code> 兩條轉址，並把各頁「網上商店」連結改回其他網址或註解。注意：<code>redirects</code> 內亦有服務收費頁的轉址，切勿整段刪除。<span class="en">To hide the shop again, add back the two redirects (/shop → / and /shop-en → /index-en) in vercel.json and repoint or comment out the 網上商店 links. The redirects block also holds the pricing-page redirects, so never delete the whole block.</span></div>
+      <p>導覽列原有的「紀念品商店」連結及首頁「探索紀念品」入口卡仍以 <code>商店暫隱</code> 字樣註解保留（「網上商店」已取代導覽連結）。如要恢復首頁入口卡，在 <code>index.html</code>／<code>index-en.html</code> 搜尋「<code>商店暫隱</code>」移除註解，並把 <code>services-grid</code> 改回 <code>services-grid grid4</code>。<span class="en">The old nav "Memorial store" link and the home-page "Explore keepsakes" card remain commented out with the marker <code>商店暫隱</code> (網上商店 replaces the nav link). To restore the home card, remove that comment in index.html / index-en.html and change <code>services-grid</code> back to <code>services-grid grid4</code>.</span></p>
+      <h3>火化頁「紀念精品」分段<span class="en">Cremation page: Keepsakes section</span></h3>
+      <p>火化善終旅程頁（<code>cremation.html</code>／<code>cremation-en.html</code>）於「火化須知」之後設有「紀念精品」分段，頁頂快捷列共五個按鈕：服務流程、服務收費、火化須知、紀念精品、常見問題（手機版排成一行五格）。分段列出六個參考分類（名稱與網上商店分類一致）：骨灰龕、專屬木雕、骨灰裸石、毛髮寶石、925 純銀、琉璃飾物；款式及價錢以網上商店為準。分類可在後台「網站內容 → 紀念精品」修改。安排預約接送頁（<code>booking.html</code>）未有此分段。<span class="en">The cremation page has a Keepsakes section after Reminders, and its jump bar now has five buttons: Our process, Service fees, Reminders, Keepsakes, FAQ (one row of five on mobile). It lists six reference categories matching the online shop: urns, custom wood carvings, cremation gemstones, fur gemstones, 925 silver prints and handcrafted liuli; designs and prices follow the online shop. Edit the categories in Admin → Site content → Keepsakes. The booking page (booking.html) does not have this section.</span></p>
+    </section>
+
+    <section id="text">
+      <div class="sec-eyebrow">06 / Content</div>
+      <h2>六、修改文字<span class="en">Editing text</span></h2>
+      <p class="lead">網站文字寫在 GitHub 的 HTML 檔案內。最簡單的方法是直接在 GitHub 網頁上修改，不需安裝任何軟件。<span class="en">Website text lives in HTML files on GitHub; the easiest way is to edit on the GitHub website.</span></p>
+      <ol class="steps">
+        <li>用瀏覽器開啟 <code>github.com/Resoul-Design/Resoul-landing</code>，並確認已登入客戶 GitHub 帳戶。<span class="en">Open the repo and make sure you are signed in.</span></li>
+        <li>在檔案列表按要修改的檔案。常用：<code>index.html</code>（首頁）、<code>about.html</code>（關於我們）、<code>cremation.html</code>（火化善終旅程）、<code>euthanasia.html</code>（上門安樂死）、<code>booking.html</code>（安排預約接送）、<code>pricing.html</code>（服務收費，已隱藏）、<code>support.html</code>（情緒支援）、<code>board.html</code>（主人評價及故事分享）、<code>reviews.html</code>（Google 評價）、<code>referral.html</code>（專業輔導轉介及資源）。<span class="en">Click the file to edit (home / about / cremation farewell journey / at-home vet assessment &amp; euthanasia / pick-up booking / pricing / emotional support / owner reviews &amp; stories / Google reviews / counselling referral &amp; resources).</span></li>
+        <li>在檔案右上方按鉛筆圖示（Edit this file）。<span class="en">Click the pencil icon (Edit this file) at top right.</span></li>
+        <li>按 <code>Ctrl + F</code>（Mac 為 <code>Cmd + F</code>）搜尋要修改的文字。<span class="en">Press Ctrl/Cmd + F to find the words.</span></li>
+        <li>只修改文字本身，不要更動左右以角括號包起的標籤，例如 <code>&lt;p&gt;</code>、<code>&lt;/p&gt;</code>、<code>&lt;h2&gt;</code>。<span class="en">Change only the words; leave the &lt;tags&gt; around them alone.</span></li>
+        <li>拉到最底，按綠色「<b>Commit changes</b>」按鈕。<span class="en">Scroll down and click the green Commit changes button.</span></li>
+        <li>Vercel 自動重新部署，約一至兩分鐘後更新；按 <code>Ctrl + Shift + R</code> 強制重新整理即見。<span class="en">Vercel redeploys in ~1–2 min; hard-refresh with Ctrl + Shift + R.</span></li>
+      </ol>
+      <div class="callout tip"><span class="tag">提示 TIP · 中英文</span>許多頁面同時有中文版與英文版（例如 <code>about.html</code> 與 <code>about-en.html</code>）。修改中文後，記得一併更新英文版。<span class="en">Many pages have both a Chinese and an English file; update both.</span></div>
+      <h3>修改收費<span class="en">Updating prices</span></h3>
+      <p>火化（按體重）、上門安樂死及情緒支援的收費，請在後台「網站內容 → 收費」修改（見第三節），所有相關網頁（中英）及回覆知識庫的收費代號會一併更新，毋須修改檔案。網上付款金額以 Shopify 產品價錢為準，須同步修改 Shopify 火化方案的價錢；訂金金額（HK$1,800）設定於 Shopify「預約接送訂金」產品，並顯示於 <code>booking.html</code>。<span class="en">Change cremation (by weight), home euthanasia and grief-support fees in Admin → Site content → Prices (see section 3); every related page (Chinese and English) and the reply knowledge base's price tokens update together, with no file edits. Online payments use the Shopify product prices, so also update the Shopify cremation plans. The HK$1,800 deposit is set on the Shopify deposit product and shown on booking.html.</span></p>
+      <h3>火化服務價目表（圖片）<span class="en">Cremation price list (images)</span></h3>
+      <p>火化善終旅程頁「按寵物體重收費」表下方有「查看及儲存價目表」掣（英文版「View &amp; save the price list」），連往 <code>/price-list</code>（英文 <code>/price-list-en</code>）。中文頁只顯示中文價目表（<code>images/price-list-2026-zh.jpg</code>），英文頁只顯示英文價目表（<code>images/price-list-2026-en.jpg</code>）；客人可按「儲存圖片」、「分享圖片」、「分享此頁連結」或「複製連結」，手機亦可長按圖片儲存到相簿。在 WhatsApp 分享此頁連結時，預覽會顯示價目表圖片。<span class="en">Below the fees-by-weight table on the cremation page, a “查看及儲存價目表” button (English: “View &amp; save the price list”) opens <code>/price-list</code> (English <code>/price-list-en</code>). The Chinese page shows only the Chinese price list and the English page only the English one; customers can save or share an image, share or copy the page link, or press and hold an image on a phone to save it. Shared links preview the price list image in WhatsApp.</span></p>
+      <div class="callout warn"><span class="tag">注意 NOTE · 改價時</span>價目表是圖片，不會跟隨後台「網站內容 → 收費」自動更新。改價時須另外製作新圖片，以<b>新檔名</b>上傳到 <code>images/</code>（例如 <code>price-list-2027-zh.jpg</code>，避免客人瀏覽器仍顯示暫存的舊圖），再把 <code>price-list.html</code> 及 <code>price-list-en.html</code> 內的舊檔名全部改為新檔名（圖片、儲存掣、分享掣及分享預覽圖）。<span class="en">The price list is an image, so it does not follow Admin → Site content → Prices. When prices change, make new images, upload them to <code>images/</code> under a <b>new file name</b> (e.g. <code>price-list-2027-zh.jpg</code>, so browsers do not keep showing the cached old one), then replace every old file name in <code>price-list.html</code> and <code>price-list-en.html</code> (image, save button, share button and share preview).</span></div>
+      <h3>更新 Google 評價<span class="en">Updating Google reviews</span></h3>
+      <p>Google 評價由後台管理（管理員或有「主人評價及故事分享」權限的員工）：後台 → 內容 → 主人評價及故事分享 → 右上「查看服務評價」。每則評價可填顯示名稱、英文顯示名稱、星級、排序、中文評價、英文版本、相片網址、Google 來源網址，以及是否發佈。英文版網站不會顯示中文字：評價名稱優先用「英文顯示名稱」（選填）；留空時「Jacky 的主人」會自動轉為「Jacky's owner」，名稱本身是中文時顯示「A pet parent」；沒有英文版本的評價不會在英文版顯示。英文顯示名稱需先於 Supabase 執行 db/migration_google_reviews_en_name.sql。修改多則評價後，按頁底「儲存全部」一次過儲存（有修改的評價會以金色框標示，未儲存便離開頁面會有提示）；新增評價仍用頁頂「新增」。網站「Google 評價」頁及「主人評價及故事分享」頁（與故事分享交替顯示，卡片左下角標明「主人評價」／「故事分享」，訪客可按「全部／主人評價／故事分享」篩選）會即時讀取已發佈的評價（按排序）；只有在讀取失敗時，才會顯示 <code>js/reviews-data.js</code> 內的後備內容。英文版分享頁只顯示內文沒有中文字的故事，中文版顯示全部故事；以專屬連結開啟的故事不受此限。<span class="en">Google reviews are managed in the admin (admins, or staff with the Owner reviews & stories permission): Admin → Content → Owner reviews & stories (主人評價及故事分享) → 查看服務評價 (top right). Each review has a display name, English display name, rating, sort order, Chinese text, English text, photo URL, Google source URL and a publish switch. English pages never show Chinese: review names use the optional English display name; if empty, “Jacky 的主人” becomes “Jacky's owner”, and fully Chinese names show “A pet parent”; reviews without English text are hidden on English pages. Requires db/migration_google_reviews_en_name.sql. After editing several reviews, click 儲存全部 (Save all) at the bottom to save them at once (edited reviews get a gold outline, and leaving with unsaved changes shows a warning); add new reviews with 新增 at the top. The Google reviews page and the home page read published reviews live (by sort order); js/reviews-data.js is only a fallback if loading fails. The English page shows only stories whose text has no Chinese characters; the Chinese page shows all. Stories opened by private link are not affected.</span></p>
+      <h3>英文網誌文章<span class="en">English journal articles</span></h3>
+      <p>網誌文章在 <b>Shopify → Online Store → Blog posts</b> 撰寫。要把一篇文章歸為<b>英文</b>，在該文章加上標籤 <code>en</code>：英文版網站只顯示帶 <code>en</code> 標籤的文章，中文版則顯示其餘文章。若英文版暫時未有文章，頁面會顯示「No English articles yet」。<span class="en">Write posts in Shopify → Blog posts. Tag a post <code>en</code> to make it English: the English site shows only en-tagged posts, the Chinese site shows the rest. With none yet, the English page shows "No English articles yet".</span></p>
+      <p>網誌分類：在後台「文章記錄」按「管理文章分類」展開，新增、改名、排序、隱藏或刪除分類，並填寫英文網站名稱；按「儲存全部分類」即時生效。然後在 Shopify 為文章加上與分類中文名稱完全相同的標籤（不可多空格或改字），網站網誌頁頂便會顯示該分類的篩選掣（只顯示已有文章的分類）。後台會顯示每個分類有幾多篇文章，並提示 Shopify 上未設為分類的標籤（多數是打錯字）。一篇文章可有多個分類；英文文章同時保留 <code>en</code> 標籤。需先於 Supabase 執行 <code>db/migration_blog_categories.sql</code>，未執行前網站使用預設四個分類。Shopify 後台 Blog posts 上方的分頁（Tabs）只是後台儲存的檢視，不會影響網站。<span class="en">Categories: in Admin → Articles click 管理文章分類 (Manage categories) (add, rename, reorder, hide, delete, with an English name) and click Save all. Then tag posts in Shopify with exactly the same Chinese name; the journal page shows a filter chip for each category that has posts. The admin shows how many posts each category has and flags Shopify tags that are not categories (usually typos). A post may have several; English posts keep the <code>en</code> tag. Requires db/migration_blog_categories.sql; until then the site uses the four default categories. The tabs above Shopify's Blog posts list are admin saved views only.</span></p>
+      <div class="callout warn"><span class="tag">注意 NOTE · 安全習慣</span>修改前若不肯定，先把整段原文複製到記事本備份。萬一改壞，GitHub 每次 Commit 都是還原點，可回復舊版本。<span class="en">Unsure? Back up the line first. Every commit is a restore point you can revert to.</span></div>
+    </section>
+
+    <section id="images">
+      <div class="sec-eyebrow">07 / Images</div>
+      <h2>七、修改圖片<span class="en">Editing images</span></h2>
+      <h3>網站圖片<span class="en">Website images</span></h3>
+      <p>網站圖片存放在 Resoul-landing 的 <code>images/</code> 資料夾內。<span class="en">Website images are in the images/ folder of Resoul-landing.</span></p>
+      <h3>更換一張現有圖片（最簡單）<span class="en">Replace an existing image (easiest)</span></h3>
+      <ol class="steps">
+        <li>準備一張新圖，<b>檔名與格式與舊圖完全相同</b>（例如同樣叫 <code>about-room.png</code>）。<span class="en">Prepare a new image with the same filename and format.</span></li>
+        <li>在 GitHub 進入 <code>images/</code> 資料夾，按 <b>Add file → Upload files</b>。<span class="en">In images/, click Add file → Upload files.</span></li>
+        <li>上傳新圖以覆蓋舊圖，然後按 Commit changes。<span class="en">Upload to overwrite, then Commit changes.</span></li>
+        <li>網頁自動使用新圖，無需修改 HTML。<span class="en">The page uses the new image automatically.</span></li>
+      </ol>
+      <h3>加入一張全新圖片<span class="en">Add a brand-new image</span></h3>
+      <ol class="steps">
+        <li>先把新圖上傳至 <code>images/</code>（檔名用英文小楷、不含空格）。<span class="en">Upload to images/ (lowercase English filename, no spaces).</span></li>
+        <li>在對應 HTML 檔把 <code>&lt;img src="images/舊檔名.jpg"&gt;</code> 的檔名改為新檔名，然後 Commit。<span class="en">Change the filename in the &lt;img&gt; tag, then Commit.</span></li>
+      </ol>
+      <div class="callout tip"><span class="tag">提示 TIP</span>上傳前把相片壓縮（闊度不超過 1600 像素、存為 JPG），網站載入會快很多。<span class="en">Resize before uploading (≤1600px, JPG) to keep the site fast.</span></div>
+      <div class="callout warn"><span class="tag">注意 NOTE · 快取</span>注意快取：網站 <code>images/</code> 資料夾內的圖片會被訪客瀏覽器暫存約 30 日。以同名檔案覆蓋後，曾到訪的客人可能要一段時間才見到新相；如需即時生效，請以新檔名上傳（例如加上日期），並把 HTML 內 &lt;img&gt; 的檔名改為新檔名，再刪除舊檔。<span class="en">Caching: images in the site's images/ folder are cached by visitors' browsers for about 30 days. After overwriting a file with the same name, returning visitors may keep seeing the old photo for a while; for an immediate change, upload under a new filename (e.g. add a date), update the &lt;img&gt; filename in the HTML, then delete the old file.</span></div>
+      <h3>產品圖片<span class="en">Product images</span></h3>
+      <p>商店產品的相片在 <b>Shopify → Products</b> 該產品頁面上載，不在 GitHub。<span class="en">Shop product photos are uploaded on the product in Shopify, not GitHub.</span></p>
+      <h3>Logo 與發票簽名<span class="en">Logo &amp; invoice signature</span></h3>
+      <p>後台及發票所用的 logo 與手寫簽名，存放在 Resoul-admin 的 <code>public/</code>：<code>resoul-wordmark.png</code>（logo）、<code>resoul-signature.png</code>（手寫 Resoul 簽名）。更換時上傳同名檔案覆蓋即可。<span class="en">In Resoul-admin's public/: resoul-wordmark.png (logo) and resoul-signature.png (signature). Overwrite with same-named files.</span></p>
+    </section>
+
+    <section id="deploy">
+      <div class="sec-eyebrow">08 / Deploy</div>
+      <h2>八、部署（自動更新上線）<span class="en">Deploy (going live)</span></h2>
+      <p class="lead">每次在 GitHub 儲存修改（Commit），Vercel 便自動建置並發佈，你不需做額外操作。<span class="en">Every commit triggers Vercel to build and publish automatically.</span></p>
+      <ul class="tight">
+        <li>查看進度：Vercel → 對應 project → <b>Deployments</b>。顯示綠色 <b>Ready</b> 即代表已成功上線。<span class="en">Progress: Vercel → project → Deployments. Green Ready = live.</span></li>
+        <li>修改<b>環境變數</b>後，必須到 Deployments → 最新一項 → <b>⋯ → Redeploy</b> 才會生效。<span class="en">After changing env vars, you must Redeploy for them to apply.</span></li>
+        <li>若看不到更新，多數是瀏覽器快取，按 <code>Ctrl + Shift + R</code> 強制重新整理。<span class="en">Not updating? Usually cache — hard refresh.</span></li>
+      </ul>
+      <div class="callout danger"><span class="tag">重要 IMPORTANT</span>GitHub repo 須保持為 <b>Public</b>。若一度轉為 Private，Vercel 部署可能被 <b>BLOCKED</b>（免費方案限制）。保持 Public 便不會遇到此問題。<span class="en">Keep the GitHub repo Public. If switched to Private, deploys can be BLOCKED on the free plan.</span></div>
+    </section>
+
+    <section id="supabase">
+      <div class="sec-eyebrow">09 / Database</div>
+      <h2>九、Supabase 資料庫<span class="en">Supabase database</span></h2>
+      <p class="lead">專案 diyxcx（<code>diyxcxkgvqvyrstrzttq</code>）儲存前台與後台所有資料。日常無須進入，但了解結構有助排解問題。<span class="en">Project diyxcx holds all data for site and admin.</span></p>
+      <div class="tablewrap"><table>
+        <thead><tr><th>資料表 Table</th><th>內容 Holds</th></tr></thead>
+        <tbody>
+          <tr><td><code>cremation_bookings</code></td><td>火化預約及獸醫評估（按 <code>source</code> 來源區分），連付款狀態、發票編號（<code>shopify_order_name</code>）、金額。專案編號存於 <code>case_no</code>（<code>RSL-…</code>）。<span class="en">Cremation bookings and vet assessments (split by source), with payment status, invoice number and amount. Project number in case_no (RSL-…).</span></td></tr>
+          <tr><td><code>deposit_bookings</code></td><td>「安排預約接送」訂金預約；專案編號存於 <code>project_no</code>，付款參考存於 <code>payment_ref</code>。<span class="en">Pick-up deposit bookings; project number in project_no, payment ref in payment_ref.</span></td></tr>
+          <tr><td><code>posts</code></td><td>「主人評價及故事分享」頁的故事（context=memorial；visibility＝public／link，link 故事以 slug 生成專屬連結）及網誌留言。<span class="en">Stories from the owner reviews &amp; stories page (context=memorial; visibility public/link — link stories get a private slug URL) and blog comments.</span></td></tr>
+          <tr><td><code>staff</code></td><td>員工登入授權與權限。<span class="en">Staff login authorisation &amp; permissions.</span></td></tr>
+          <tr><td><code>project_entries</code> / <code>plan_prices</code></td><td>專案收支明細（可連火化預約或產品訂單）／方案定價。<span class="en">Project entries (linked to a booking or product order) / plan pricing.</span></td></tr>
+          <tr><td><code>product_orders</code></td><td>由 Shopify 同步的紀念產品訂單副本。<span class="en">Copy of memorial-product orders synced from Shopify.</span></td></tr>
+          <tr><td><code>audit_log</code></td><td>後台操作審計記錄。<span class="en">Audit log of admin actions.</span></td></tr>
+          <tr><td><code>review_invites</code></td><td>後台「服務後邀請評價」的已邀請／略過記錄。<span class="en">Review invitation records (invited / skipped).</span></td></tr>
+          <tr><td><code>site_content_versions</code></td><td>後台「網站內容」每次儲存前的舊版本（可還原）。<span class="en">Previous Site content versions (restorable).</span></td></tr>
+          <tr><td><code>customer_aliases</code></td><td>客戶檔案合併對照（被合併的客戶 → 保留的客戶）。<span class="en">Customer file merges (merged key → kept key).</span></td></tr>
+          <tr><td><code>site_content</code></td><td>後台「網站內容」儲存的收費、紀念精品、商店分類、常見問題及頁頂公告。<span class="en">Prices, keepsakes, shop categories, FAQ and top notice saved in Site content.</span></td></tr>
+          <tr><td><code>google_reviews</code></td><td>網站顯示的 Google 評價（由後台「主人評價及故事分享 → 查看服務評價」維護）。<span class="en">Google reviews shown on the website (maintained in the admin).</span></td></tr>
+          <tr><td><code>api_rate_limits</code></td><td>公開表單及 AI 功能的防濫用計數（IP 經單向加密，只作短時間計數）。<span class="en">Abuse-prevention counters for public forms and AI tools (hashed IPs, short-lived).</span></td></tr>
+          <tr><td><code>shopify_credentials</code></td><td>（如用 OAuth）Shopify token；只由伺服器讀取。<span class="en">(If using OAuth) Shopify token; server-only.</span></td></tr>
+        </tbody>
+      </table></div>
+      <div class="callout tip"><span class="tag">提示 TIP · Table Editor</span>手動修改一筆資料（例如更改預約狀態）：Supabase → Table Editor → 選擇資料表 → 修改該格 → Save。改動即時反映在後台。<span class="en">Hand-edit a record: Table Editor → pick table → edit cell → Save. It reflects in the admin at once.</span></div>
+      <div class="callout tip"><span class="tag">提示 TIP · 執行 SQL 與圖片桶</span>若日後要更新資料庫規則，`resoul-landing/supabase/` 內有 `.sql` 檔（可重複執行）：Supabase → <b>SQL Editor</b> → 貼上 → Run。故事分享頁上載的相片存於 <b>Storage → <code>board-images</code></b>；要移除不當相片，在該桶刪除檔案即可。更完整的操作見同資料夾 <code>Supabase操作教學.md</code>。<span class="en">To update DB rules, the idempotent <code>.sql</code> files live in <code>resoul-landing/supabase/</code> — SQL Editor → paste → Run. Board photos are in Storage → <code>board-images</code>. Full steps: <code>Supabase操作教學.md</code>.</span></div>
+    </section>
+
+    <section id="env">
+      <div class="sec-eyebrow">10 / Config</div>
+      <h2>十、環境變數<span class="en">Environment variables</span></h2>
+      <p class="lead">環境變數是連接各系統的「鑰匙」，設定在 Vercel。除非要重設連接，否則無須改動。<span class="en">These are the keys connecting the systems, set in Vercel. Leave them unless reconnecting.</span></p>
+      <div class="tablewrap"><table>
+        <thead><tr><th>Project</th><th>變數 Variable</th><th>值 Value</th></tr></thead>
+        <tbody>
+          <tr><td>Admin</td><td><code>NEXT_PUBLIC_SUPABASE_URL</code></td><td><code>https://diyxcxkgvqvyrstrzttq.supabase.co</code></td></tr>
+          <tr><td>Admin</td><td><code>NEXT_PUBLIC_SUPABASE_ANON_KEY</code></td><td>diyxcx publishable key</td></tr>
+          <tr><td>Admin</td><td><code>SUPABASE_SERVICE_ROLE_KEY</code></td><td>diyxcx service_role（機密 secret）</td></tr>
+          <tr><td>Landing</td><td><code>SUPABASE_URL</code></td><td>同上，但無 <code>NEXT_PUBLIC</code> 前綴。<span class="en">Same, no NEXT_PUBLIC prefix.</span></td></tr>
+          <tr><td>Landing</td><td><code>SUPABASE_SERVICE_ROLE_KEY</code></td><td>diyxcx service_role（機密 secret）</td></tr>
+          <tr><td>Landing</td><td><code>SHOPIFY_WEBHOOK_SECRET</code></td><td>Shopify webhook 簽署密鑰。<span class="en">Shopify webhook signing secret.</span></td></tr>
+          <tr><td>Landing</td><td><code>GEMINI_API_KEY</code></td><td>（選用）啟用「AI 傾聽對話」與「AI 寫信」；未設定時兩者自動退回離線模式。<span class="en">(Optional) enables the AI companion chat and AI letter; both fall back to offline mode if unset.</span></td></tr>
+          <tr><td>Admin</td><td><code>SHOPIFY_WEBHOOK_SECRET</code></td><td>與 Landing 一致（orders/updated webhook 用）。<span class="en">Same value as Landing (used by the orders/updated webhook).</span></td></tr>
+          <tr><td>Admin</td><td><code>SHOPIFY_ADMIN_API_TOKEN</code></td><td>讀取 Shopify 訂單／產品（發票、財務、同步）。<span class="en">Reads Shopify orders/products (invoices, finance, sync).</span></td></tr>
+          <tr><td>Landing</td><td><code>GCAL_SA_JSON（或 GCAL_CLIENT_EMAIL、GCAL_PRIVATE_KEY、GCAL_CALENDAR_ID）</code></td><td>（選用）預約資料自動寫入 Google 日曆。<span class="en">(Optional) writes bookings to Google Calendar.</span></td></tr>
+          <tr><td>Landing</td><td><code>SITE_URL</code></td><td>（選用）網站正式網域，用於 canonical 等；未設時使用 beta 網址。<span class="en">(Optional) the site's official domain for canonical links; defaults to the beta URL.</span></td></tr>
+          <tr><td>Admin</td><td><code>NEXT_PUBLIC_LANDING_URL</code></td><td>（選用）網站網域，用於後台「複製分享連結」；未設時使用 beta 網址。<span class="en">(Optional) website domain used by the admin's copy-share-link; defaults to the beta URL.</span></td></tr>
+          <tr><td>Admin</td><td><code>SHOPIFY_API_KEY／SHOPIFY_API_SECRET</code></td><td>（如用 OAuth）Shopify App 憑證；草稿訂單需 read_draft_orders、write_draft_orders 權限。<span class="en">(If using OAuth) Shopify app credentials; draft orders need the read_draft_orders and write_draft_orders scopes.</span></td></tr>
+        </tbody>
+      </table></div>
+      <div class="callout warn"><span class="tag">注意 NOTE</span>以 <code>NEXT_PUBLIC_</code> 開頭的變數，類型必須選 <b>Config</b>（不可選 Secret）。修改任何變數後，必須 <b>Redeploy</b> 才生效。<span class="en">NEXT_PUBLIC_ variables must be type Config (not Secret). Redeploy after any change.</span></div>
+    </section>
+
+    <section id="faq">
+      <div class="sec-eyebrow">11 / Help</div>
+      <h2>十一、常見問題排解<span class="en">Troubleshooting</span></h2>
+      <h3>後台登入不到／按登入沒有反應<span class="en">Can't log in</span></h3>
+      <ul class="tight">
+        <li>確認使用的是 <code>resoul-admin-five.vercel.app</code>，而非一串亂碼的部署網址。<span class="en">Use the main URL, not a hashed deploy URL.</span></li>
+        <li>密碼錯誤 → Supabase → Authentication → Users 重設密碼。<span class="en">Wrong password → reset it in Supabase.</span></li>
+        <li>完全沒有反應 → 多數是 Vercel 環境變數缺失，或已修改但未 Redeploy。<span class="en">No reaction → usually a missing env var or a change not redeployed.</span></li>
+      </ul>
+      <h3>已付款但預約仍顯示「待付款」<span class="en">Paid but still "pending"</span></h3>
+      <ul class="tight">
+        <li>檢查 Landing 的 Vercel 已設 <code>SUPABASE_URL</code>、<code>SUPABASE_SERVICE_ROLE_KEY</code>、<code>SHOPIFY_WEBHOOK_SECRET</code> 並已 Redeploy。<span class="en">Check landing env vars are set and redeployed.</span></li>
+        <li>確認 Shopify「訂單付款 (orders/paid)」webhook 指向 Landing <code>/api/shopify-webhook</code>，簽署密鑰一致。已完成的舊訂單不會自動重試。<span class="en">Confirm the orders/paid webhook points to Landing /api/shopify-webhook with a matching secret; past orders won't retry.</span></li>
+      </ul>
+      <h3>修改後網站沒有更新<span class="en">Site not updating</span></h3>
+      <ul class="tight">
+        <li>確認已 Commit；確認 Vercel Deployments 顯示 Ready；按 <code>Ctrl + Shift + R</code>；記得中英文是兩個檔案。<span class="en">Confirm commit + Ready deploy; hard refresh; both language files.</span></li>
+        <li>「網站內容」儲存後約一分鐘內生效（網站有短暫快取），之後按 Ctrl + Shift + R 重新整理；如後台顯示「未啟用網站內容」，請先執行 <code>db/migration_site_content.sql</code>。<span class="en">Site content changes go live within about a minute (short website cache); then hard refresh. If the admin shows the 'not enabled' notice, run db/migration_site_content.sql first.</span></li>
+      </ul>
+      <h3>故事分享頁看不到客人的貼文<span class="en">Memorial post not showing</span></h3>
+      <ul class="tight">
+        <li>故事分享頁貼文預設「顯示中」，不在「待審」分頁，請按「顯示中」或「全部」。<span class="en">Posts default to Visible — check "Visible" or "All".</span></li>
+        <li>若客人選了「只限連結」，故事不會在故事分享頁公開列出，只可經專屬連結瀏覽（見下方「客人忘記只限連結故事的網址」）。<span class="en">If the customer chose Link-only, the story isn't listed on the sharing page and is viewable only via its private link (see &quot;A customer forgot their link-only story address&quot; below).</span></li>
+      </ul>
+      <h3>AI 傾聽對話／寫信沒有回應<span class="en">AI chat / letter not responding</span></h3>
+      <ul class="tight">
+        <li>多數是 Landing 未設 <code>GEMINI_API_KEY</code>（或已設但未 Redeploy）。未設時系統仍可用，但只會以預設離線內容回覆。<span class="en">Usually GEMINI_API_KEY is not set on Landing (or set but not redeployed). Without it, the tools still work but only return built-in offline responses.</span></li>
+      </ul>
+      <h3>付款頁顯示「商品不存在」<span class="en">Checkout shows 'product does not exist'</span></h3>
+      <ul class="tight">
+        <li>「預約接送訂金」或火化方案被設為草稿，或未發佈到「Headless」管道。到 Shopify → Products 把該產品設為 <b>Active</b> 並發佈到 <b>Headless</b> 管道。<span class="en">The deposit or plan product is Draft or not on the Headless channel; set it Active and publish to Headless.</span></li>
+      </ul>
+      <h3>客人提交「安排預約接送」／「上門獸醫評估」表單失敗<span class="en">Pick-up / vet assessment form fails</span></h3>
+      <ul class="tight">
+        <li>表單經伺服器 API 寫入資料庫。多數是 Landing 缺 <code>SUPABASE_URL</code>／<code>SUPABASE_SERVICE_ROLE_KEY</code>，或保安 SQL（<code>public_api_security.sql</code>）未執行；「接送訂金」另需先執行 <code>deposit_bookings.sql</code>。設定後 Redeploy。<span class="en">Usually missing Supabase env vars or public_api_security.sql not run; pick-up deposits also need deposit_bookings.sql. Redeploy after setting.</span></li>
+        <li>回訪客人填寫的「已有專案編號」必須以 <code>RSL-</code> 開頭；格式不符時系統會提示。新客人留空即可，系統會自動產生。<span class="en">A returning client's project number must start with RSL-; new clients leave it blank and one is generated.</span></li>
+        <li>如表單回覆 503（security_service_unavailable），多數是 Supabase 未建立防濫用函數 consume_api_quota（public_api_security.sql），或 Landing 缺 SUPABASE_URL／SUPABASE_SERVICE_ROLE_KEY。<span class="en">A 503 (security_service_unavailable) usually means the abuse-prevention function consume_api_quota (public_api_security.sql) is missing in Supabase, or Landing lacks SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY.</span></li>
+      </ul>
+      <h3>專案編號顯示「—」<span class="en">Project number shows "—"</span></h3>
+      <ul class="tight">
+        <li>該記錄未有 <code>RSL-</code> 專案編號（多為舊制記錄）。系統不會以 Shopify 訂單號、付款參考或資料列編號代替。可在「火化預約 → 操作 → 編輯資料」的「RSL 專案編號」欄手動填入（只接受 <code>RSL-</code> 開頭的格式）。<span class="en">The record has no RSL- number (usually an older record). The system never substitutes the order number, payment ref or row ID; enter it in the "RSL project no." field under Edit (RSL- format only).</span></li>
+      </ul>
+      <h3>英文網誌看不到文章<span class="en">No articles on the English journal</span></h3>
+      <ul class="tight">
+        <li>英文版只顯示帶 <code>en</code> 標籤的文章。在 Shopify 為英文文章加上 <code>en</code> 標籤即可（見第六節）。<span class="en">The English journal shows only en-tagged posts; add the en tag in Shopify (see section 6).</span></li>
+      </ul>
+      <h3>Shopify 已取消但後台未變<span class="en">Cancelled in Shopify but admin unchanged</span></h3>
+      <ul class="tight">
+        <li>確認「訂單更新 (orders/updated)」webhook 指向 Admin，且 Admin 的 <code>SHOPIFY_WEBHOOK_SECRET</code> 與 Shopify 一致；已永久刪除的訂單無法同步（需人手改狀態）。可在「同步狀態」頁檢查。<span class="en">Confirm the orders/updated webhook and matching Admin secret; deleted orders can't sync. Use the Sync status page.</span></li>
+      </ul>
+          <h3>AI 寫信按鈕變灰／提示已達使用上限<span class="en">AI letter buttons greyed out / hourly limit reached</span></h3>
+      <ul class="tight">
+        <li>每個網絡（IP）每小時最多使用 AI 寫信 8 次；達上限時「修改語氣／縮短／加入回憶」會停用並顯示提示，約一小時後自動恢復。客人仍可下載、列印或選擇「我自己寫」。故事分享頁的「AI 草擬故事」另計配額。<span class="en">Each network (IP) can use AI letter writing 8 times an hour; at the limit the tone / shorten / add-memory buttons are disabled with a notice and recover after about an hour. Customers can still download, print or write their own. The share page's AI story draft has its own quota.</span></li>
+      </ul>
+      <h3>客人忘記「只限連結」故事的網址<span class="en">A customer forgot their link-only story address</span></h3>
+      <ul class="tight">
+        <li>在「主人評價及故事分享」找到該故事，按「複製分享連結」；傳回前先核對毛孩名、主人稱呼及分享日期。故事須為「顯示中」，連結才可開啟。<span class="en">Find the story under Owner reviews & stories (主人評價及故事分享) and click the copy-share-link button (複製分享連結); verify the pet name, owner name and sharing date before sending it. The story must be Visible for the link to open.</span></li>
+      </ul>
+      <h3>員工見到「沒有此功能的使用權限」<span class="en">Staff see a &quot;no permission&quot; message</span></h3>
+      <ul class="tight">
+        <li>到「員工管理」為該員工勾選相應功能；匯出 CSV 需具備該類資料的功能權限或「報表與匯出」權限。管理員不受限制。<span class="en">In Staff, tick the relevant module for that person; CSV export needs that module or the Reports &amp; export permission. Admins are unrestricted.</span></li>
+      </ul>
+      <h3>後台載入緩慢<span class="en">Admin feels slow</span></h3>
+      <ul class="tight">
+        <li>後台伺服器須與 Supabase 資料庫在同一地區：資料庫在首爾（ap-northeast-2），後台 <code>vercel.json</code> 已設定 <code>"regions": ["icn1"]</code>（Vercel 首爾）。如日後把 Supabase 搬到其他地區，須同步修改此設定，否則每次查詢都要跨區，後台會明顯變慢。<span class="en">The admin's server functions must run in the same region as the Supabase database: the database is in Seoul (ap-northeast-2) and the admin's vercel.json sets "regions": ["icn1"] (Vercel Seoul). If Supabase is ever moved, update this setting too, or every query crosses regions and the admin becomes noticeably slow.</span></li>
+        <li>確認方法：在瀏覽器開發者工具查看回應標頭 <code>x-vercel-id</code>，中間一段應為 <code>icn1</code>。紀念品訂單的 Shopify 產品目錄會快取 5 分鐘，新上架產品最多 5 分鐘後才出現在「新增訂單」。<span class="en">To check: the x-vercel-id response header should contain icn1 in the middle. The Shopify product catalog for new souvenir orders is cached for 5 minutes, so newly listed products can take up to 5 minutes to appear.</span></li>
+      </ul>
+      <h3>網站已更新，但手機或電腦仍見舊版<span class="en">Site updated but a phone or computer still shows the old version</span></h3>
+      <ul class="tight">
+        <li>瀏覽器會暫存（cache）網站樣式檔，最多約一小時。電腦按 Ctrl + Shift + R；iPhone 可重新載入，或到「設定 → Safari → 清除瀏覽紀錄和網站資料」，亦可用私密瀏覽開啟。<span class="en">Browsers cache the site's style files for up to about an hour. On a computer press Ctrl + Shift + R; on iPhone reload, clear Safari website data, or open a private tab.</span></li>
+      </ul>
+    </section>
+
+    <section id="security">
+      <div class="sec-eyebrow">12 / Safety</div>
+      <h2>十二、安全提醒<span class="en">Security notes</span></h2>
+      <ul class="tight">
+        <li><code>service_role key</code> 擁有最高權限，只可放在 Vercel 後端環境變數，切勿放入網頁、GitHub 或傳送給他人。<span class="en">The service_role key is all-powerful; keep it only in Vercel backend env vars.</span></li>
+        <li>後台每項操作及 CSV 匯出都會按員工權限檢查；登入後只會跳轉至本站頁面。<span class="en">Every admin action and CSV export is permission-checked; after login the admin only redirects to its own pages.</span></li>
+        <li>帳號密碼、信用卡號碼、API key 切勿貼入任何網頁表格或對話。<span class="en">Never paste passwords, card numbers or API keys into forms or chats.</span></li>
+        <li>刪除資料（Supabase 記錄、Shopify 產品）不可還原，刪除前請看清楚。<span class="en">Deleting data can't be undone — look carefully first.</span></li>
+        <li>重要改動前，可先在 Shopify 主題按 <b>Duplicate</b> 備份；GitHub 每次 Commit 亦是還原點。<span class="en">Before big changes, Duplicate the Shopify theme; every commit is a restore point.</span></li>
+      </ul>
+    </section>
+
+    <section id="sync" style="break-before:page">
+      <div class="sec-eyebrow">13 / Data sync</div>
+      <h2>十三、資料同步（Shopify · Supabase · Admin）<span class="en">Data sync</span></h2>
+      <p class="lead">三個系統各有分工，靠 webhook（自動）與同步按鈕（手動）連接。理解邊個係「真相來源」，就知道應該喺邊度改資料。<span class="en">Three systems connected by webhooks (automatic) and a sync button (manual). Know the source of truth to know where to edit.</span></p>
+      <ul class="tight">
+        <li><b>Shopify</b>＝產品、價錢、結帳、付款與<b>發票編號</b>（Shopify 訂單號）的真相來源。<span class="en">Shopify = source of truth for products, prices, checkout, payment and invoice numbers.</span></li>
+        <li><b>Supabase</b>＝資料庫，是接送訂金、火化預約、獸醫評估及內部資料（留言、員工、專案收支、審計）的真相來源，並存放產品訂單副本；<b>專案編號</b>（<code>RSL-…</code>）亦存於此。<span class="en">Supabase = database; source of truth for deposits, cremation bookings, vet assessments and internal data, plus the RSL- project number; holds a copy of product orders.</span></li>
+        <li><b>Admin</b>＝操作介面，讀寫 Supabase、讀取 Shopify，本身不存數據。<span class="en">Admin = interface; reads/writes Supabase and reads Shopify.</span></li>
+      </ul>
+      <h3>預約與付款（自動）<span class="en">Booking &amp; payment (automatic)</span></h3>
+      <ol class="steps">
+        <li>客人提交「安排預約接送」或火化表單 → 伺服器 API 寫入 Supabase（待付款），附上<b>專案編號</b> <code>RSL-…</code> 與<b>付款參考</b> <code>PAY-…</code>。<span class="en">The form → server API writes a pending record with the RSL- project number and PAY- payment reference.</span></li>
+        <li>客人跳往 Shopify 結帳付款 → Shopify 產生<b>發票編號</b>。<span class="en">Shopify checkout → Shopify issues the invoice number.</span></li>
+        <li>orders/paid webhook → 以<b>付款參考</b>對回 Supabase 的接送訂金或火化記錄 → 標「已付款」並補上發票編號與金額。<span class="en">orders/paid webhook matches the payment reference to the deposit or cremation record → marks it paid with the invoice number and amount.</span></li>
+        <li>Admin 讀 Supabase 顯示；收入自動計入專案；同一客人其後的服務沿用同一個專案編號。<span class="en">Admin shows it; paid amounts auto-count as income; later services reuse the same project number.</span></li>
+      </ol>
+      <h3>產品訂單、取消與退款<span class="en">Product orders, cancel &amp; refund</span></h3>
+      <ul class="tight">
+        <li>產品訂單：Shopify 落單 → webhook 或「同步 Shopify 訂單」按鈕存入 Supabase → Admin「客戶訂單」顯示。<span class="en">Product orders: webhook or the Sync button stores them in Supabase.</span></li>
+        <li>取消／退款：orders/updated webhook 自動把火化預約標「已取消／已退款」、更新產品訂單；已取消收入歸 $0。<span class="en">orders/updated flips cancel/refund; cancelled income = $0.</span></li>
+      </ul>
+      <div class="callout warn"><span class="tag">方向性 DIRECTION</span>Admin 改「火化預約」只寫 Supabase，不會回寫 Shopify。「產品訂單」在 Admin 是唯讀副本，要修改請到 Shopify。原則：<b>產品去 Shopify 改；火化預約在 Admin 改</b>。<span class="en">Editing a booking writes only to Supabase; product orders are read-only here (edit in Shopify). Rule: products in Shopify, bookings in the admin.</span></div>
+    </section>
+
+    <section id="health">
+      <div class="sec-eyebrow">14 / Health</div>
+      <h2>十四、系統健康與例行<span class="en">System health &amp; routine</span></h2>
+      <h3>同步狀態自我檢查<span class="en">Sync status self-check</span></h3>
+      <p>後台「同步狀態」頁（只讀，不顯示任何機密）一頁列出：環境變數是否已設、Supabase 資料表／migration 是否已建、Shopify 連線、產品最近同步時間、以及付款 webhook 的運作跡象。發現同步問題時先看此頁，逐項紅／黃／綠對應。<span class="en">The admin Sync-status page lists env vars, tables/migrations, Shopify connectivity, last product sync, and webhook health — red/amber/green.</span></p>
+      <h3>每日例行<span class="en">Daily</span></h3>
+      <ul class="tight">
+        <li>看「總覽」：今日待接送／火化、待付款、待跟進；如有紅色危機提示，優先處理。<span class="en">Overview: pickups/cremations, unpaid, follow-ups; handle any red crisis banner first.</span></li>
+        <li>接送服務：處理新收到的訂金預約，聯絡客人確認接送時間並更新狀態。<span class="en">Pick-up services: handle new deposit bookings, confirm timing, update status.</span></li>
+        <li>火化預約／獸醫評估：處理新個案，需要時 WhatsApp 客人、更新狀態。<span class="en">Cremation bookings / vet assessments: handle new cases, WhatsApp, update status.</span></li>
+        <li>留言審核：查看是否有需要處理的留言。<span class="en">Moderation: check for posts to handle.</span></li>
+      </ul>
+      <h3>每週例行<span class="en">Weekly</span></h3>
+      <ul class="tight">
+        <li>客戶訂單：按「同步 Shopify 訂單」補抓最新狀態。<span class="en">Orders: click Sync Shopify orders.</span></li>
+        <li>財務管理：查看當月收支；倉存查看低庫存（紅色）。<span class="en">Finance: review the month; check low stock.</span></li>
+        <li>同步狀態：確認全部綠燈。<span class="en">Sync status: confirm all green.</span></li>
+      </ul>
+    </section>
+
+    <section id="glossary">
+      <div class="sec-eyebrow">15 / Glossary</div>
+      <h2>十五、名詞解釋<span class="en">Glossary</span></h2>
+      <ul class="tight">
+        <li><b>Webhook</b>：Shopify 在事件（付款、更新）發生時自動通知網站，用來即時同步。<span class="en">Shopify auto-notifies the site on events for real-time sync.</span></li>
+        <li><b>Commit / Deploy / Redeploy</b>：GitHub 儲存＝Commit；Vercel 自動發佈＝Deploy；改環境變數後要手動 Redeploy。<span class="en">Save on GitHub = Commit; Vercel publishes = Deploy; after env changes, Redeploy.</span></li>
+        <li><b>環境變數／密鑰</b>：連接各系統的「鑰匙」，設在 Vercel，屬機密。<span class="en">The keys connecting systems, set in Vercel; confidential.</span></li>
+        <li><b>銷售管道（Headless）</b>：Shopify 產品要「發佈」到某銷售管道才對外可買；本店付款用「Headless」管道。<span class="en">A product must be published to a channel to be buyable; checkout uses 'Headless'.</span></li>
+        <li><b>Draft / Active</b>：Shopify 產品狀態；Draft＝草稿（不可買），Active＝上架。<span class="en">Draft = not buyable; Active = live.</span></li>
+        <li><b>專案編號（RSL-…）</b>：同一客人整個善終旅程共用的個案編號，首次預約時產生，接送、火化、紀念品都沿用。<span class="en">Project no. (RSL-…): one case number shared across a customer's whole journey, created at the first booking.</span></li>
+        <li><b>付款參考（PAY-…，<code>payment_ref</code>）</b>：每次付款產生，用來把 Shopify 付款對回 Supabase 記錄；只作系統核對。<span class="en">Payment ref. (PAY-…): created per payment to match a Shopify payment to its record; internal only.</span></li>
+        <li><b>發票編號（Shopify 訂單號）</b>：每次在 Shopify 付款時產生的正式收費單據編號；每次付款各一個，可與專案編號不同。<span class="en">Invoice no. (Shopify order no.): the formal bill number, one per payment; can differ from the project number.</span></li>
+        <li><b>獸醫評估 vs 火化預約</b>：「上門安樂死」的查詢，與火化預約分開檢視及統計。<span class="en">Vet assessments are at-home vet assessment &amp; euthanasia enquiries, viewed and counted separately from cremation bookings.</span></li>
+        <li><b>只限連結／分享連結</b>：故事不公開列出，只有持 <code>?s=…</code> 專屬連結者可瀏覽；後台可複製連結。<span class="en">Link-only / share link: a story not listed publicly, viewable only via its private ?s=… link; the admin can copy it.</span></li>
+        <li><b>限流（防濫用）</b>：每個網絡在一定時間內可使用公開表單及 AI 功能的次數上限。<span class="en">Rate limit: a cap on how often one network can use public forms and AI tools within a time window.</span></li>
+      </ul>
+    </section>
+
+    <section id="todo" style="break-before:page">
+      <div class="sec-eyebrow">16 / To-do</div>
+      <h2>十六、待辦事項與交接清單<span class="en">To-do &amp; handover checklist</span></h2>
+      <p class="lead">以下項目在交接時仍待處理或需確認。完成一項後，建議在方格旁寫上日期。<span class="en">These items are still pending or need confirming at handover. Write a date beside each box as you finish it.</span></p>
+
+      <h3>需要客戶帳戶或外部服務<span class="en">Needs client accounts or external services</span></h3>
+      <ul class="tight">
+        <li>☐ 設定 <code>GEMINI_API_KEY</code>（Landing → Vercel 環境變數），以啟用「AI 傾聽對話」與「AI 寫信」；未設定時兩者會自動退回離線模式。<span class="en">Set GEMINI_API_KEY (Landing → Vercel env var) to enable the AI companion chat and AI letter; without it, both fall back to offline mode.</span></li>
+        <li>☐ 重新產生並輪換 Shopify Admin API token（舊 token 曾外洩，須立即 regenerate 並更新使用該 token 之處）。<span class="en">Regenerate and rotate the Shopify Admin API token (the old one was exposed and must be replaced).</span></li>
+        <li>☐ 確認 Instagram 帳號連結（頁尾暫用 <code>instagram.com/resoulhk</code>，待確認正式帳號後更新）。<span class="en">Confirm the Instagram link (the footer currently uses instagram.com/resoulhk pending confirmation).</span></li>
+      </ul>
+
+      <h3>商店與內容<span class="en">Shop &amp; content</span></h3>
+      <ul class="tight">
+        <li>☐ 為草稿（Draft）產品補上產品相片後，改為「Active」正式上架。<span class="en">Add photos to Draft products, then set them Active to publish.</span></li>
+        <li>☐ 在後台「主人評價及故事分享 → 查看服務評價」以真實 Google 評價取代示例內容（約 12 則，可附相片及 Google 來源網址），見第六節；並確認網站顯示的評價均為主人在 Google 留下的內容。<span class="en">Replace the sample reviews via the admin's Google reviews manager with real ones (about 12, with photos and Google source URLs) — see section 6 — and make sure every review shown was actually left by an owner on Google.</span></li>
+        <li>☐ 在 Shopify 為未設定「產品類型」的產品補上類型（現時 2 件：Fur KeepSake、光影手鏈（皮繩）），否則只會在商店「全部」出現。<span class="en">Set a product type in Shopify for products that have none (currently 2: Fur KeepSake and the Halo leather bracelet); otherwise they only appear under All.</span></li>
+        <li>☐ 如有英文網誌文章，在 Shopify 為其加上 <code>en</code> 標籤。<span class="en">Tag any English journal posts with en in Shopify.</span></li>
+        <li>☐ 更換分類入口與產品的佔位或低解析度相片（例如永恆骨灰裸石）。<span class="en">Swap placeholder or low-resolution photos on category tiles and products (e.g. the cremation gemstone).</span></li>
+        <li>☐ 決定 30 kg 以上火化收費的列明方式（網站現時只列至 30 kg）。<span class="en">Decide how to show cremation fees above 30 kg (the site currently lists up to 30 kg).</span></li>
+      </ul>
+
+      <h3>系統設定確認<span class="en">System checks</span></h3>
+      <ul class="tight">
+        <li>☐ 確認 Landing 已設 <code>SUPABASE_URL</code>、<code>SUPABASE_SERVICE_ROLE_KEY</code>、<code>SHOPIFY_WEBHOOK_SECRET</code>；Admin 亦設 <code>SHOPIFY_WEBHOOK_SECRET</code>（與 Landing 一致）及 <code>SHOPIFY_ADMIN_API_TOKEN</code>；改後 Redeploy。<span class="en">Landing has Supabase + webhook secret; Admin has the same webhook secret and SHOPIFY_ADMIN_API_TOKEN; redeploy after changes.</span></li>
+        <li>☐ 確認 Shopify webhook：訂單付款→Landing <code>/api/shopify-webhook</code>；訂單更新→Admin <code>/api/webhooks/shopify/orders-updated</code>；簽署密鑰一致。<span class="en">orders/paid → Landing; orders/updated → Admin; secrets match.</span></li>
+        <li>☐ 於 Supabase diyxcx 執行所需 migration：<code>public_api_security.sql</code>、<code>api_pii_security.sql</code>（收緊預約資料權限）、<code>deposit_bookings.sql</code>（接送訂金）、<code>migration_payment_tracking.sql</code>、<code>migration_project_entries_orders.sql</code>、<code>migration_audit_log.sql</code>、<code>migration_shopify_credentials.sql</code>（如用 OAuth）、<code>migration_deposit_followup.sql</code>（訂金跟進）、<code>migration_reply_snippets.sql</code>（回覆助手知識庫）、<code>migration_vet_permission.sql</code>（令原有「火化預約」權限的員工保留「獸醫評估」權限）、<code>migration_guide_permission.sql</code>（使用教學權限）、<code>migration_cremation_progress.sql</code>（火化進度及骨灰交還）、<code>migration_follow_ups.sql</code>（火化、獸醫、紀念品跟進）。<span class="en">Run the needed migrations in Supabase, including deposit_bookings.sql for pick-up deposits, migration_deposit_followup.sql (deposit follow-ups), migration_reply_snippets.sql (reply knowledge base) migration_vet_permission.sql (keeps vet-assessment access for staff who had cremation-booking access), migration_guide_permission.sql (Guide access) and migration_cremation_progress.sql (cremation progress).</span></li>
+        <li>☐ 專案編號修復與保護（<b>請按次序</b>）：先執行 <code>migration_repair_rsl_project_numbers.sql</code>（只會從備註回填既有的 RSL 編號，不會猜測新號）；再執行 <code>migration_case_no_unique.sql</code> <b>第 1 步診斷重複</b>，確認沒有重複後才執行第 2 步建立 UNIQUE。<span class="en">Project-number repair &amp; protection, in order: run migration_repair_rsl_project_numbers.sql (backfills existing RSL numbers from notes only); then step 1 of migration_case_no_unique.sql to check duplicates, and only then step 2 to add UNIQUE.</span></li>
+        <li>☐ 確認「預約接送訂金」及火化方案（風／雲／星之旅）均為 Active 並發佈到 Headless 管道。<span class="en">Confirm the deposit product and the cremation plans are Active and on the Headless channel.</span></li>
+        <li>☐ 以一張測試訂金試用「訂金跟進」：產生付款連結 → 付款 → 確認後台自動變「已付款」，並確認該訂單沒有出現在紀念品訂單。<span class="en">Test deposit follow-up with a test deposit: generate a payment link → pay → confirm it turns Paid automatically and does not appear under souvenir orders.</span></li>
+        <li>☐ 確認 Shopify 訂單號（發票編號）的前綴，並使網站文案與實際一致（網站目前描述為 <code>#RS-</code>）。<span class="en">Confirm the Shopify order-number (invoice) prefix and keep site copy consistent (the site currently says #RS-).</span></li>
+        <li>☐ 以非管理員員工帳戶測試：有權限的頁面可正常操作；沒有權限時，匯出（例如 /api/export/deposits）會被拒絕。<span class="en">Test with a non-admin staff account: permitted pages work; without permission, exports (e.g. /api/export/deposits) are refused.</span></li>
+        <li>☐ 以 iPhone 測試：打開導覽選單時頂部不會移動；轉頁不閃動（需 iOS 18.2 或以上）。<span class="en">Test on iPhone: the header stays still when the menu is open; page changes don't flash (needs iOS 18.2+).</span></li>
+        <li>☐ 於 Supabase diyxcx 執行 <code>db/migration_site_content.sql</code>（啟用後台「網站內容」，並把回覆知識庫四則收費範本改用收費代號）。<span class="en">Run db/migration_site_content.sql in Supabase diyxcx (enables Site content and switches the four price replies to price tokens).</span></li>
+        <li>☐ 於 Supabase diyxcx 執行 <code>db/migration_product_order_project_no.sql</code>（紀念品訂單自動產生專案編號；執行後打開「紀念品訂單」頁即為現有訂單補上編號）。<span class="en">Run db/migration_product_order_project_no.sql in Supabase diyxcx (auto project numbers for keepsake orders; open the Souvenir orders page afterwards to fill in existing orders).</span></li>
+        <li>☐ 於 Supabase diyxcx 執行 <code>db/migration_20261007_admin_upgrade.sql</code>（測試記錄、網站內容版本記錄、客戶檔案合併）；執行後到紀念品訂單按「同步 Shopify 訂單」，自動標記 Shopify 測試訂單。<span class="en">Run db/migration_20261007_admin_upgrade.sql in Supabase diyxcx (test records, Site content versions, customer merges), then click Sync Shopify orders to mark Shopify test orders.</span></li>
+        <li>☐ 於 Supabase diyxcx 執行 <code>db/migration_review_invites.sql</code>（服務後邀請評價）；如有 Google「撰寫評論」直接連結，設定 Admin 環境變數 <code>NEXT_PUBLIC_GOOGLE_REVIEW_URL</code>。<span class="en">Run db/migration_review_invites.sql in Supabase diyxcx (review invitations); if you have a direct Google 'write a review' link, set NEXT_PUBLIC_GOOGLE_REVIEW_URL in the Admin environment.</span></li>
+        <li>☐ 開「同步狀態」頁確認全部綠燈。<span class="en">Open the Sync status page and confirm all green.</span></li>
+      </ul>
+
+      <h3>日後（轉用自家網域時）<span class="en">Later (when moving to a custom domain)</span></h3>
+      <ul class="tight">
+        <li>☐ 更新 Shopify 主題 <code>layout/theme.liquid</code> 內的導向網址。<span class="en">Update the redirect URL in the Shopify theme's layout/theme.liquid.</span></li>
+        <li>☐ 更新網站 <code>sitemap.xml</code> 與各頁 canonical／hreflang 的網域。<span class="en">Update the domain in sitemap.xml and each page's canonical/hreflang.</span></li>
+        <li>☐ 設定 Landing <code>SITE_URL</code> 及 Admin <code>NEXT_PUBLIC_LANDING_URL</code> 為新網域，並 Redeploy。<span class="en">Set Landing SITE_URL and Admin NEXT_PUBLIC_LANDING_URL to the new domain, then redeploy.</span></li>
+      </ul>
+    </section>
+
+    <footer>RESOUL 營運手冊 · 內部參考文件。系統：GitHub · Vercel · Supabase · Shopify。最後更新：2026-11-01。<span class="en" style="display:inline">RESOUL Operations Manual · internal reference. Last updated 2026-11-01.</span></footer>
+  </main>
+</div>
+
+<script>
+  (function(){
+    var links=[].slice.call(document.querySelectorAll('nav.toc a')),map={};
+    links.forEach(function(a){map[a.getAttribute('href').slice(1)]=a;});
+    if(!('IntersectionObserver' in window))return;
+    var obs=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){links.forEach(function(a){a.classList.remove('active');});if(map[e.target.id])map[e.target.id].classList.add('active');}});},{rootMargin:'-10% 0px -80% 0px'});
+    document.querySelectorAll('main section').forEach(function(s){obs.observe(s);});
+  })();
+</script>
