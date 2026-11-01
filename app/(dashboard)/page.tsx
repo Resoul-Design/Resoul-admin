@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { loadCountableEntries } from "@/lib/project-entries";
-import { getOrdersSinceCached, getProductsCountCached } from "@/lib/revenue";
+import { countableOrders, getOrdersSinceCached, getProductsCountCached } from "@/lib/revenue";
 import { getStaff, hasModule } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { followUpKind, type FollowUpRow } from "@/lib/deposit-followup";
@@ -203,7 +203,7 @@ export default async function OverviewPage() {
   const revByMonth: Record<string, number> = {};
   const cntByMonth: Record<string, number> = {};
   let currency = "HKD";
-  for (const o of ordersRes.rows) {
+  for (const o of await countableOrders(ordersRes.rows)) {
     const m = o.createdAt.slice(0, 7);
     revByMonth[m] = (revByMonth[m] || 0) + o.amount;
     cntByMonth[m] = (cntByMonth[m] || 0) + 1;

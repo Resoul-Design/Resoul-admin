@@ -113,6 +113,9 @@ export async function shopifyGraphQL<T = unknown>(
 }
 
 export type OrderLite = {
+  id: string;
+  name: string;
+  test: boolean; // Shopify 測試付款；是否計入收入由 lib/revenue.ts countableOrders 按後台測試標記決定
   createdAt: string;
   amount: number;
   currency: string;
@@ -124,6 +127,8 @@ type OrdersPageResp = {
     edges: {
       cursor: string;
       node: {
+        id: string;
+        name: string;
         createdAt: string;
         cancelledAt: string | null;
         test?: boolean;
@@ -148,7 +153,7 @@ export async function fetchOrdersSince(
   const query = `query Orders($after: String) {
     orders(first: 250, after: $after, sortKey: CREATED_AT, query: "created_at:>=${sinceDate}") {
       edges { cursor node {
-        createdAt cancelledAt test
+        id name createdAt cancelledAt test
         customAttributes { key value }
         totalPriceSet { shopMoney { amount currencyCode } }
       } }
@@ -160,8 +165,10 @@ export async function fetchOrdersSince(
     const edges = d.orders.edges;
     for (const e of edges) {
       if (!opts.includeCancelled && e.node.cancelledAt) continue;
-      if (e.node.test) continue; // Shopify 測試付款不計入收入
       rows.push({
+        id: e.node.id,
+        name: e.node.name,
+        test: !!e.node.test,
         createdAt: e.node.createdAt,
         amount: Number(e.node.totalPriceSet.shopMoney.amount),
         currency: e.node.totalPriceSet.shopMoney.currencyCode || "HKD",

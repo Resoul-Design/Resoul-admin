@@ -3,7 +3,7 @@ import Link from "next/link";
 import { loadCountableEntries } from "@/lib/project-entries";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getOrdersSinceCached } from "@/lib/revenue";
+import { countableOrders, getOrdersSinceCached } from "@/lib/revenue";
 
 export const dynamic = "force-dynamic";
 
@@ -82,7 +82,7 @@ export default async function FinancePage({
   const bookings = (bkRes.data ?? []) as Booking[];
   const deposits = (depRes.data ?? []) as Deposit[];
   const shopErr = ordersRes.ok ? "" : ordersRes.error || "error";
-  const orders = ordersRes.rows;
+  const orders = await countableOrders(ordersRes.rows);
 
   // 產品銷售：只計「非火化」Shopify 訂單（火化訂單帶 payment_ref，歸入火化收入，避免重複計算）
   const productByMonth: Record<string, number> = {};
