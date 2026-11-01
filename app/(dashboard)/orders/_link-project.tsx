@@ -11,10 +11,11 @@ export function LinkProjectPanel({ orderId, current }: { orderId: string; curren
   const close = useCloseRowActions();
   const [value, setValue] = useState(current === "—" ? "" : current);
   const [error, setError] = useState("");
+  const [warning, setWarning] = useState("");
   const [pending, start] = useTransition();
   return (
     <div className="space-y-3 text-sm">
-      <p className="leading-6 text-[var(--soft)]">輸入客人原有的專案編號（RSL-…），此訂單會歸入同一專案。系統會先確認編號存在於接送、火化或其他紀念品記錄。</p>
+      <p className="leading-6 text-[var(--soft)]">輸入客人原有的專案編號（RSL-…），此訂單會歸入同一專案，並同步更新 Shopify 訂單的專案編號及備註。系統會先確認編號存在於接送、火化或其他紀念品記錄。</p>
       <input
         value={value}
         onChange={(e) => setValue(e.target.value.toUpperCase())}
@@ -22,15 +23,20 @@ export function LinkProjectPanel({ orderId, current }: { orderId: string; curren
         className="w-full rounded-lg border border-[var(--line)] bg-white px-3 py-2 outline-none focus:border-[var(--gold)]"
       />
       {error && <p className="text-red-700" role="alert">{error}</p>}
+      {warning && <p className="text-amber-700" role="alert">{warning}</p>}
       <button
         type="button"
         disabled={pending || !value.trim()}
         onClick={() =>
           start(async () => {
             setError("");
+            setWarning("");
             const res = await linkOrderProject(orderId, value);
             if (res.error) setError(res.error);
-            else {
+            else if (res.warning) {
+              setWarning(res.warning);
+              router.refresh();
+            } else {
               close();
               router.refresh();
             }
