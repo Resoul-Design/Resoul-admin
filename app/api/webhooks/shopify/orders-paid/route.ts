@@ -74,11 +74,11 @@ export async function POST(request: Request) {
   // 核對金額：實付少於預約收費金額（或未設定金額）時不標記已付款，改為付款失敗並記錄於備註
   const { data: current } = await supabase
     .from("cremation_bookings")
-    .select("id, payment_amount, payment_status, notes")
+    .select("*") // 用 * 以兼容未執行訂金抵扣 migration（deposit_credit）的資料庫
     .eq("payment_ref", paymentRef);
   const pendingRows = (current || []).filter((row) => row.payment_status !== "paid");
   if (pendingRows.length) {
-    const check = checkPaidAmount(pendingRows[0].payment_amount, order.total_price != null ? Number(order.total_price) : null, order.currency, orderName);
+    const check = checkPaidAmount(pendingRows[0].payment_amount, order.total_price != null ? Number(order.total_price) : null, order.currency, orderName, Number(pendingRows[0].deposit_credit || 0));
     if (!check.ok) {
       for (const row of pendingRows) {
         await supabase.from("cremation_bookings").update({ payment_status: "failed", notes: appendNote(row.notes, check.note) }).eq("id", row.id);

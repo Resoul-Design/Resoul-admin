@@ -9,6 +9,7 @@ import { NewBookingOrder } from "../_booking-order";
 import { FOLLOW_UP_ACTION, FOLLOW_UP_LABEL, FOLLOW_UP_ORDER, followUpKind, needsPaymentLink } from "@/lib/deposit-followup";
 import { EditDepositInline } from "./_edit";
 import { RowActions, type RowAction } from "../_row-actions";
+import { DepositCreditInfo } from "../_deposit-credit";
 import Link from "next/link";
 import { Fragment, Suspense } from "react";
 import { DepositsToolbar } from "./_toolbar";
@@ -187,6 +188,7 @@ function depositActions(r: DepositRow, fu: FollowUpItem | undefined, staffName: 
   if (linked && canBook) list.push({ kind: "link", key: "cremation", label: `🕊️ 查看火化預約（${CREMATION_STATUS[linked.status] || linked.status}）`, href: `/bookings?q=${encodeURIComponent(project)}` });
   if (wa) list.push({ kind: "link", key: "wa", label: "💬 WhatsApp 客人", href: wa, whatsapp: true, confirm: WHATSAPP_CONFIRM });
   if (cal) list.push({ kind: "link", key: "cal", label: "📅 加入日曆", href: cal });
+  if (r.payment_status === "paid") list.push({ kind: "panel", key: "credit", label: "💰 訂金抵扣狀態", title: "接送訂金抵扣", node: <DepositCreditInfo depositId={r.id} /> });
   if (r.payment_status === "paid" && r.shopify_order_name) list.push({ kind: "link", key: "invoice-pdf", label: "🧾 發票 PDF", href: `/print/invoices?refs=deposit:${r.id}` });
   if (invoice) list.push({ kind: "link", key: "invoice", label: "🛒 Shopify 訂單", href: invoice });
   list.push({ kind: "panel", key: "test", label: r.is_test ? "🧪 取消測試標記" : "🧪 標記為測試", title: "測試記錄", node: <TestFlagPanel entity="deposit" id={r.id} isTest={!!r.is_test} /> });

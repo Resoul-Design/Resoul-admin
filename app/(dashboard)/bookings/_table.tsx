@@ -11,6 +11,7 @@ import { WHATSAPP_CONFIRM, whatsappHref } from "./_whatsapp";
 import { RowActions, type RowAction } from "../_row-actions";
 import { TestFlagPanel } from "../_test-controls";
 import { ManualPaidPanel } from "../_manual-paid";
+import { DepositCreditPanel } from "../_deposit-credit";
 import { ServiceProgress } from "../_service-progress";
 import type { ProgressData } from "@/lib/booking-progress";
 
@@ -112,6 +113,7 @@ function rowActions(r: BookingRow, staffName: string): RowAction[] {
   if (r.invoiceHref) list.push({ kind: "link", key: "invoice-pdf", label: "🧾 發票 PDF", href: r.invoiceHref });
   if (r.sourceKey === "cremation" && r.booking.payment_status !== "paid" && r.statusKey !== "cancelled") {
     list.push({ kind: "panel", key: "markpaid", label: "✅ 確認已收款（人手）", title: "確認已收款", node: <ManualPaidPanel entity="cremation" id={r.id} expected={r.booking.payment_amount != null ? Number(r.booking.payment_amount) : null} /> });
+    list.push({ kind: "panel", key: "credit", label: "💰 套用接送訂金", title: "接送訂金抵扣", node: <DepositCreditPanel target={{ kind: "cremation", id: r.id }} /> });
   }
   if (r.shopifyOrderUrl) list.push({ kind: "link", key: "invoice", label: "🛒 Shopify 訂單", href: r.shopifyOrderUrl });
   list.push({ kind: "panel", key: "test", label: r.isTest ? "🧪 取消測試標記" : "🧪 標記為測試", title: "測試記錄", node: <TestFlagPanel entity={r.sourceKey} id={r.id} isTest={r.isTest} /> });

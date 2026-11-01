@@ -146,6 +146,10 @@ function describe(l: Log, names: Names): string {
       return `跟進${quote(who)}：${parts.join("｜")}`;
     case "link_order_project":
       return `紀念品訂單${quote(who)}${d}`;
+    case "apply_deposit_credit":
+      return `接送訂金${quote(who)}用於抵扣${d ? `：${d}` : ""}`;
+    case "remove_deposit_credit":
+      return `取消接送訂金${quote(who)}的抵扣${d ? `（${d}）` : ""}`;
     case "mark_paid_manually":
       return `人手確認收款${quote(who)}${d ? `：${d}` : ""}`;
     case "merge_customer":

@@ -10,6 +10,7 @@ import { Fragment, useMemo, useState } from "react";
 import { RowActions, type RowAction } from "../_row-actions";
 import { TestFlagPanel } from "../_test-controls";
 import { LinkProjectPanel } from "./_link-project";
+import { DepositCreditPanel } from "../_deposit-credit";
 
 export type OrderRow = {
   id: string;
@@ -50,6 +51,7 @@ function rowActions(r: OrderRow, staffName: string): RowAction[] {
   }
   if (r.whatsapp && !r.cancelled) list.push({ kind: "link", key: "wa", label: r.invoiceUrl ? "💬 WhatsApp 傳付款連結" : "💬 WhatsApp 客人", href: r.whatsapp, whatsapp: true, confirm: WHATSAPP_CONFIRM });
   if (r.invoiceUrl) list.push({ kind: "link", key: "pay", label: "💳 開啟付款頁", href: r.invoiceUrl });
+  if (r.invoiceUrl && !r.cancelled) list.push({ kind: "panel", key: "credit", label: "💰 套用接送訂金", title: "接送訂金抵扣", node: <DepositCreditPanel target={{ kind: "draft", id: r.id }} /> });
   if (r.printHref) list.push({ kind: "link", key: "invoice", label: "🧾 發票 PDF", href: r.printHref });
   if (!r.invoiceUrl) list.push({ kind: "panel", key: "project", label: "🔗 連結專案", title: "連結專案", node: <LinkProjectPanel orderId={r.id} current={r.projectNo} /> });
   if (!r.invoiceUrl) list.push({ kind: "panel", key: "test", label: r.isTest ? "🧪 取消測試標記" : "🧪 標記為測試", title: "測試記錄", node: <TestFlagPanel entity="order" id={r.id} isTest={!!r.isTest} /> });
