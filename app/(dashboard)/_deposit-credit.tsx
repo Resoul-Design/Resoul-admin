@@ -14,6 +14,7 @@ export function DepositCreditPanel({ target }: { target: CreditTarget }) {
   const [status, setStatus] = useState<CreditStatus | null>(null);
   const [pick, setPick] = useState("");
   const [error, setError] = useState("");
+  const [warning, setWarning] = useState("");
   const [pending, start] = useTransition();
 
   function load() {
@@ -26,11 +27,13 @@ export function DepositCreditPanel({ target }: { target: CreditTarget }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(load, [target.id]);
 
-  function run(action: () => Promise<{ error?: string }>) {
+  function run(action: () => Promise<{ error?: string; warning?: string }>) {
     setError("");
+    setWarning("");
     start(async () => {
       const res = await action();
       if (res.error) return setError(res.error);
+      if (res.warning) setWarning(res.warning);
       router.refresh();
       const s = await getCreditStatus(target);
       setStatus(s);
@@ -43,7 +46,8 @@ export function DepositCreditPanel({ target }: { target: CreditTarget }) {
 
   return (
     <div className="space-y-3 text-sm">
-      <p className="leading-6 text-[var(--soft)]">客人已付的接送訂金可抵扣此單的收費。套用後，Shopify 付款頁會加入「接送訂金抵扣」，客人只需支付餘額。每筆訂金只可使用一次。</p>
+      <p className="leading-6 text-[var(--soft)]">客人已付的接送訂金可抵扣此單的收費（只限同一專案編號）。套用後，Shopify 付款頁會加入「接送訂金抵扣」，客人只需支付餘額；Shopify 及後台備註會記錄抵扣。每筆訂金只可使用一次。</p>
+      {status.projectNo && <p>專案編號：<b>{status.projectNo}</b></p>}
       {status.targetAmount != null && <p>此單收費：<b>{hk(status.targetAmount)}</b></p>}
 
       {status.applied ? (
@@ -61,7 +65,7 @@ export function DepositCreditPanel({ target }: { target: CreditTarget }) {
               <label key={d.id} className={"flex cursor-pointer items-start gap-2 rounded-xl border p-3 " + (pick === d.id ? "border-[var(--gold)] bg-[var(--cream)]" : "border-[var(--line)] bg-white")}>
                 <input type="radio" name="credit" checked={pick === d.id} onChange={() => setPick(d.id)} className="mt-1" />
                 <span>
-                  <b>{hk(d.amount)}</b> · {d.projectNo || "未有專案編號"}{d.isTest ? "（測試）" : ""}
+                  <b>{hk(d.amount)}</b>{d.orderName ? ` · ${d.orderName}` : ""}{d.isTest ? "（測試）" : ""}
                   <span className="block text-xs text-[var(--soft)]">{[d.owner, d.pet].filter(Boolean).join(" · ")}{d.paidAt ? ` · ${day(d.paidAt)} 付款` : ""}</span>
                 </span>
               </label>
@@ -72,8 +76,9 @@ export function DepositCreditPanel({ target }: { target: CreditTarget }) {
           </button>
         </>
       ) : (
-        <p className="rounded-xl border border-[var(--line)] bg-white p-3 text-[var(--soft)]">未有可抵扣的接送訂金。系統只會列出同一專案編號或同一電話、已付款而未使用的訂金。</p>
+        <p className="rounded-xl border border-[var(--line)] bg-white p-3 text-[var(--soft)]">此專案編號未有可抵扣的接送訂金。系統只會列出同一專案編號、已付款而未使用的訂金。</p>
       )}
+      {warning && <p className="text-amber-700">{warning}</p>}
       {(error || status.error) && <p className="text-red-700">{error || status.error}</p>}
     </div>
   );

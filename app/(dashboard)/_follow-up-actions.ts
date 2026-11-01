@@ -140,15 +140,15 @@ export async function createFollowPaymentLink(entity: FollowEntity, ref: string)
         customAttributes: attrs,
       };
   // 已套用接送訂金：付款頁加入抵扣折扣（未執行 migration 時略過）
-  const { data: credit } = await supabase.from("deposit_bookings").select("credit_amount, project_no").eq("credit_target", `cremation:${ref}`).maybeSingle();
+  const { data: credit } = await supabase.from("deposit_bookings").select("credit_amount, project_no, shopify_order_name").eq("credit_target", `cremation:${ref}`).maybeSingle();
   const creditAmount = Math.min(Number(credit?.credit_amount || 0), amount);
+  const hk = (n: number) => `HK$${n.toLocaleString("en-US", { maximumFractionDigits: 2 })}`;
+  const creditText = creditAmount > 0 ? `${credit?.shopify_order_name ? `接送訂單 ${credit.shopify_order_name}` : "接送訂金"} ${hk(creditAmount)}（${credit?.project_no || projectNo}）` : "";
   const input = {
-    ...(creditAmount > 0
-      ? { appliedDiscount: { title: "接送訂金抵扣", description: `已付接送訂金${credit?.project_no ? `（${credit.project_no}）` : ""}`, value: creditAmount, valueType: "FIXED_AMOUNT" } }
-      : {}),
-    note: ["Resoul Admin 火化預約（付款跟進）", `主人：${b.owner_name || "—"}`, `電話：${b.contact || "—"}`, b.pet_name ? `寵物：${b.pet_name}` : "", projectNo !== "—" ? `專案編號：${projectNo}` : ""].filter(Boolean).join("\n"),
-    tags: ["Resoul Admin", "Cremation"],
-    customAttributes: attrs,
+    ...(creditText ? { appliedDiscount: { title: "接送訂金抵扣", description: creditText, value: creditAmount, valueType: "FIXED_AMOUNT" } } : {}),
+    note: ["Resoul Admin 火化預約（付款跟進）", `主人：${b.owner_name || "—"}`, `電話：${b.contact || "—"}`, b.pet_name ? `寵物：${b.pet_name}` : "", projectNo !== "—" ? `專案編號：${projectNo}` : "", creditText ? `💰 接送訂金抵扣：${creditText}` : ""].filter(Boolean).join("\n"),
+    tags: ["Resoul Admin", "Cremation", ...(creditText ? ["Deposit Credit"] : [])],
+    customAttributes: [...attrs, ...(creditText ? [{ key: "Deposit credit", value: creditText }] : [])],
     lineItems: [lineItem],
   };
   try {
