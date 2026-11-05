@@ -2,6 +2,7 @@ import { TestingNotice } from "../_testing-notice";
 import { bookingFollowUps } from "@/lib/follow-up-server";
 import { PageHeader } from "../_page-header";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { draftOrderNames } from "@/lib/draft-names";
 import { getStaff, hasModule } from "@/lib/auth";
 import { loadCatalog } from "@/lib/catalog";
 import { NewBookingOrder } from "../_booking-order";
@@ -184,6 +185,16 @@ export async function BookingsPage({ mode, query = "", onlyFollow = false, showT
 
   // 查看測試記錄時不顯示跟進
   const follow = await bookingFollowUps(showTests ? [] : bookings, mode === "vet" ? "vet" : "cremation");
+  // 訂單編號：已付款＝Shopify 訂單號（#RS-…）；未付款而有付款連結＝草稿編號（#D…）
+  const draftIdByBooking = new Map<string, string>();
+  {
+    const unpaidIds = bookings.filter((b) => !b.shopify_order_name).map((b) => b.id);
+    for (let i = 0; i < unpaidIds.length; i += 200) {
+      const { data: marks } = await supabase.from("follow_up_marks").select("ref, payment_draft_id").in("entity", ["cremation", "vet"]).in("ref", unpaidIds.slice(i, i + 200));
+      for (const m of (marks || []) as { ref: string; payment_draft_id: string | null }[]) if (m.payment_draft_id) draftIdByBooking.set(m.ref, m.payment_draft_id);
+    }
+  }
+  const draftNames = await draftOrderNames([...draftIdByBooking.values()]);
 
   const tableRows: BookingRow[] = bookings.map((b) => {
     // 專案編號僅限跨服務沿用的 RSL 編號；Shopify 訂單號屬付款發票。
@@ -202,6 +213,7 @@ export async function BookingsPage({ mode, query = "", onlyFollow = false, showT
       isTest: isTestRow(b),
       created: b.created_at?.slice(0, 16).replace("T", " ") || "",
       invoiceNo,
+      orderNo: b.shopify_order_name || (draftNames.get(draftIdByBooking.get(b.id) || "") ? `${draftNames.get(draftIdByBooking.get(b.id) || "")}（草稿）` : ""),
       paymentRef: (b as { payment_ref?: string | null }).payment_ref || "",
       // 時間欄可能是 14:00:00（只顯示 14:00）或時段文字（原樣顯示）
       serviceTime: /^\d{2}:\d{2}:\d{2}$/.test(b.service_time || "") ? (b.service_time || "").slice(0, 5) : b.service_time || "",
@@ -224,7 +236,7 @@ export async function BookingsPage({ mode, query = "", onlyFollow = false, showT
       timePref,
       calUrl: gcalUrl(b, timePref, ""),
       waText: `你好，我哋係 RESOUL 🐾。已收到${b.pet_name || "毛孩"}嘅${vet ? "查詢" : "火化預約"}${invoiceNo ? "（編號 " + invoiceNo + "）" : ""}。想同你確認接送時間同安排，請問方便嗎？`,
-      search: [b.owner_name, b.contact, b.pet_name, invoiceNo, b.plan, b.pickup_address].filter(Boolean).join(" ").toLowerCase(),
+      search: [b.owner_name, b.contact, b.pet_name, invoiceNo, b.shopify_order_name, b.plan, b.pickup_address].filter(Boolean).join(" ").toLowerCase(),
       invoiceHref: b.payment_status === "paid" && b.shopify_order_name ? `/print/invoices?refs=booking:${b.id}` : null,
       shopifyOrderUrl: b.shopify_order_id
         ? `https://${shopDomain()}/admin/orders/${String(b.shopify_order_id).split("/").pop()}`
