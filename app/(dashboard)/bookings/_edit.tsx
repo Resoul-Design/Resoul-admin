@@ -1,8 +1,10 @@
 "use client";
 
+import { useState } from "react";
 import { useCloseRowActions } from "../_row-actions";
 import { updateBooking } from "./actions";
 import { isRslProjectNo } from "@/lib/order-label";
+import type { DraftCatalogProduct } from "@/lib/catalog";
 
 export type BookingData = {
   id: string;
@@ -58,11 +60,45 @@ function Field({
 const inputCls =
   "w-full px-3 py-2 rounded-lg border border-[var(--line)] bg-white outline-none focus:border-[var(--gold)]";
 
-// 操作視窗內的編輯表格
-export function EditBookingInline({ booking }: { booking: BookingData }) {
+const normWeight = (v: string) => v.replace(/\s+/g, "").replace(/[–—-]/g, "-").toLowerCase();
+const priceText = (v: string | null) => (v == null || v === "" ? "" : String(Number(v)));
+
+// 由備註讀取已揀的體重款式（「產品: 星之旅 Star Journey（1.1–5 kg）」或「體重: 1.1–5 kg」）
+function weightFromNotes(notes: string | null) {
+  const text = notes || "";
+  return text.match(/產品[:：]\s*[^|｜]*?[（(]([^)）]*kg)[)）]/i)?.[1]?.trim() || text.match(/體重[:：]\s*([^|｜]+)/)?.[1]?.trim() || "";
+}
+
+// 操作視窗內的編輯表格；products＝Shopify 火化方案（只限火化預約），揀方案及體重後自動帶出收費
+export function EditBookingInline({ booking, products = [] }: { booking: BookingData; products?: DraftCatalogProduct[] }) {
   const close = useCloseRowActions();
   const b = booking;
   const projectNo = isRslProjectNo(b.case_no) ? b.case_no?.toUpperCase() : "";
+  const paid = b.payment_status === "paid";
+  const productOf = (name: string) => (name ? products.find((p) => p.title.includes(name)) : undefined);
+  const [plan, setPlan] = useState(b.plan || "");
+  const [variantId, setVariantId] = useState(() => {
+    const weight = normWeight(weightFromNotes(b.notes));
+    return (weight && productOf(b.plan || "")?.variants.find((v) => normWeight(v.title) === weight)?.id) || "";
+  });
+  const [amount, setAmount] = useState(b.payment_amount != null ? String(b.payment_amount) : "");
+  const variants = productOf(plan)?.variants || [];
+
+  function changePlan(next: string) {
+    const oldTitle = variants.find((v) => v.id === variantId)?.title;
+    setPlan(next);
+    if (!next) return setVariantId("");
+    // 轉方案：沿用同一體重並更新收費；未揀體重則清空收費，等同事揀選
+    const same = productOf(next)?.variants.find((v) => v.title === oldTitle);
+    setVariantId(same?.id || "");
+    if (!paid) setAmount(same ? priceText(same.price) : "");
+  }
+
+  function changeWeight(id: string) {
+    setVariantId(id);
+    const v = variants.find((x) => x.id === id);
+    if (v && !paid) setAmount(priceText(v.price));
+  }
 
   return (
     <form
@@ -110,7 +146,7 @@ export function EditBookingInline({ booking }: { booking: BookingData }) {
       </Field>
 
       <Field label="方案">
-        <select name="plan" defaultValue={b.plan || ""} className={inputCls}>
+        <select name="plan" value={plan} onChange={(e) => changePlan(e.target.value)} className={inputCls}>
           <option value="">未定</option>
           {PLANS.map((p) => (
             <option key={p} value={p}>
@@ -119,8 +155,20 @@ export function EditBookingInline({ booking }: { booking: BookingData }) {
           ))}
         </select>
       </Field>
+      {products.length > 0 && (
+        <Field label="寵物體重">
+          <select name="variant_id" value={variantId} onChange={(e) => changeWeight(e.target.value)} disabled={!variants.length} className={inputCls + " disabled:opacity-60"}>
+            <option value="">{variants.length ? "請選擇體重" : "請先選方案"}</option>
+            {variants.map((v) => (
+              <option key={v.id} value={v.id}>
+                {v.title}{v.price ? ` · HK$${Number(v.price).toLocaleString("en-US")}` : ""}
+              </option>
+            ))}
+          </select>
+        </Field>
+      )}
       <Field label="收費金額（HK$）">
-        <input name="payment_amount" inputMode="numeric" defaultValue={b.payment_amount != null ? String(b.payment_amount) : ""} readOnly={b.payment_status === "paid"} className={inputCls} placeholder="與客人確認後填寫" title={b.payment_status === "paid" ? "已付款，不能修改金額" : ""} />
+        <input name="payment_amount" inputMode="numeric" value={amount} onChange={(e) => setAmount(e.target.value)} readOnly={paid} className={inputCls} placeholder="與客人確認後填寫" title={paid ? "已付款，不能修改金額" : ""} />
       </Field>
       <Field label="接送地址">
         <input name="pickup_address" defaultValue={b.pickup_address || ""} className={inputCls} />

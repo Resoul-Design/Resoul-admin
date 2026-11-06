@@ -291,7 +291,7 @@ export async function BookingsPage({ mode, query = "", onlyFollow = false, showT
           {mode === "vet" ? "暫無獸醫評估記錄。" : "暫無火化預約記錄。"}
         </div>
       ) : (
-        <BookingsTable key={query + (onlyFollow ? ":f" : "")} rows={tableRows} paymentReady={paymentColumnsReady} sourceMode={mode} initialQuery={query} staffName={staffName} followReady={follow.ready} initialOnlyFollow={onlyFollow} />
+        <BookingsTable key={query + (onlyFollow ? ":f" : "")} rows={tableRows} paymentReady={paymentColumnsReady} sourceMode={mode} initialQuery={query} staffName={staffName} followReady={follow.ready} initialOnlyFollow={onlyFollow} products={cremationCatalog?.products} />
       )}
     </div>
   );

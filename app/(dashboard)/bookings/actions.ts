@@ -5,6 +5,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { hasModule, requireModule } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import { isRslProjectNo } from "@/lib/order-label";
+import { loadCatalog } from "@/lib/catalog";
+import { shopifyGraphQL } from "@/lib/shopify";
 
 const VALID = [
   "new",
@@ -56,12 +58,46 @@ export async function updateBooking(formData: FormData) {
   };
   // 收費金額（確認方案後填寫；已付款不可修改；獸醫評估不收費）
   const rawAmount = formData.get("payment_amount");
+  let unpaid = false;
+  let priceChanged = false;
   if (rawAmount !== null && key === "bookings") {
-    const { data: payRow } = await supabase.from("cremation_bookings").select("payment_status").eq("id", id).maybeSingle();
-    if (payRow?.payment_status !== "paid") {
+    const { data: payRow } = await supabase.from("cremation_bookings").select("payment_status, payment_amount").eq("id", id).maybeSingle();
+    unpaid = payRow?.payment_status !== "paid";
+    if (unpaid) {
       const text = String(rawAmount).replace(/[,\s]/g, "");
       const n = text === "" ? null : Number(text);
-      if (n === null || (Number.isInteger(n) && n >= 0 && n <= 1_000_000)) update.payment_amount = n;
+      if (n === null || (Number.isInteger(n) && n >= 0 && n <= 1_000_000)) {
+        update.payment_amount = n;
+        priceChanged = n !== (payRow?.payment_amount != null ? Number(payRow.payment_amount) : null);
+      }
+    }
+  }
+  // 揀了體重款式：備註記錄產品（付款連結及發票據此配對 Shopify 款式及產品代碼），並移除「待確認」字句
+  const variantId = g("variant_id");
+  if (variantId && key === "bookings") {
+    const { products } = await loadCatalog("cremation");
+    const product = products.find((p) => (!plan || p.title.includes(plan)) && p.variants.some((v) => v.id === variantId));
+    const variant = product?.variants.find((v) => v.id === variantId);
+    if (product && variant) {
+      const label = variant.title === "Default Title" ? product.title : `${product.title}（${variant.title}）`;
+      const before = String(update.notes || "");
+      const kept = before.split(/\s*[|｜]\s*/).filter((part) => part && !/^(產品|體重)[:：]/.test(part) && !part.startsWith("方案及收費：待與客人確認"));
+      const at = kept.findIndex((part) => part.startsWith("專案編號"));
+      kept.splice(at + 1, 0, `產品: ${label}`);
+      update.notes = kept.join(" | ");
+      if (unpaid && !before.includes(`產品: ${label}`)) priceChanged = true;
+    }
+  }
+  // 收費或款式改變：作廢舊付款連結，避免客人以舊價錢付款；下次產生連結時按新資料建立
+  if (priceChanged) {
+    const { data: mark } = await supabase.from("follow_up_marks").select("payment_draft_id").eq("entity", "cremation").eq("ref", id).maybeSingle();
+    if (mark?.payment_draft_id) {
+      try {
+        await shopifyGraphQL(`mutation DeleteStaleDraft($input: DraftOrderDeleteInput!) { draftOrderDelete(input: $input) { deletedId userErrors { message } } }`, { input: { id: mark.payment_draft_id } });
+      } catch (e) {
+        console.error("[booking_stale_draft]", e instanceof Error ? e.message : "unknown");
+      }
+      await supabase.from("follow_up_marks").update({ payment_link: null, payment_link_at: null, payment_draft_id: null }).eq("entity", "cremation").eq("ref", id);
     }
   }
   // 只有跨服務沿用的 RSL 編號可以寫入 case_no。
