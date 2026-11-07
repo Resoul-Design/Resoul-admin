@@ -2,8 +2,8 @@ import { COMPANY } from "@/lib/company";
 import type { InvoiceDoc } from "@/lib/invoices";
 
 // 發票版面（列印頁及預覽共用）
-const money = (n: number) => "HK$" + Number(n).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-const date = (iso: string) =>
+export const invoiceMoney = (n: number) => "HK$" + Number(n).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+export const invoiceDate = (iso: string) =>
   iso ? new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "Asia/Hong_Kong" }) : "—";
 
 export const INVOICE_CSS = `
@@ -34,8 +34,13 @@ export const INVOICE_CSS = `
 @media print{.no-print{display:none!important}html,body{background:#fff!important}.inv{margin:0 auto}}
 `;
 
+export const invoiceRemarks = (d: InvoiceDoc) =>
+  [d.kind, d.project ? `專案編號 Project no.: ${d.project}` : "", d.paymentRef ? `付款參考 Payment ref.: ${d.paymentRef}` : "", "已全數付款 Paid in full"].filter(Boolean);
+
 export function Invoice({ d }: { d: InvoiceDoc }) {
-  const remarks = [d.kind, d.project ? `專案編號 Project no.: ${d.project}` : "", d.paymentRef ? `付款參考 Payment ref.: ${d.paymentRef}` : "", "已全數付款 Paid in full"].filter(Boolean);
+  const remarks = invoiceRemarks(d);
+  const money = invoiceMoney;
+  const date = invoiceDate;
   return (
     <div className="inv">
       <div className="inv-in">

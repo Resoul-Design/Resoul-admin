@@ -112,7 +112,10 @@ function rowActions(r: BookingRow, staffName: string, products?: DraftCatalogPro
   const wa = whatsappHref(r.contact, r.waText);
   if (wa) list.push({ kind: "link", key: "wa", label: "💬 WhatsApp 客人", href: wa, whatsapp: true, confirm: WHATSAPP_CONFIRM });
   if (r.calUrl) list.push({ kind: "link", key: "cal", label: "📅 加入日曆", href: r.calUrl });
-  if (r.invoiceHref) list.push({ kind: "link", key: "invoice-pdf", label: "🧾 發票 PDF", href: r.invoiceHref });
+  if (r.invoiceHref) {
+    list.push({ kind: "link", key: "invoice-pdf", label: "🧾 發票 PDF", href: r.invoiceHref });
+    list.push({ kind: "link", key: "invoice-word", label: "📝 發票 Word", href: r.invoiceHref.replace("/print/invoices?", "/print/invoices/word?") });
+  }
   if (r.sourceKey === "cremation" && r.booking.payment_status !== "paid" && r.statusKey !== "cancelled") {
     list.push({ kind: "panel", key: "markpaid", label: "✅ 確認已收款（人手）", title: "確認已收款", node: <ManualPaidPanel entity="cremation" id={r.id} expected={r.booking.payment_amount != null ? Number(r.booking.payment_amount) : null} /> });
     list.push({ kind: "panel", key: "credit", label: "💰 套用接送訂金", title: "接送訂金抵扣", node: <DepositCreditPanel target={{ kind: "cremation", id: r.id }} /> });

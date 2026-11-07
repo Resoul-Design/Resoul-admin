@@ -14,13 +14,18 @@ export default async function InvoicesPage({ searchParams }: { searchParams: Pro
   const kinds = (Array.isArray(p.kinds) ? p.kinds : (p.kinds || "").split(",")).map((k) => k.trim()).filter(Boolean);
   const docs = await loadInvoices({ refs: p.refs ? p.refs.split(",").map((r) => r.trim()).filter(Boolean) : undefined, from: p.from, to: p.to, kinds }, staff);
   const range = p.from && p.to ? `${p.from} 至 ${p.to}` : "";
+  const wordQuery = new URLSearchParams();
+  if (p.refs) wordQuery.set("refs", p.refs);
+  if (p.from) wordQuery.set("from", p.from);
+  if (p.to) wordQuery.set("to", p.to);
+  if (kinds.length) wordQuery.set("kinds", kinds.join(","));
 
   return (
     <div className="inv-wrap min-h-screen px-3 py-6">
       <style>{INVOICE_CSS}</style>
-      <PrintButton />
+      <PrintButton wordHref={docs.length ? `/print/invoices/word?${wordQuery}` : undefined} />
       <div className="no-print mx-auto mb-2 max-w-[820px] text-sm text-[#6f6156]">
-        {docs.length ? `共 ${docs.length} 張發票${range ? `（付款日期 ${range}）` : ""}。按「列印」並選擇「另存為 PDF」即可下載。` : "沒有符合的已付款記錄（只限已付款並有 Shopify 訂單號的記錄）。"}
+        {docs.length ? `共 ${docs.length} 張發票${range ? `（付款日期 ${range}）` : ""}。按「列印」並選擇「另存為 PDF」，或按「下載 Word」。` : "沒有符合的已付款記錄（只限已付款並有 Shopify 訂單號的記錄）。"}
       </div>
       {docs.map((d) => <Invoice key={d.ref} d={d} />)}
     </div>
