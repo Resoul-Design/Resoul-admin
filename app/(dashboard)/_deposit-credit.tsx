@@ -65,7 +65,7 @@ export function DepositCreditPanel({ target }: { target: CreditTarget }) {
               <label key={d.id} className={"flex cursor-pointer items-start gap-2 rounded-xl border p-3 " + (pick === d.id ? "border-[var(--gold)] bg-[var(--cream)]" : "border-[var(--line)] bg-white")}>
                 <input type="radio" name="credit" checked={pick === d.id} onChange={() => setPick(d.id)} className="mt-1" />
                 <span>
-                  <b>{hk(d.amount)}</b>{d.orderName ? ` · ${d.orderName}` : ""}{d.isTest ? "（測試）" : ""}
+                  <b>{hk(d.amount)}</b>{d.invoiceNo ? ` · 單號 ${d.invoiceNo}` : ""}{d.isTest ? "（測試）" : ""}
                   <span className="block text-xs text-[var(--soft)]">{[d.owner, d.pet].filter(Boolean).join(" · ")}{d.paidAt ? ` · ${day(d.paidAt)} 付款` : ""}</span>
                 </span>
               </label>

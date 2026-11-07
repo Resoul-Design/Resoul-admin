@@ -14,7 +14,7 @@ export default async function DepositProjectPage({ params }: { params: Promise<{
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound();
   const { data: d } = await createAdminClient()
     .from("deposit_bookings")
-    .select("id, created_at, owner_name, contact, pet_name, pet_type, service_date, service_time, pickup_address, status, payment_ref, payment_status, payment_amount, shopify_order_name, paid_at, notes")
+    .select("id, created_at, owner_name, contact, pet_name, pet_type, service_date, service_time, pickup_address, status, payment_ref, payment_status, payment_amount, shopify_order_name, paid_at, notes, invoice_no")
     .eq("id", id)
     .maybeSingle();
   if (!d) notFound();
@@ -31,7 +31,8 @@ export default async function DepositProjectPage({ params }: { params: Promise<{
       badge="接送服務"
       fields={[
         { label: "專案編號", value: projectNo },
-        { label: "付款參考／發票", value: [d.payment_ref, d.shopify_order_name].filter(Boolean).join("　") },
+        { label: "單號", value: d.invoice_no ? String(d.invoice_no) : "—" },
+        { label: "付款參考", value: d.payment_ref || "—" },
         { label: "主人", value: d.owner_name },
         { label: "聯絡電話", value: d.contact },
         { label: "毛孩", value: d.pet_name ? (d.pet_type ? `${d.pet_name}（${d.pet_type}）` : d.pet_name) : d.pet_type },

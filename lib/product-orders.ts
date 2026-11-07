@@ -24,6 +24,7 @@ export type ProductOrderRow = {
   cancelled_at: string | null;
   synced_at: string;
   project_no?: string | null; // 需 db/migration_product_order_project_no.sql
+  invoice_no?: number | null; // 公司單號（db/migration_20261108_company_invoice_no.sql）
   is_test?: boolean; // 需 db/migration_20261007_admin_upgrade.sql
 };
 

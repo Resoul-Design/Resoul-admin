@@ -35,7 +35,7 @@ export const INVOICE_CSS = `
 `;
 
 export const invoiceRemarks = (d: InvoiceDoc) =>
-  [d.orderNo ? `Order No.: ${d.orderNo}` : "", d.kind, d.project ? `專案編號 Project no.: ${d.project}` : "", d.paymentRef ? `付款參考 Payment ref.: ${d.paymentRef}` : "", "已全數付款 Paid in full"].filter(Boolean);
+  [d.kind, d.project ? `專案編號 Project no.: ${d.project}` : "", d.paymentRef ? `付款參考 Payment ref.: ${d.paymentRef}` : "", "已全數付款 Paid in full"].filter(Boolean);
 
 export function Invoice({ d }: { d: InvoiceDoc }) {
   const remarks = invoiceRemarks(d);

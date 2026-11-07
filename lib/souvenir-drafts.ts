@@ -17,6 +17,7 @@ export type SouvenirDraft = {
   phone: string;
   phoneKey: string;
   projectNo: string; // 未有 RSL 專案編號時為空字串
+  invoiceNo: string; // 公司單號（開新單建立的草稿才有）
   items: { title: string; quantity: number }[];
   itemsText: string;
 };
@@ -67,6 +68,7 @@ export const loadSouvenirDrafts = cache(async (): Promise<SouvenirDraft[]> => {
         phone: attr("phone"),
         phoneKey: phoneKey(attr("phone")),
         projectNo: no === "—" ? "" : no,
+        invoiceNo: attr("invoice no"),
         items,
         itemsText: items.map((it) => `${it.title}×${it.quantity}`).join("、"),
       };

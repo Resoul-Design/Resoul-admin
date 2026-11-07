@@ -29,11 +29,12 @@ async function loadDraftRows(): Promise<OrderRow[]> {
   return drafts.map((d) => {
     const digits = d.phone.replace(/\D/g, "");
     const wa = digits && d.invoiceUrl
-      ? `https://wa.me/${digits.startsWith("852") ? digits : `852${digits}`}?text=${encodeURIComponent(`${d.owner}你好，以下是你的 Resoul 紀念品訂單 ${d.name} 付款連結：\n${d.invoiceUrl}\n如有任何疑問，隨時搵我哋。`)}`
+      ? `https://wa.me/${digits.startsWith("852") ? digits : `852${digits}`}?text=${encodeURIComponent(`${d.owner}你好，以下是你的 Resoul 紀念品訂單${d.invoiceNo ? `（單號 ${d.invoiceNo}）` : ""}付款連結：\n${d.invoiceUrl}\n如有任何疑問，隨時搵我哋。`)}`
       : null;
     return {
       id: d.id,
       orderName: d.name,
+      invoiceNo: d.invoiceNo,
       projectNo: d.projectNo || "—",
       date: d.createdAt.slice(0, 10),
       customer: d.owner,
@@ -85,6 +86,7 @@ export default async function OrdersPage({ searchParams }: {
       id: o.shopify_order_id,
       isTest: !!o.is_test,
       orderName: o.order_name,
+      invoiceNo: o.invoice_no ? String(o.invoice_no) : "",
       projectNo,
       date: o.shopify_created_at.slice(0, 10),
       customer: o.customer_name || "",

@@ -40,7 +40,7 @@ export default async function ProjectDetailPage({
   const [bkRes, peRes] = await Promise.all([
     createAdminClient()
       .from("cremation_bookings")
-      .select("id, case_no, pet_name, owner_name, contact, plan, status, service_date, amount, payment_amount, payment_status, payment_ref, shopify_order_name, paid_at, notes, source")
+      .select("id, case_no, pet_name, owner_name, contact, plan, status, service_date, amount, payment_amount, payment_status, payment_ref, shopify_order_name, paid_at, notes, source, invoice_no")
       .eq("id", id)
       .maybeSingle(),
     supabase
@@ -97,7 +97,8 @@ export default async function ProjectDetailPage({
       <div className="mb-6 grid gap-x-8 gap-y-1.5 text-sm sm:grid-cols-2 lg:grid-cols-3">
         {[
           { label: "專案編號", value: projectNo },
-          { label: "付款參考／發票", value: paymentRef },
+          { label: "單號", value: b.invoice_no ? String(b.invoice_no) : "—" },
+          { label: "付款參考", value: paymentRef },
           { label: "客人名稱", value: b.owner_name || "—" },
           { label: "寵物名稱", value: b.pet_name || "—" },
           { label: "聯絡電話", value: b.contact || "—" },

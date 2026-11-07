@@ -103,8 +103,8 @@ export default async function ProjectGroupPage({ params }: { params: Promise<{ p
   const admin = createAdminClient();
   const draftsP = loadSouvenirDrafts();
   const [depositRes, bookingRes, orderRes] = await Promise.all([
-    admin.from("deposit_bookings").select("id, owner_name, pet_name, status, service_date, created_at, payment_amount, payment_status, shopify_order_name, notes").order("created_at", { ascending: false }).limit(1000),
-    admin.from("cremation_bookings").select("id, case_no, owner_name, pet_name, plan, status, service_date, created_at, amount, payment_amount, payment_status, shopify_order_name, notes, source").order("created_at", { ascending: false }).limit(1000),
+    admin.from("deposit_bookings").select("id, owner_name, pet_name, status, service_date, created_at, payment_amount, payment_status, shopify_order_name, notes, invoice_no").order("created_at", { ascending: false }).limit(1000),
+    admin.from("cremation_bookings").select("id, case_no, owner_name, pet_name, plan, status, service_date, created_at, amount, payment_amount, payment_status, shopify_order_name, notes, source, invoice_no").order("created_at", { ascending: false }).limit(1000),
     admin.from("product_orders").select("*").order("shopify_created_at", { ascending: false }).limit(1000),
   ]);
   const records: ProjectRecord[] = [];
@@ -114,7 +114,7 @@ export default async function ProjectGroupPage({ params }: { params: Promise<{ p
     records.push({
       key: `d:${d.id}`,
       label: `接送服務 · ${d.pet_name || "—"}`,
-      invoiceNo: d.shopify_order_name || "",
+      invoiceNo: d.invoice_no ? String(d.invoice_no) : "",
       person: d.owner_name || "—",
       date: d.service_date || d.created_at?.slice(0, 10) || "—",
       status: d.status || "",
@@ -129,7 +129,7 @@ export default async function ProjectGroupPage({ params }: { params: Promise<{ p
     records.push({
       key: `b:${b.id}`,
       label: `${isVet ? "獸醫評估" : b.plan || "火化服務"} · ${b.pet_name || "—"}`,
-      invoiceNo: b.shopify_order_name || "",
+      invoiceNo: b.invoice_no ? String(b.invoice_no) : "",
       person: b.owner_name || "—",
       date: b.service_date || b.created_at?.slice(0, 10) || "—",
       status: b.status || "",
@@ -142,13 +142,12 @@ export default async function ProjectGroupPage({ params }: { params: Promise<{ p
     if (productOrderProjectNo(order) !== projectNo) continue;
     const financial = (order.financial_status || "").toUpperCase();
     const cancelled = !!order.cancelled_at || ["REFUNDED", "PARTIALLY_REFUNDED", "VOIDED"].includes(financial);
-    // 訂單號已列在「發票編號」，此處顯示產品名稱
     const items = order.line_items || [];
     const first = items[0]?.title || "—";
     records.push({
       key: `o:${order.shopify_order_id}`,
       label: `紀念產品 · ${first}${items.length > 1 ? ` 等 ${items.length} 項` : ""}`,
-      invoiceNo: order.order_name || "",
+      invoiceNo: order.invoice_no ? String(order.invoice_no) : "",
       person: order.customer_name || "—",
       date: order.shopify_created_at?.slice(0, 10) || "—",
       status: order.cancelled_at ? "cancelled" : (order.fulfillment_status || "").toUpperCase(),
@@ -164,7 +163,7 @@ export default async function ProjectGroupPage({ params }: { params: Promise<{ p
     records.push({
       key: `draft:${d.id}`,
       label: `紀念產品 · ${first}${d.items.length > 1 ? ` 等 ${d.items.length} 項` : ""}`,
-      invoiceNo: d.name,
+      invoiceNo: d.invoiceNo,
       person: d.owner || "—",
       date: d.createdAt.slice(0, 10),
       status: "DRAFT",
@@ -175,6 +174,8 @@ export default async function ProjectGroupPage({ params }: { params: Promise<{ p
   }
 
   const income = records.reduce((sum, record) => sum + record.amount, 0);
+  const { data: invoice } = await admin.from("company_invoices").select("invoice_no").eq("project_no", projectNo).maybeSingle();
+  const companyNo = invoice?.invoice_no as number | undefined;
   if (!records.length) notFound();
 
   const statusText = (r: ProjectRecord) => STATUS_LABEL[r.status] || r.status || "—";
@@ -183,7 +184,8 @@ export default async function ProjectGroupPage({ params }: { params: Promise<{ p
   return (
     <div>
       <div className="mb-4 text-sm"><Link href="/projects" className="text-[var(--gold)] hover:underline">← 專案管理</Link></div>
-      <h1 className="text-2xl font-semibold">{projectNo}</h1>
+      <h1 className="text-2xl font-semibold">{companyNo ? `單號 ${companyNo}` : projectNo}</h1>
+      {companyNo && <p className="mt-1 text-sm text-[var(--soft)]">專案編號 {projectNo}</p>}
       <div className="mt-5 grid grid-cols-2 gap-3 sm:max-w-lg">
         <div className="rounded-xl border border-[var(--line)] bg-[var(--card)] p-4"><div className="text-xs text-[var(--soft)]">記錄數</div><div className="mt-1 text-xl font-semibold">{records.length}</div></div>
         <div className="rounded-xl border border-[var(--line)] bg-[var(--card)] p-4"><div className="text-xs text-[var(--soft)]">收入</div><div className="mt-1 text-xl font-semibold">{money(income)}</div></div>
@@ -193,7 +195,7 @@ export default async function ProjectGroupPage({ params }: { params: Promise<{ p
           <thead>
             <tr className="bg-[var(--head)] text-left text-[var(--soft)] whitespace-nowrap">
               <th className="px-4 py-3 font-medium">服務／訂單</th>
-              <th className="px-4 py-3 font-medium">發票編號</th>
+              <th className="px-4 py-3 font-medium">單號</th>
               <th className="px-4 py-3 font-medium">主人</th>
               <th className="px-4 py-3 font-medium">日期</th>
               <th className="px-4 py-3 font-medium">狀態</th>

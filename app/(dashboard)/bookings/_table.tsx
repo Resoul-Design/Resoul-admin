@@ -21,7 +21,7 @@ export type BookingRow = {
   isTest: boolean;
   created: string;
   invoiceNo: string;
-  orderNo?: string; // Shopify 訂單號，或未付款的草稿編號
+  companyNo?: number | null; // 公司單號（對外）
   paymentRef?: string;
   serviceTime?: string;
   owner: string;
@@ -244,7 +244,7 @@ export function BookingsTable({
                   <td className="px-4 py-3 text-[var(--soft)] whitespace-nowrap">{r.created}</td>
                   <td className="px-4 py-3">
                     {r.invoiceNo ? (
-                      <div className="min-w-0"><span className="font-medium text-[var(--gold)]">{r.invoiceNo}</span>{r.orderNo && <div className="text-xs text-[var(--ink)]">訂單編號 {r.orderNo}</div>}{r.paymentRef && <div className="break-all text-xs text-[var(--soft)]">付款參考 {r.paymentRef}</div>}</div>
+                      <div className="min-w-0">{r.companyNo ? <><span className="font-medium text-[var(--gold)]">單號 {r.companyNo}</span><div className="break-all text-xs text-[var(--ink)]">專案 {r.invoiceNo}</div></> : <span className="font-medium text-[var(--gold)]">{r.invoiceNo}</span>}{r.paymentRef && <div className="break-all text-xs text-[var(--soft)]">付款參考 {r.paymentRef}</div>}</div>
                     ) : (
                       <span className="text-[var(--faint)]">—</span>
                     )}
@@ -292,9 +292,9 @@ export function BookingsTable({
                   <dt className="text-[var(--soft)]">方案</dt>
                   <dd className="min-w-0">{r.plan}</dd>
                 </>}
-                {r.orderNo && <>
-                  <dt className="text-[var(--soft)]">訂單編號</dt>
-                  <dd className="min-w-0 text-xs">{r.orderNo}</dd>
+                {r.companyNo && <>
+                  <dt className="text-[var(--soft)]">單號</dt>
+                  <dd className="min-w-0 font-medium text-[var(--gold)]">{r.companyNo}</dd>
                 </>}
               </dl>
               <div className="mt-3 grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 gap-y-2 rounded-xl bg-[var(--head)] px-3 py-2.5 text-xs">

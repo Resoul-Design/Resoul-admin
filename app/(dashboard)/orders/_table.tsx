@@ -15,7 +15,8 @@ import { DepositCreditPanel } from "../_deposit-credit";
 export type OrderRow = {
   id: string;
   isTest?: boolean;
-  orderName: string;
+  orderName: string; // Shopify 訂單號（只作搜尋及內部參考）
+  invoiceNo: string; // 公司單號（對外）
   projectNo: string;
   date: string;
   customer: string;
@@ -99,6 +100,7 @@ export function OrdersTable({ rows, initialQuery = "", staffName = "同事", fol
       if (onlyFollow && !r.followUp) return false;
       if (!kw) return true;
       return (
+        r.invoiceNo.includes(kw) ||
         r.orderName.toLowerCase().includes(kw) ||
         r.projectNo.toLowerCase().includes(kw) ||
         r.customer.toLowerCase().includes(kw) ||
@@ -114,9 +116,9 @@ export function OrdersTable({ rows, initialQuery = "", staffName = "同事", fol
   const shown = filtered.slice((cur - 1) * PAGE, cur * PAGE);
 
   function exportCsv() {
-    const header = ["訂單編號", "專案編號", "日期", "客戶", "電話", "內容", "付款", "出貨", "金額", "幣別", "已取消"];
+    const header = ["單號", "專案編號", "日期", "客戶", "電話", "內容", "付款", "出貨", "金額", "幣別", "已取消"];
     const lines = filtered.map((r) =>
-      [r.orderName, r.projectNo, r.date, r.customer, r.phone, r.items, r.finLabel, r.fulLabel, r.amount, r.currency, r.cancelled ? "是" : ""]
+      [r.invoiceNo, r.projectNo, r.date, r.customer, r.phone, r.items, r.finLabel, r.fulLabel, r.amount, r.currency, r.cancelled ? "是" : ""]
         .map(csvCell)
         .join(",")
     );
@@ -162,7 +164,7 @@ export function OrdersTable({ rows, initialQuery = "", staffName = "同事", fol
           <thead>
             <tr className="bg-[var(--head)] text-left text-[var(--soft)] whitespace-nowrap">
               <th className="px-4 py-3 font-medium">建立時間</th>
-              <th className="px-4 py-3 font-medium">訂單編號</th>
+              <th className="px-4 py-3 font-medium">單號</th>
               <th className="px-4 py-3 font-medium">客戶 · 電話</th>
               <th className="px-4 py-3 font-medium">內容</th>
               <th className="px-4 py-3 text-right font-medium">金額</th>
@@ -175,8 +177,8 @@ export function OrdersTable({ rows, initialQuery = "", staffName = "同事", fol
             <tr className={"border-t border-[var(--line)] align-top " + (r.cancelled ? "opacity-60" : "") + (r.followUp ? " bg-amber-50/70" : "")}>
               <td className="px-4 py-3 whitespace-nowrap text-[var(--soft)]">{r.date}</td>
               <td className="px-4 py-3">
-                <span className="font-medium text-[var(--gold)]">{r.orderName}</span>
-                {r.projectNo && r.projectNo !== "—" && r.projectNo !== r.orderName && <div className="break-all text-xs text-[var(--soft)]">專案 {r.projectNo}</div>}
+                <span className="font-medium text-[var(--gold)]">{r.invoiceNo ? `單號 ${r.invoiceNo}` : r.invoiceUrl ? "草稿（未有單號）" : "未有單號"}</span>
+                {r.projectNo && r.projectNo !== "—" && <div className="break-all text-xs text-[var(--soft)]">專案 {r.projectNo}</div>}
               </td>
               <td className="px-4 py-3">
                 <div className="break-words">{r.customer || "—"}</div>
@@ -206,13 +208,13 @@ export function OrdersTable({ rows, initialQuery = "", staffName = "同事", fol
       <div className="space-y-3 lg:hidden">{shown.map((r) => (
         <div key={r.id} className={"rounded-2xl border p-4 " + (r.followUp ? "border-amber-300 bg-amber-50/70 " : "border-[var(--line)] bg-[var(--card)] ") + (r.cancelled ? "opacity-60" : "")}>
           <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0"><div className="text-xs text-[var(--soft)]">訂單編號</div><div className="break-words font-medium text-[var(--gold)]">{r.orderName}</div></div>
+            <div className="min-w-0"><div className="text-xs text-[var(--soft)]">單號</div><div className="break-words font-medium text-[var(--gold)]">{r.invoiceNo || "—"}</div></div>
             <span className={"whitespace-nowrap rounded-full px-2 py-0.5 text-xs " + fulClass(r.fulLabel)}>{r.fulLabel}</span>
           </div>
           <dl className="mt-3 grid grid-cols-[6.5rem_minmax(0,1fr)] [&>dt]:whitespace-nowrap gap-x-3 gap-y-1.5 text-sm">
             <dt className="text-[var(--soft)]">客戶 · 電話</dt>
             <dd className="min-w-0"><div className="truncate">{r.customer || "—"}</div><div className="text-xs text-[var(--soft)]">{r.phone ? "📞 " + r.phone : "—"}</div></dd>
-            {r.projectNo && r.projectNo !== "—" && r.projectNo !== r.orderName && <>
+            {r.projectNo && r.projectNo !== "—" && <>
               <dt className="text-[var(--soft)]">專案編號</dt>
               <dd className="min-w-0 break-all text-xs text-[var(--soft)]">{r.projectNo}</dd>
             </>}

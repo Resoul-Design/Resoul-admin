@@ -24,7 +24,7 @@ export type InvoiceDoc = {
   total: number;
   isTest: boolean;
   shopifyOrderId?: string; // 只供讀取 Shopify 訂單備註
-  orderNo?: string; // 有客人指定單據編號時，原本的 Shopify 訂單號（於備註顯示）
+  companyNo?: boolean; // 發票編號已是公司單號（舊單才會改讀 Shopify 備註的單據編號）
 };
 
 type Row = Record<string, unknown>;
@@ -40,7 +40,8 @@ function depositDoc(r: Row): InvoiceDoc | null {
   const amount = num(r.payment_amount);
   return {
     ref: `deposit:${str(r.id)}`,
-    no: str(r.shopify_order_name),
+    no: r.invoice_no ? String(r.invoice_no) : str(r.shopify_order_name),
+    companyNo: !!r.invoice_no,
     // 網站預約即時付款：用預約時間（舊記錄的 paid_at 為補記日期）；後台建立的付款連結：用付款時間
     date: str(str(r.source).startsWith("web:") ? r.created_at : r.paid_at || r.created_at),
     kind: "接送訂金 Pick-up deposit",
@@ -68,7 +69,8 @@ function bookingDoc(r: Row): InvoiceDoc | null {
   const amount = num(r.payment_amount ?? r.amount);
   return {
     ref: `booking:${str(r.id)}`,
-    no: str(r.shopify_order_name),
+    no: r.invoice_no ? String(r.invoice_no) : str(r.shopify_order_name),
+    companyNo: !!r.invoice_no,
     date: str(r.paid_at || r.created_at),
     kind: vet ? "獸醫評估 Vet assessment" : "火化服務 Cremation",
     issuedTo: str(r.owner_name),
@@ -100,7 +102,8 @@ function orderDoc(o: ProductOrderRow): InvoiceDoc | null {
   const subtotal = items.every((it) => it.unit != null) ? items.reduce((n, it) => n + (it.unit || 0) * it.qty, 0) : total;
   return {
     ref: `order:${o.shopify_order_id.split("/").pop()}`,
-    no: o.order_name,
+    no: o.invoice_no ? String(o.invoice_no) : o.order_name,
+    companyNo: !!o.invoice_no,
     date: o.shopify_created_at,
     kind: "紀念品 Keepsakes",
     issuedTo: o.customer_name || "",
@@ -206,10 +209,7 @@ async function applyOrderExtras(docs: InvoiceDoc[]) {
   for (const d of docs) {
     const extra = found.get(gid(d.shopifyOrderId));
     if (!extra) continue;
-    if (extra.invoiceNo) {
-      d.orderNo = d.no;
-      d.no = extra.invoiceNo;
-    }
+    if (extra.invoiceNo && !d.companyNo) d.no = extra.invoiceNo;
     if (extra.pet && !d.pet) d.pet = extra.pet;
   }
 }

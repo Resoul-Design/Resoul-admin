@@ -80,7 +80,7 @@ export default async function ProductProjectPage({
       <div className="mb-6 grid gap-x-8 gap-y-1.5 text-sm sm:grid-cols-2 lg:grid-cols-3">
         {[
           { label: "專案編號", value: projectNo },
-          { label: "付款參考／發票", value: o.order_name || "—" },
+          { label: "單號", value: o.invoice_no ? String(o.invoice_no) : "—" },
           { label: "客人名稱", value: o.customer_name || "—" },
           { label: "聯絡電話", value: o.phone || "—" },
           { label: "內容", value: items || "—" },

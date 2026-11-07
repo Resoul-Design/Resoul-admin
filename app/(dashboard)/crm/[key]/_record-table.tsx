@@ -10,7 +10,7 @@ export type RecordRow = {
   amount: string;
 };
 
-const HEAD = ["日期及時間", "專案編號", "訂單編號", "內容（產品／毛孩）", "狀態", "付款", "金額"];
+const HEAD = ["日期及時間", "專案編號", "單號", "內容（產品／毛孩）", "狀態", "付款", "金額"];
 
 export function RecordTable({ icon, title, empty, rows }: { icon: string; title: string; empty: string; rows: RecordRow[] }) {
   return (

@@ -44,6 +44,7 @@ type Booking = {
   payment_status: string | null;
   payment_ref: string | null;
   shopify_order_name: string | null;
+  invoice_no?: number | null;
   notes: string | null;
   source: string | null;
   created_at: string;
@@ -59,6 +60,7 @@ type Deposit = {
   payment_amount: number | null;
   payment_status: string | null;
   shopify_order_name: string | null;
+  invoice_no?: number | null;
   notes: string | null;
   created_at: string;
   project_no?: string | null;
@@ -116,8 +118,8 @@ export default async function CustomerPage({
   const supabase = await createClient();
   const admin = createAdminClient();
   const [{ data }, { data: pickupData }] = await Promise.all([
-    createAdminClient().from("cremation_bookings").select("id, case_no, owner_name, contact, pet_name, pet_type, plan, status, service_date, service_time, amount, payment_amount, payment_status, payment_ref, shopify_order_name, notes, source, created_at").eq("is_test", false).order("created_at", { ascending: false }).limit(1000),
-    admin.from("deposit_bookings").select("id, project_no, owner_name, contact, pet_name, status, service_date, service_time, payment_amount, payment_status, shopify_order_name, notes, created_at").eq("is_test", false).order("created_at", { ascending: false }).limit(1000),
+    createAdminClient().from("cremation_bookings").select("id, case_no, owner_name, contact, pet_name, pet_type, plan, status, service_date, service_time, amount, payment_amount, payment_status, payment_ref, shopify_order_name, invoice_no, notes, source, created_at").eq("is_test", false).order("created_at", { ascending: false }).limit(1000),
+    admin.from("deposit_bookings").select("id, project_no, owner_name, contact, pet_name, status, service_date, service_time, payment_amount, payment_status, shopify_order_name, invoice_no, notes, created_at").eq("is_test", false).order("created_at", { ascending: false }).limit(1000),
   ]);
 
   // 客戶識別鍵與客戶檔案列表一致（電話尾 8 位，無電話用名稱）；舊連結以原始聯絡文字亦可配對
@@ -184,7 +186,7 @@ export default async function CustomerPage({
     key: b.id,
     when: when(b.service_date, b.service_time, b.created_at),
     project: pickupProjectNo(b),
-    order: b.shopify_order_name || "—",
+    order: b.invoice_no ? String(b.invoice_no) : "—",
     content: `預約接送訂金 · ${petText(b.pet_name)}`,
     status: STATUS_LABEL[b.status] || b.status,
     payment: PAY_LABEL[b.payment_status || ""] || b.payment_status || "—",
@@ -194,7 +196,7 @@ export default async function CustomerPage({
     key: b.id,
     when: when(b.service_date, b.service_time?.slice(0, 5) || null, b.created_at),
     project: projectNo(b),
-    order: b.shopify_order_name || "—",
+    order: b.invoice_no ? String(b.invoice_no) : "—",
     content: `${label} · ${petText(b.pet_name, b.pet_type)}`,
     status: STATUS_LABEL[b.status] || b.status,
     payment: PAY_LABEL[b.payment_status || ""] || b.payment_status || "—",
@@ -206,7 +208,7 @@ export default async function CustomerPage({
     key: o.shopify_order_id,
     when: hkDateTime(o.shopify_created_at),
     project: productOrderProjectNo(o),
-    order: o.order_name,
+    order: o.invoice_no ? String(o.invoice_no) : "—",
     content: (o.line_items || []).map((item) => `${item.title}×${item.quantity}`).join("、") || "—",
     status: o.cancelled_at ? "已取消" : o.financial_status === "DRAFT" ? "草稿" : FUL[o.fulfillment_status || ""] || "未出貨",
     payment: FIN[o.financial_status || ""] || o.financial_status || "—",

@@ -12,7 +12,7 @@ import { appendNote } from "@/lib/payment-check";
 import { loadSouvenirDrafts } from "@/lib/souvenir-drafts";
 
 export type CreditTarget = { kind: "cremation"; id: string } | { kind: "draft"; id: string };
-export type AvailableCredit = { id: string; projectNo: string; owner: string; pet: string; amount: number; paidAt: string; orderName: string; isTest: boolean };
+export type AvailableCredit = { id: string; projectNo: string; owner: string; pet: string; amount: number; paidAt: string; invoiceNo: number | null; isTest: boolean };
 export type CreditStatus = {
   ready: boolean; // 已執行 migration
   applied: { depositId: string; amount: number; projectNo: string } | null;
@@ -134,7 +134,7 @@ export async function getCreditStatus(t: CreditTarget): Promise<CreditStatus> {
   // 只限同一專案編號、已付款、未使用、未取消的接送訂金
   const { data: deps } = await admin
     .from("deposit_bookings")
-    .select("id, project_no, owner_name, pet_name, payment_amount, paid_at, status, is_test, shopify_order_name")
+    .select("id, project_no, owner_name, pet_name, payment_amount, paid_at, status, is_test, invoice_no")
     .eq("project_no", target.projectNo)
     .eq("payment_status", "paid")
     .is("credit_target", null)
@@ -142,7 +142,7 @@ export async function getCreditStatus(t: CreditTarget): Promise<CreditStatus> {
     .order("paid_at", { ascending: false });
   const available = (deps || []).map((d) => ({
     id: d.id, projectNo: d.project_no || "", owner: d.owner_name || "", pet: d.pet_name || "", amount: Number(d.payment_amount || 1800),
-    paidAt: d.paid_at || "", orderName: d.shopify_order_name || "", isTest: !!d.is_test,
+    paidAt: d.paid_at || "", invoiceNo: d.invoice_no ?? null, isTest: !!d.is_test,
   }));
   return { ...base, available };
 }
@@ -161,7 +161,7 @@ export async function applyDepositCredit(t: CreditTarget, depositId: string): Pr
   if (exists.data) return { error: "此單已套用一筆接送訂金。" };
   const { data: dep } = await admin
     .from("deposit_bookings")
-    .select("id, project_no, payment_status, payment_amount, credit_target, notes, shopify_order_id, shopify_order_name")
+    .select("id, project_no, payment_status, payment_amount, credit_target, notes, shopify_order_id, invoice_no")
     .eq("id", depositId)
     .maybeSingle();
   if (!dep || dep.payment_status !== "paid") return { error: "此接送訂金未付款，不能抵扣。" };
@@ -178,7 +178,7 @@ export async function applyDepositCredit(t: CreditTarget, depositId: string): Pr
   if (!claimed?.length) return { error: "此接送訂金已用於另一張單。" };
 
   const label = kindLabel(t);
-  const depRef = dep.shopify_order_name ? `接送訂單 ${dep.shopify_order_name}` : "接送訂金";
+  const depRef = dep.invoice_no ? `接送訂金（單號 ${dep.invoice_no}）` : "接送訂金";
   const text = `${depRef} ${hk(credit)}（${target.projectNo}）`;
   if (target.draftId) {
     try {

@@ -7,7 +7,6 @@ import { getStaff, hasModule } from "@/lib/auth";
 import { FOLLOW_UP_ACTION, FOLLOW_UP_LABEL, FOLLOW_UP_ORDER, followUpKind, needsPaymentLink } from "@/lib/deposit-followup";
 import { EditDepositInline } from "./_edit";
 import { RowActions, type RowAction } from "../_row-actions";
-import { draftOrderNames } from "@/lib/draft-names";
 import { DepositCreditInfo } from "../_deposit-credit";
 import Link from "next/link";
 import { Fragment, Suspense } from "react";
@@ -44,6 +43,7 @@ type DepositRow = {
   payment_amount: number | null;
   payment_currency: string | null;
   shopify_order_name: string | null;
+  invoice_no: number | null;
   shopify_order_id: string | null;
   paid_at: string | null;
   reminded_at?: string | null;
@@ -203,7 +203,7 @@ export default async function DepositsPage({ searchParams }: { searchParams: Pro
   const { followup, q, status: statusParam, test } = await searchParams;
   const supabase = createAdminClient();
   const baseColumns =
-    "id, created_at, project_no, owner_name, contact, pet_name, pet_type, plan, service_date, service_time, pickup_address, notes, status, payment_ref, payment_status, payment_amount, payment_currency, shopify_order_name, shopify_order_id, paid_at, is_test";
+    "id, created_at, project_no, owner_name, contact, pet_name, pet_type, plan, service_date, service_time, pickup_address, notes, status, payment_ref, payment_status, payment_amount, payment_currency, shopify_order_name, shopify_order_id, paid_at, is_test, invoice_no";
   // 訂金跟進欄位需先執行 db/migration_deposit_followup.sql；未執行時退回原有欄位，列表照常顯示。
   const full = await supabase
     .from("deposit_bookings")
@@ -241,9 +241,6 @@ export default async function DepositsPage({ searchParams }: { searchParams: Pro
     }
   }
   const linkedFor = (r: DepositRow) => linkedByProject.get(depositProjectNo(r));
-  // 訂單編號：已付款＝Shopify 訂單號（#RS-…）；未付款而有付款連結＝草稿編號（#D…）
-  const draftNames = await draftOrderNames(rows.filter((r) => !r.shopify_order_name).map((r) => r.payment_draft_id));
-  const orderNo = (r: DepositRow) => r.shopify_order_name || (r.payment_draft_id && draftNames.has(r.payment_draft_id) ? `${draftNames.get(r.payment_draft_id)}（草稿）` : "");
   const staffName = staff?.name?.trim() || staff?.email?.split("@")[0] || "同事";
   const now = new Date();
   // 查看測試記錄時不顯示跟進
@@ -274,7 +271,8 @@ export default async function DepositsPage({ searchParams }: { searchParams: Pro
   const visibleRows = listRows.filter((r) => {
     if (statusFilter === "unpaid" ? r.payment_status === "paid" || r.status === "cancelled" : statusFilter && r.status !== statusFilter) return false;
     if (!query) return true;
-    return [r.owner_name, r.pet_name, r.payment_ref, orderNo(r), r.notes].some((v) => (v || "").toLowerCase().includes(queryText)) ||
+    // 搜尋兼容貼上 Shopify 訂單號，結果仍以公司單號顯示
+    return [r.owner_name, r.pet_name, r.payment_ref, r.invoice_no ? String(r.invoice_no) : "", r.shopify_order_name, r.notes].some((v) => (v || "").toLowerCase().includes(queryText)) ||
       (!!queryDigits && (r.contact || "").replace(/\D/g, "").includes(queryDigits));
   });
 
@@ -356,7 +354,7 @@ export default async function DepositsPage({ searchParams }: { searchParams: Pro
                       <td className="px-4 py-3 text-[var(--soft)] whitespace-nowrap">{fmtCreated(r.created_at)}</td>
                       <td className="px-4 py-3">
                         {project ? (
-                          <div className="min-w-0"><span className="font-medium text-[var(--gold)]">{project}</span>{orderNo(r) && <div className="text-xs text-[var(--ink)]">訂單編號 {orderNo(r)}</div>}{r.payment_ref && <div className="break-all text-xs text-[var(--soft)]">付款參考 {r.payment_ref}</div>}<LinkedBadge linked={linkedFor(r)} project={depositProjectNo(r)} /></div>
+                          <div className="min-w-0">{r.invoice_no ? <><span className="font-medium text-[var(--gold)]">單號 {r.invoice_no}</span><div className="break-all text-xs text-[var(--ink)]">專案 {project}</div></> : <span className="font-medium text-[var(--gold)]">{project}</span>}{r.payment_ref && <div className="break-all text-xs text-[var(--soft)]">付款參考 {r.payment_ref}</div>}<LinkedBadge linked={linkedFor(r)} project={depositProjectNo(r)} /></div>
                         ) : (
                           <span className="text-[var(--faint)]">—</span>
                         )}
@@ -419,9 +417,9 @@ export default async function DepositsPage({ searchParams }: { searchParams: Pro
                     <dd className="min-w-0"><div className="truncate">{r.owner_name || "—"}</div><div className="text-xs text-[var(--soft)]">{r.contact ? "📞 " + r.contact : "—"}</div></dd>
                     <dt className="text-[var(--soft)]">寵物</dt>
                     <dd className="min-w-0">{r.pet_name || "—"}{r.pet_type ? `（${r.pet_type}）` : ""}</dd>
-                    {orderNo(r) && <>
-                      <dt className="text-[var(--soft)]">訂單編號</dt>
-                      <dd className="min-w-0 text-xs">{orderNo(r)}</dd>
+                    {r.invoice_no && <>
+                      <dt className="text-[var(--soft)]">單號</dt>
+                      <dd className="min-w-0 font-medium text-[var(--gold)]">{r.invoice_no}</dd>
                     </>}
                     {r.payment_ref && <>
                       <dt className="text-[var(--soft)]">付款參考</dt>

@@ -51,14 +51,14 @@ export async function globalSearch(query: string): Promise<SearchGroup[]> {
     can("deposits")
       ? admin
           .from("deposit_bookings")
-          .select("id, created_at, owner_name, contact, pet_name, service_date, status, payment_ref, payment_status, shopify_order_name, notes")
+          .select("id, created_at, owner_name, contact, pet_name, service_date, status, payment_ref, payment_status, shopify_order_name, notes, invoice_no")
           .order("created_at", { ascending: false })
           .limit(1000)
       : null,
     can("bookings") || can("vet_assessments")
       ? admin
           .from("cremation_bookings")
-          .select("id, created_at, case_no, owner_name, contact, pet_name, plan, service_date, status, source, payment_ref, shopify_order_name, notes")
+          .select("id, created_at, case_no, owner_name, contact, pet_name, plan, service_date, status, source, payment_ref, shopify_order_name, notes, invoice_no")
           .order("created_at", { ascending: false })
           .limit(1000)
       : null,
@@ -76,13 +76,13 @@ export async function globalSearch(query: string): Promise<SearchGroup[]> {
 
   if (deposits?.data) {
     const items = deposits.data
-      .filter((d) => match([d.owner_name, d.pet_name, d.payment_ref, d.shopify_order_name, d.notes], [d.contact]))
+      .filter((d) => match([d.invoice_no ? String(d.invoice_no) : "", d.owner_name, d.pet_name, d.payment_ref, d.shopify_order_name, d.notes], [d.contact]))
       .map((d) => {
         const no = projectNoFromNotes(d.notes);
         return {
           key: "d-" + d.id,
           title: join(d.owner_name || "—", d.pet_name),
-          sub: join(no, d.service_date || d.created_at.slice(0, 10), STATUS[d.status] || d.status, PAY[d.payment_status || ""]),
+          sub: join(d.invoice_no ? `單號 ${d.invoice_no}` : "", no, d.service_date || d.created_at.slice(0, 10), STATUS[d.status] || d.status, PAY[d.payment_status || ""]),
           href: listHref("/deposits", no !== "—" ? no : d.payment_ref || d.owner_name || q),
         };
       });
@@ -94,13 +94,13 @@ export async function globalSearch(query: string): Promise<SearchGroup[]> {
     const vet: SearchItem[] = [];
     for (const b of bookings.data) {
       const no = canonicalProjectNo(b.case_no, projectNoFromNotes(b.notes));
-      if (!match([b.owner_name, b.pet_name, no, b.case_no, b.payment_ref, b.shopify_order_name], [b.contact])) continue;
+      if (!match([b.invoice_no ? String(b.invoice_no) : "", b.owner_name, b.pet_name, no, b.case_no, b.payment_ref, b.shopify_order_name], [b.contact])) continue;
       const isVet = (b.source || "").includes("euthanasia");
       if (isVet ? !can("vet_assessments") : !can("bookings")) continue;
       const item = {
         key: "b-" + b.id,
         title: join(b.owner_name || "—", b.pet_name),
-        sub: join(no, b.plan, b.service_date || b.created_at.slice(0, 10), STATUS[b.status] || b.status),
+        sub: join(b.invoice_no ? `單號 ${b.invoice_no}` : "", no, b.plan, b.service_date || b.created_at.slice(0, 10), STATUS[b.status] || b.status),
         href: listHref(isVet ? "/vet-assessments" : "/bookings", no !== "—" ? no : b.owner_name || q),
       };
       (isVet ? vet : cremation).push(item);
@@ -110,24 +110,24 @@ export async function globalSearch(query: string): Promise<SearchGroup[]> {
 
   if (orders?.data || drafts.length) {
     const draftItems: SearchItem[] = drafts
-      .filter((d) => match([d.name, d.owner, d.projectNo, d.itemsText], [d.phone]))
+      .filter((d) => match([d.invoiceNo, d.name, d.owner, d.projectNo, d.itemsText], [d.phone]))
       .map((d) => ({
         key: "draft-" + d.id,
-        title: join(`${d.name}（草稿）`, d.owner),
+        title: join(d.invoiceNo ? `單號 ${d.invoiceNo}（待付款）` : "草稿（未有單號）", d.owner),
         sub: join(d.projectNo, d.createdAt.slice(0, 10), "待付款"),
-        href: listHref("/orders", d.name),
+        href: listHref("/orders", d.invoiceNo || d.name),
       }));
     const items = draftItems.concat((orders?.data || [])
       .filter((o) => {
         const lines = (o.line_items || []) as { title?: string; attributes?: { key?: string; value?: string }[] }[];
         const attrs = lines.flatMap((l) => l.attributes || []).map((a) => a.value);
-        return match([o.order_name, productOrderProjectNo(o), o.customer_name, o.email, ...lines.map((l) => l.title), ...attrs], [o.phone]);
+        return match([o.invoice_no ? String(o.invoice_no) : "", o.order_name, productOrderProjectNo(o), o.customer_name, o.email, ...lines.map((l) => l.title), ...attrs], [o.phone]);
       })
       .map((o) => ({
         key: "o-" + o.shopify_order_id,
-        title: join(o.order_name, o.customer_name),
+        title: join(o.invoice_no ? `單號 ${o.invoice_no}` : "未有單號", o.customer_name),
         sub: join(productOrderProjectNo(o), o.shopify_created_at.slice(0, 10), o.cancelled_at ? "已取消" : o.financial_status === "PAID" ? "已付款" : o.financial_status),
-        href: listHref("/orders", o.order_name),
+        href: listHref("/orders", o.invoice_no ? String(o.invoice_no) : o.order_name),
       })));
     groups.push(group("紀念品訂單", items));
   }
