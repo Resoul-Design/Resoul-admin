@@ -24,6 +24,7 @@ export type InvoiceDoc = {
   total: number;
   isTest: boolean;
   shopifyOrderId?: string; // 只供讀取 Shopify 訂單備註
+  orderNo?: string; // 有客人指定單據編號時，原本的 Shopify 訂單號（於備註顯示）
 };
 
 type Row = Record<string, unknown>;
@@ -170,13 +171,19 @@ export async function loadInvoices(q: InvoiceQuery, staff: Staff): Promise<Invoi
   return docs.sort((a, b) => a.no.localeCompare(b.no, "en", { numeric: true }));
 }
 
-// 由 Shopify 訂單備註（一行「單據編號：xxx」「寵物：xxx」）或訂單欄位讀取客人指定的單據編號及寵物名稱
+// 由 Shopify 訂單備註（一行「Invoice No.：xxx」或「單據編號：xxx」、「寵物：xxx」）或訂單欄位讀取客人指定的單據編號及寵物名稱
 export function parseOrderExtras(note: string | null | undefined, attrs: { key: string; value: string | null }[] = []) {
   const attr = (...keys: string[]) => attrs.find((a) => keys.includes(a.key) && a.value?.trim())?.value?.trim() || "";
-  const line = (label: string) => String(note || "").split(/\r?\n/).map((l) => l.trim()).find((l) => l.startsWith(`${label}：`) || l.startsWith(`${label}:`))?.slice(label.length + 1).trim() || "";
+  const line = (label: RegExp) => {
+    for (const raw of String(note || "").split(/\r?\n/)) {
+      const m = raw.trim().match(/^([^:：]+)[:：](.*)$/);
+      if (m && label.test(m[1].trim())) return m[2].trim();
+    }
+    return "";
+  };
   return {
-    invoiceNo: attr("Invoice No", "Invoice No.", "單據編號") || line("單據編號"),
-    pet: attr("Owner of", "毛孩名", "Pet", "pet") || line("寵物"),
+    invoiceNo: attr("Invoice No", "Invoice No.", "單據編號") || line(/^(單據編號|發票編號|invoice no\.?|invoice number)$/i),
+    pet: attr("Owner of", "毛孩名", "Pet", "pet") || line(/^寵物$/),
   };
 }
 
@@ -199,7 +206,10 @@ async function applyOrderExtras(docs: InvoiceDoc[]) {
   for (const d of docs) {
     const extra = found.get(gid(d.shopifyOrderId));
     if (!extra) continue;
-    if (extra.invoiceNo) d.no = extra.invoiceNo;
+    if (extra.invoiceNo) {
+      d.orderNo = d.no;
+      d.no = extra.invoiceNo;
+    }
     if (extra.pet && !d.pet) d.pet = extra.pet;
   }
 }
