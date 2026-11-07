@@ -27,6 +27,9 @@ export default async function LogisticsDetail({ params }: { params: Promise<{ in
   };
   const groups = [
     ["基本資料", ["invoice_no", "row_status", "date_code"]],
+    ["訂單狀態", ["status", "row_status", "logistics_status"]],
+    ["付款狀態", ["payment_status", "payment_intent", "deposit_status", "balance_status", "balance_settled"]],
+    ["服務進度", ["service_status", "progress", "picked_up_at", "cremation_started_at", "ready_at", "returned_at", "returned_to"]],
     ["主人與寵物", ["owner_name", "phone", "pet_name", "animal", "breed"]],
     ["接送安排", ["pickup_type", "pickup_from", "arrival_date", "arrival_time", "driver", "pickup_fee", "pickup_surcharge", "driver_fee_settled_at"]],
     ["火化與紀念服務", ["package_name", "ceremony_or_order_date", "ceremony_time", "shower_date", "memorial_addon_price", "back_to_nature_price", "urn_storage_rental_price"]],
@@ -34,6 +37,7 @@ export default async function LogisticsDetail({ params }: { params: Promise<{ in
   ] as const;
   const used = new Set<string>([...groups.flatMap(([, keys]) => keys), ...hiddenKeys]);
   const valueText = (key: string, value: unknown) => {
+    if (["status", "row_status", "logistics_status", "payment_status", "deposit_status", "balance_status", "service_status", "progress"].includes(key)) return ({ awaiting_payment: "待付款", pending: "處理中", paid: "已付款", completed: "已完成", cancelled: "已取消", new: "新收到", scheduled: "已排期", pickup: "已接送", cremating: "火化中", ready: "可取回" } as Record<string, string>)[String(value)] || String(value);
     if (key === "source") return ({ basic_info_logistic: "基本物流資料", excel: "Excel 同步", manual: "手動輸入" } as Record<string, string>)[String(value)] || String(value);
     if (key === "urn_pickup_status") return ({ Completed: "已完成", Pending: "待處理", Cancelled: "已取消" } as Record<string, string>)[String(value)] || String(value);
     if (typeof value === "boolean") return value ? "是" : "否";
