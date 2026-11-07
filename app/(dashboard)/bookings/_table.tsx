@@ -244,7 +244,7 @@ export function BookingsTable({
                   <td className="px-4 py-3 text-[var(--soft)] whitespace-nowrap">{r.created}</td>
                   <td className="px-4 py-3">
                     {r.invoiceNo ? (
-                      <div className="min-w-0">{r.companyNo ? <><span className="font-medium text-[var(--gold)]">單號 {r.companyNo}</span><div className="break-all text-xs text-[var(--ink)]">專案 {r.invoiceNo}</div></> : <span className="font-medium text-[var(--gold)]">{r.invoiceNo}</span>}{r.paymentRef && <div className="break-all text-xs text-[var(--soft)]">付款參考 {r.paymentRef}</div>}</div>
+                      <div className="min-w-0">{r.companyNo ? <><span className="font-medium text-[var(--gold)]">單號 {r.companyNo}</span>{r.invoiceNo !== String(r.companyNo) && <div className="break-all text-xs text-[var(--ink)]">專案 {r.invoiceNo}</div>}</> : <span className="font-medium text-[var(--gold)]">{r.invoiceNo}</span>}{r.paymentRef && <div className="break-all text-xs text-[var(--soft)]">付款參考 {r.paymentRef}</div>}</div>
                     ) : (
                       <span className="text-[var(--faint)]">—</span>
                     )}

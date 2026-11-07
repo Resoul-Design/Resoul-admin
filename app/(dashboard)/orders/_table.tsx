@@ -178,7 +178,7 @@ export function OrdersTable({ rows, initialQuery = "", staffName = "同事", fol
               <td className="px-4 py-3 whitespace-nowrap text-[var(--soft)]">{r.date}</td>
               <td className="px-4 py-3">
                 <span className="font-medium text-[var(--gold)]">{r.invoiceNo ? `單號 ${r.invoiceNo}` : r.invoiceUrl ? "草稿（未有單號）" : "未有單號"}</span>
-                {r.projectNo && r.projectNo !== "—" && <div className="break-all text-xs text-[var(--soft)]">專案 {r.projectNo}</div>}
+                {r.projectNo && r.projectNo !== "—" && r.projectNo !== r.invoiceNo && <div className="break-all text-xs text-[var(--soft)]">專案 {r.projectNo}</div>}
               </td>
               <td className="px-4 py-3">
                 <div className="break-words">{r.customer || "—"}</div>

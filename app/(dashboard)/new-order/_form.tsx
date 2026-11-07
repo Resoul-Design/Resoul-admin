@@ -408,7 +408,7 @@ export function NewOrderForm({ catalog, allowed, prefill }: { catalog: NewOrderC
             <dt className="text-[var(--soft)]">類型</dt><dd>{ORDER_TYPE_MAP[type].icon} {ORDER_TYPE_MAP[type].label}</dd>
             <dt className="text-[var(--soft)]">內容</dt><dd>{summary.items.join("、") || "—"}</dd>
             <dt className="text-[var(--soft)]">金額</dt><dd className="font-medium">{hk(summary.total)}</dd>
-            <dt className="text-[var(--soft)]">專案</dt><dd>{projectNo && projectNo !== "new" ? `沿用 ${projectNo}（同一單號）` : "新專案（自動產生專案編號及單號）"}</dd>
+            <dt className="text-[var(--soft)]">專案</dt><dd>{projectNo && projectNo !== "new" ? `沿用 ${projectNo}（同一單號）` : "新專案（確認後編配單號，專案編號與單號相同）"}</dd>
             <dt className="text-[var(--soft)]">會做</dt>
             <dd>建立後台記錄及公司單號 → {intent === "received" ? "Shopify 訂單直接標記已付款" : "建立 Shopify 付款連結"}（標籤含類型及專案編號）</dd>
           </dl>

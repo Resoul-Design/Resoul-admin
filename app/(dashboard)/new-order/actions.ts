@@ -14,7 +14,7 @@ import { PLAN_CODES } from "@/lib/company";
 import { findTimeSlot } from "@/lib/deposit-followup";
 import { isProjectNo, projectNoFromNotes, canonicalProjectNo } from "@/lib/order-label";
 import { phoneKey } from "@/lib/product-orders";
-import { makeProjectNo } from "@/lib/project-no";
+import { newCompanyProjectNo } from "@/lib/project-no";
 import { loadSiteContent } from "@/lib/site-content-server";
 import { ORDER_TYPE_MAP, RECEIVED_METHODS, type OrderType, type PaymentIntent } from "@/lib/order-types";
 
@@ -225,7 +225,9 @@ export async function createOrder(input: NewOrderInput): Promise<{ id?: string; 
   }
   const amount = lines.reduce((n, l) => n + (l.price || 0) * l.quantity, 0);
 
-  const projectNo = enteredProject || makeProjectNo();
+  // 新專案：專案編號＝單號（例如 290）；沿用舊專案則保留原編號
+  const projectNo = enteredProject || (await newCompanyProjectNo(admin));
+  if (!projectNo) return { error: "未能編配單號，請稍後再試。" };
   const paymentRef = makePaymentRef();
   const who = staff.name || staff.email;
   const otherDescription = t(input.other?.description, 500);

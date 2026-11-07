@@ -185,7 +185,7 @@ export default async function ProjectGroupPage({ params }: { params: Promise<{ p
     <div>
       <div className="mb-4 text-sm"><Link href="/projects" className="text-[var(--gold)] hover:underline">← 專案管理</Link></div>
       <h1 className="text-2xl font-semibold">{companyNo ? `單號 ${companyNo}` : projectNo}</h1>
-      {companyNo && <p className="mt-1 text-sm text-[var(--soft)]">專案編號 {projectNo}</p>}
+      {companyNo && projectNo !== String(companyNo) && <p className="mt-1 text-sm text-[var(--soft)]">專案編號 {projectNo}</p>}
       <div className="mt-5 grid grid-cols-2 gap-3 sm:max-w-lg">
         <div className="rounded-xl border border-[var(--line)] bg-[var(--card)] p-4"><div className="text-xs text-[var(--soft)]">記錄數</div><div className="mt-1 text-xl font-semibold">{records.length}</div></div>
         <div className="rounded-xl border border-[var(--line)] bg-[var(--card)] p-4"><div className="text-xs text-[var(--soft)]">收入</div><div className="mt-1 text-xl font-semibold">{money(income)}</div></div>

@@ -3,6 +3,7 @@
 --
 -- 規則
 --   • 對外單號／發票編號＝公司自有流水整數 invoice_no（例如 290），同一專案（RSL- 或自訂專案編號）共用一個編號。
+--   • 新專案（網站預約、後台開新單、網上商店訂單）的專案編號＝單號（例如專案 290 的單號亦是 290）；舊 RSL- 專案維持不變。
 --   • Shopify 訂單號／名稱／GID 只作內部參考，不會寫入 invoice_no。
 --   • 接送訂金收取、抵扣及餘額一律以 invoice_no 記入 deposit_ledger（由資料庫觸發器自動記錄，網站及後台流程毋須改動）。
 --
@@ -50,6 +51,38 @@ begin
       end if;
     end;
   end loop;
+end $$;
+
+-- 新專案：取下一個單號，並以同一數字作專案編號（例如 290）
+create or replace function public.new_company_project()
+returns integer language plpgsql security definer set search_path = public as $$
+declare
+  v_no integer;
+begin
+  loop
+    v_no := nextval('company_invoice_no_seq');
+    begin
+      insert into company_invoices (invoice_no, project_no) values (v_no, v_no::text);
+      return v_no;
+    exception when unique_violation then
+      null; -- 此數字（或同名專案編號）已被人手使用，取下一個
+    end;
+  end loop;
+end $$;
+
+-- 網上商店訂單未有專案：以新單號作專案編號（同一訂單同時收到多個通知亦只會配一次）
+create or replace function public.assign_new_project_to_product_order(p_order_id text)
+returns text language plpgsql security definer set search_path = public as $$
+declare
+  v_current text;
+  v_no integer;
+begin
+  select project_no into v_current from product_orders where shopify_order_id::text = p_order_id for update;
+  if not found then return null; end if;
+  if nullif(btrim(v_current), '') is not null then return v_current; end if;
+  v_no := new_company_project();
+  update product_orders set project_no = v_no::text where shopify_order_id::text = p_order_id;
+  return v_no::text;
 end $$;
 
 -- 管理員人手修正單號（同一專案的所有記錄及流水一併更新）
@@ -220,6 +253,10 @@ revoke execute on function public.assign_invoice_no() from public, anon, authent
 revoke execute on function public.deposit_ledger_sync() from public, anon, authenticated;
 grant execute on function public.company_invoice_for_project(text) to service_role;
 grant execute on function public.set_company_invoice_no(integer, integer, text) to service_role;
+revoke execute on function public.new_company_project() from public, anon, authenticated;
+revoke execute on function public.assign_new_project_to_product_order(text) from public, anon, authenticated;
+grant execute on function public.new_company_project() to service_role;
+grant execute on function public.assign_new_project_to_product_order(text) to service_role;
 
 -- 7. 舊記錄背填 ----------------------------------------------------------------
 -- 7a. 最後已用的公司單號（⚠️ 按實際修改；新單號由此數字 + 1 開始）
