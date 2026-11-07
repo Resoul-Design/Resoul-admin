@@ -4,7 +4,7 @@
 1. Supabase（diyxcx）SQL Editor 執行 `db/migration_20261108_company_invoice_no.sql`
    - 執行前確認第 7a 段「最後已用的公司單號」（預設 289，新單號由 290 開始）。
    - 執行後跑檔案最後三句檢查，全部應為 0。
-2. 合併 `unified-order` 至 `main`（Vercel 自動部署）。
+2. 合併 `unified-order` 至 `main`（Vercel 自動部署），再合併網站 `resoul-landing` 分支 `project-equals-invoice`（網站新專案由伺服器編配，專案編號＝單號）。
 3. Shopify Order Printer 重新貼入 `resoul-landing/docs/order-printer-invoice.liquid`。
 4. 營運手冊：把 OneDrive `營運手冊來源/待上線-開新單/` 的檔案覆蓋上一層，並重出 PDF。
 
@@ -17,6 +17,7 @@
   `deposit_bookings`、`cremation_bookings`、`product_orders` 加 `invoice_no`，由觸發器按專案自動配號（網站預約毋須改動）。
 - 列表、全後台搜尋、專案及客戶檔案、發票 PDF／Word、訂金抵扣：主顯示公司單號；Shopify 訂單號只作搜尋及「內部參考」。
 - 管理員可在單詳情修正單號（`set_company_invoice_no`，同一專案所有記錄及流水一併更新，留審計記錄）。
+- 新專案的專案編號＝單號（例如 290）：後台開新單用 `new_company_project()`；網上商店訂單用 `assign_new_project_to_product_order()`（同一訂單只配一次）。舊 RSL- 專案不變；兩者相同時列表不重複顯示「專案」。
 
 ## 單類型（`lib/order-types.ts`）
 | key | 名稱 | 記錄 | Shopify |
