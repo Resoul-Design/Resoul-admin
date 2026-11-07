@@ -490,7 +490,7 @@ async function syncToShopify(id: string, staff: Staff): Promise<{ error?: string
           await admin.from(o.linked_table).update({
             payment_status: "paid", payment_amount: o.amount, payment_currency: "HKD", paid_at: new Date().toISOString(),
             shopify_order_id: orderId, shopify_order_name: payload.draftOrder.order.name,
-            notes: `${row.notes || ""} | 開單時已收款 ${today}：${method} ${hk(Number(o.amount || 0))}（${staff.name || staff.email}）`.slice(0, 4000),
+            notes: `${row.notes || ""} | 開單時已收款 ${today}：${method} ${hk(Number(o.amount || 0) - Number((o.details as { depositCredit?: { amount?: number } | null })?.depositCredit?.amount || 0))}（${staff.name || staff.email}）`.slice(0, 4000),
           }).eq("id", o.linked_id);
         }
       }

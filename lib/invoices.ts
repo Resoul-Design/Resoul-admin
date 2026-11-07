@@ -225,19 +225,39 @@ export function parseOrderExtras(note: string | null | undefined, attrs: { key: 
 async function applyOrderExtras(docs: InvoiceDoc[]) {
   const gid = (id?: string) => (!id ? "" : id.startsWith("gid://") ? id : /^\d+$/.test(id) ? `gid://shopify/Order/${id}` : "");
   const ids = [...new Set(docs.map((d) => gid(d.shopifyOrderId)).filter(Boolean))];
+  type ShopifyLine = { title: string; variantTitle: string | null; sku: string | null; quantity: number; originalUnitPriceSet: { shopMoney: { amount: string } } | null };
   const found = new Map<string, ReturnType<typeof parseOrderExtras>>();
+  const lines = new Map<string, ShopifyLine[]>();
   for (let i = 0; i < ids.length; i += 100) {
     try {
-      const res = await shopifyGraphQL<{ nodes: ({ id: string; note: string | null; customAttributes: { key: string; value: string | null }[] } | null)[] }>(
-        `query($ids: [ID!]!) { nodes(ids: $ids) { ... on Order { id note customAttributes { key value } } } }`,
+      const res = await shopifyGraphQL<{ nodes: ({ id: string; note: string | null; customAttributes: { key: string; value: string | null }[]; lineItems?: { nodes: ShopifyLine[] } } | null)[] }>(
+        `query($ids: [ID!]!) { nodes(ids: $ids) { ... on Order { id note customAttributes { key value } lineItems(first: 50) { nodes { title variantTitle sku quantity originalUnitPriceSet { shopMoney { amount } } } } } } }`,
         { ids: ids.slice(i, i + 100) }
       );
-      for (const n of res.nodes) if (n?.id) found.set(n.id, parseOrderExtras(n.note, n.customAttributes));
+      for (const n of res.nodes) {
+        if (!n?.id) continue;
+        found.set(n.id, parseOrderExtras(n.note, n.customAttributes));
+        if (n.lineItems?.nodes.length) lines.set(n.id, n.lineItems.nodes);
+      }
     } catch (e) {
       console.error("[invoice_extras]", e instanceof Error ? e.message : "unknown");
     }
   }
   for (const d of docs) {
+    // 接送訂金、火化／安樂在家：後台記錄只存總額，項目以 Shopify 訂單為準（例如告別套餐＋加購紀念品）
+    const items = lines.get(gid(d.shopifyOrderId));
+    if (items && (d.ref.startsWith("deposit:") || d.ref.startsWith("booking:"))) {
+      d.items = items.map((it) => ({
+        sku: it.sku || "",
+        title: `${it.title}${it.variantTitle && it.variantTitle !== "Default Title" ? `（${it.variantTitle}）` : ""}`,
+        unit: it.originalUnitPriceSet ? Number(it.originalUnitPriceSet.shopMoney.amount) : null,
+        qty: it.quantity,
+      }));
+      if (d.items.every((it) => it.unit != null)) {
+        d.subtotal = d.items.reduce((n, it) => n + (it.unit || 0) * it.qty, 0);
+        d.discount = Math.max(0, d.subtotal - d.total);
+      }
+    }
     const extra = found.get(gid(d.shopifyOrderId));
     if (!extra) continue;
     if (extra.invoiceNo && !d.companyNo) d.no = extra.invoiceNo;
