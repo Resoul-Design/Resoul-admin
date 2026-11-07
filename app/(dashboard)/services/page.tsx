@@ -15,7 +15,19 @@ export default async function ServicesPage() {
   if (!staff) redirect("/login");
   const available = services.filter((service) => hasModule(staff, [service.key]));
   if (!available.length) redirect("/");
-  const { data: invoiceRows } = await createAdminClient().from("company_orders").select("id, invoice_no, order_type, customer_name, phone, amount, status, created_at").order("created_at", { ascending: false }).limit(100);
+  const admin = createAdminClient();
+  const [company, deposits, cremations, products] = await Promise.all([
+    admin.from("company_orders").select("id, invoice_no, order_type, customer_name, phone, amount, status, created_at").order("created_at", { ascending: false }).limit(100),
+    admin.from("deposit_bookings").select("id, invoice_no, owner_name, contact, payment_amount, payment_status, created_at").order("created_at", { ascending: false }).limit(100),
+    admin.from("cremation_bookings").select("id, invoice_no, owner_name, contact, payment_amount, payment_status, created_at").order("created_at", { ascending: false }).limit(100),
+    admin.from("product_orders").select("id, invoice_no, customer_name, phone, amount, status, shopify_created_at").order("shopify_created_at", { ascending: false }).limit(100),
+  ]);
+  const invoiceRows = [
+    ...(company.data || []),
+    ...(deposits.data || []).map((r) => ({ id: `deposit-${r.id}`, invoice_no: r.invoice_no, order_type: "deposit", customer_name: r.owner_name, phone: r.contact, amount: r.payment_amount, status: r.payment_status, created_at: r.created_at })),
+    ...(cremations.data || []).map((r) => ({ id: `cremation-${r.id}`, invoice_no: r.invoice_no, order_type: "cremation", customer_name: r.owner_name, phone: r.contact, amount: r.payment_amount, status: r.payment_status, created_at: r.created_at })),
+    ...(products.data || []).map((r) => ({ id: `product-${r.id}`, invoice_no: r.invoice_no, order_type: "product", customer_name: r.customer_name, phone: r.phone, amount: r.amount, status: r.status, created_at: r.shopify_created_at })),
+  ].filter((r) => r.invoice_no != null).sort((a, b) => String(b.created_at || "").localeCompare(String(a.created_at || ""))).slice(0, 200);
   const typeLabel: Record<string, string> = { deposit: "接送服務", cremation: "火化預約", vet: "獸醫評估", product: "紀念品訂單", other: "其他" };
   const typeHref: Record<string, string> = { deposit: "/deposits", cremation: "/bookings", vet: "/vet-assessments", product: "/orders", other: "/new-order" };
   const statusLabel: Record<string, string> = { draft: "草稿", awaiting_payment: "待付款", pending: "處理中", paid: "已付款", completed: "已完成", cancelled: "已取消", failed: "失敗" };
