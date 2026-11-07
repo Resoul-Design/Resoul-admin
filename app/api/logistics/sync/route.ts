@@ -4,7 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 
 export async function POST(request: Request) {
   const staff = await getStaff();
-  if (!staff || !hasModule(staff, ["logistics"])) return new NextResponse("Forbidden", { status: 403 });
+  if (!staff || !hasModule(staff, ["inventory"])) return new NextResponse("Forbidden", { status: 403 });
   const form = await request.formData();
   const file = form.get("file");
   if (!(file instanceof File)) return NextResponse.json({ error: "請上傳 CSV。" }, { status: 400 });
