@@ -8,8 +8,16 @@ export const dynamic = "force-dynamic";
 export default async function LogisticsDetail({ params }: { params: Promise<{ invoice: string }> }) {
   const staff = await getStaff(); if (!staff) redirect("/login"); if (!hasModule(staff, ["inventory"])) notFound();
   const invoice = decodeURIComponent((await params).invoice);
-  const { data, error } = await createAdminClient().from("logistics_orders").select("*").eq("invoice_no", invoice).maybeSingle();
-  if (error || !data) notFound();
+  const admin = createAdminClient();
+  const [logistics, company, deposits, cremations, products] = await Promise.all([
+    admin.from("logistics_orders").select("*").eq("invoice_no", invoice).maybeSingle(),
+    admin.from("company_orders").select("*").eq("invoice_no", Number(invoice) || invoice).maybeSingle(),
+    admin.from("deposit_bookings").select("*").eq("invoice_no", Number(invoice) || invoice).maybeSingle(),
+    admin.from("cremation_bookings").select("*").eq("invoice_no", Number(invoice) || invoice).maybeSingle(),
+    admin.from("product_orders").select("*").eq("invoice_no", Number(invoice) || invoice).maybeSingle(),
+  ]);
+  const data = logistics.data || (company.data ? { ...company.data, owner_name: company.data.customer_name, phone: company.data.phone, email: company.data.email } : null) || (deposits.data ? { ...deposits.data, phone: deposits.data.contact } : null) || (cremations.data ? { ...cremations.data, phone: cremations.data.contact } : null) || (products.data ? { ...products.data, owner_name: products.data.customer_name } : null);
+  if (!data) notFound();
   const row = data as Record<string, unknown>;
   const hiddenKeys = new Set(["overwritten_fields", "raw_row", "is_test"]);
   const labels: Record<string, string> = {
