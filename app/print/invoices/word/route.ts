@@ -32,7 +32,9 @@ export async function GET(request: Request) {
   }
   const [wordmark, signature] = await Promise.all([image(new URL("/resoul-wordmark.png", url)), image(new URL("/resoul-signature.png", url))]);
   const buffer = await buildInvoicesDocx(docs, { wordmark, signature });
-  const name = docs.length === 1 ? `Invoice-${docs[0].no.replace(/[^A-Za-z0-9-]/g, "")}.docx` : `Resoul-Invoices-${docs.length}.docx`;
+  // 下載檔名只用英文數字（單據編號可含中文，留空時用通用名稱）
+  const safeNo = docs.length === 1 ? docs[0].no.replace(/[^A-Za-z0-9-]/g, "") : "";
+  const name = docs.length > 1 ? `Resoul-Invoices-${docs.length}.docx` : safeNo ? `Invoice-${safeNo}.docx` : "Invoice.docx";
   return new Response(new Uint8Array(buffer), {
     headers: {
       "Content-Type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",

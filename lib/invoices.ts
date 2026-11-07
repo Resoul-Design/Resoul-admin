@@ -23,6 +23,7 @@ export type InvoiceDoc = {
   discount: number;
   total: number;
   isTest: boolean;
+  shopifyOrderId?: string; // 只供讀取 Shopify 訂單備註
 };
 
 type Row = Record<string, unknown>;
@@ -53,6 +54,7 @@ function depositDoc(r: Row): InvoiceDoc | null {
     discount: 0,
     total: amount,
     isTest: !!r.is_test,
+    shopifyOrderId: str(r.shopify_order_id),
   };
 }
 
@@ -79,6 +81,7 @@ function bookingDoc(r: Row): InvoiceDoc | null {
     discount: 0,
     total: amount,
     isTest: !!r.is_test,
+    shopifyOrderId: str(r.shopify_order_id),
   };
 }
 
@@ -110,6 +113,7 @@ function orderDoc(o: ProductOrderRow): InvoiceDoc | null {
     discount: Math.max(0, subtotal - total),
     total,
     isTest: !!o.is_test,
+    shopifyOrderId: o.shopify_order_id,
   };
 }
 
@@ -161,9 +165,43 @@ export async function loadInvoices(q: InvoiceQuery, staff: Staff): Promise<Invoi
     }
     for (const r of (o?.data || []) as ProductOrderRow[]) { const doc = orderDoc(r); if (doc) docs.push(doc); }
   }
-  await fillMissingSkus(docs);
+  await Promise.all([fillMissingSkus(docs), applyOrderExtras(docs)]);
   // 按發票編號排序（#RS-1001、#RS-1002…）
   return docs.sort((a, b) => a.no.localeCompare(b.no, "en", { numeric: true }));
+}
+
+// 由 Shopify 訂單備註（一行「單據編號：xxx」「寵物：xxx」）或訂單欄位讀取客人指定的單據編號及寵物名稱
+export function parseOrderExtras(note: string | null | undefined, attrs: { key: string; value: string | null }[] = []) {
+  const attr = (...keys: string[]) => attrs.find((a) => keys.includes(a.key) && a.value?.trim())?.value?.trim() || "";
+  const line = (label: string) => String(note || "").split(/\r?\n/).map((l) => l.trim()).find((l) => l.startsWith(`${label}：`) || l.startsWith(`${label}:`))?.slice(label.length + 1).trim() || "";
+  return {
+    invoiceNo: attr("Invoice No", "Invoice No.", "單據編號") || line("單據編號"),
+    pet: attr("Owner of", "毛孩名", "Pet", "pet") || line("寵物"),
+  };
+}
+
+// 與 Shopify 發票範本一致；讀取失敗或訂單已刪除時沿用後台資料
+async function applyOrderExtras(docs: InvoiceDoc[]) {
+  const gid = (id?: string) => (!id ? "" : id.startsWith("gid://") ? id : /^\d+$/.test(id) ? `gid://shopify/Order/${id}` : "");
+  const ids = [...new Set(docs.map((d) => gid(d.shopifyOrderId)).filter(Boolean))];
+  const found = new Map<string, ReturnType<typeof parseOrderExtras>>();
+  for (let i = 0; i < ids.length; i += 100) {
+    try {
+      const res = await shopifyGraphQL<{ nodes: ({ id: string; note: string | null; customAttributes: { key: string; value: string | null }[] } | null)[] }>(
+        `query($ids: [ID!]!) { nodes(ids: $ids) { ... on Order { id note customAttributes { key value } } } }`,
+        { ids: ids.slice(i, i + 100) }
+      );
+      for (const n of res.nodes) if (n?.id) found.set(n.id, parseOrderExtras(n.note, n.customAttributes));
+    } catch (e) {
+      console.error("[invoice_extras]", e instanceof Error ? e.message : "unknown");
+    }
+  }
+  for (const d of docs) {
+    const extra = found.get(gid(d.shopifyOrderId));
+    if (!extra) continue;
+    if (extra.invoiceNo) d.no = extra.invoiceNo;
+    if (extra.pet && !d.pet) d.pet = extra.pet;
+  }
 }
 
 // 舊紀念品訂單未保存產品代碼：按產品名稱向 Shopify 查詢（只限單一款式的產品；查詢失敗略過）
