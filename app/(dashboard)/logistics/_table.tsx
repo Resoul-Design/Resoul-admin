@@ -3,11 +3,11 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
-export type LogisticsRow = { invoiceNo: string; owner: string; phone: string; pet: string; plan: string; arrival: string; deposit: string; balance: string; status: string; updated: string; raw: Record<string, unknown> };
+export type LogisticsRow = { invoiceNo: string; owner: string; phone: string; email: string; project: string; pet: string; plan: string; arrival: string; deposit: string; balance: string; status: string; updated: string; raw: Record<string, unknown> };
 
 export function LogisticsTable({ rows, error }: { rows: LogisticsRow[]; error: string | null }) {
   const [query, setQuery] = useState("");
-  const filtered = useMemo(() => { const q = query.trim().toLowerCase(); return q ? rows.filter((r) => [r.invoiceNo, r.owner, r.phone, r.pet].join(" ").toLowerCase().includes(q)) : rows; }, [rows, query]);
+  const filtered = useMemo(() => { const q = query.trim().toLowerCase(); return q ? rows.filter((r) => [r.invoiceNo, r.owner, r.phone, r.email, r.project, r.pet].join(" ").toLowerCase().includes(q)) : rows; }, [rows, query]);
   return <div>
     {error && <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">讀取客戶資料失敗：{error}</div>}
     <div className="mb-4 flex flex-wrap items-center gap-2"><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="搜尋發票編號／電話／寵物／主人" className="min-w-[260px] flex-1 rounded-lg border border-[var(--line)] bg-white px-3 py-2 text-sm" /><Link href="/logistics/sync" className="rounded-lg border border-[var(--line)] px-3 py-2 text-sm hover:bg-[var(--cream)]">由 Excel 同步</Link><span className="text-xs text-[var(--soft)]">共 {filtered.length} 筆</span></div>
