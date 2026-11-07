@@ -6,7 +6,6 @@ import { draftOrderNames } from "@/lib/draft-names";
 import { loadSiteContent } from "@/lib/site-content-server";
 import { getStaff, hasModule } from "@/lib/auth";
 import { loadCatalog } from "@/lib/catalog";
-import { NewBookingOrder } from "../_booking-order";
 import { redirect } from "next/navigation";
 import { shopDomain } from "@/lib/shopify";
 import { canonicalProjectNo, projectNoFromNotes } from "@/lib/order-label";
@@ -264,9 +263,7 @@ export async function BookingsPage({ mode, query = "", onlyFollow = false, showT
 
   return (
     <div>
-      <PageHeader title={mode === "vet" ? "獸醫評估" : "火化預約"}>
-        {cremationCatalog && <NewBookingOrder mode="cremation" products={cremationCatalog.products} catalogError={cremationCatalog.error} staffName={staffName} />}
-      </PageHeader>
+      <PageHeader title={mode === "vet" ? "獸醫評估" : "火化預約"} />
 
       <TestingNotice />
 

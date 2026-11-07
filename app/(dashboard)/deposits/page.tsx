@@ -4,8 +4,6 @@ import { PageHeader } from "../_page-header";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { shopDomain } from "@/lib/shopify";
 import { getStaff, hasModule } from "@/lib/auth";
-import { loadCatalog } from "@/lib/catalog";
-import { NewBookingOrder } from "../_booking-order";
 import { FOLLOW_UP_ACTION, FOLLOW_UP_LABEL, FOLLOW_UP_ORDER, followUpKind, needsPaymentLink } from "@/lib/deposit-followup";
 import { EditDepositInline } from "./_edit";
 import { RowActions, type RowAction } from "../_row-actions";
@@ -247,7 +245,6 @@ export default async function DepositsPage({ searchParams }: { searchParams: Pro
   const draftNames = await draftOrderNames(rows.filter((r) => !r.shopify_order_name).map((r) => r.payment_draft_id));
   const orderNo = (r: DepositRow) => r.shopify_order_name || (r.payment_draft_id && draftNames.has(r.payment_draft_id) ? `${draftNames.get(r.payment_draft_id)}（草稿）` : "");
   const staffName = staff?.name?.trim() || staff?.email?.split("@")[0] || "同事";
-  const depositCatalog = staff && hasModule(staff, ["deposits"]) ? await loadCatalog("deposit") : { products: [], error: "" };
   const now = new Date();
   // 查看測試記錄時不顯示跟進
   const followUps: FollowUpItem[] = followUpNotReady || showTests
@@ -283,9 +280,7 @@ export default async function DepositsPage({ searchParams }: { searchParams: Pro
 
   return (
     <div>
-      <PageHeader title="接送服務">
-        {staff && hasModule(staff, ["deposits"]) && <NewBookingOrder mode="deposit" products={depositCatalog.products} catalogError={depositCatalog.error} staffName={staffName} />}
-      </PageHeader>
+      <PageHeader title="接送服務" />
 
       <TestingNotice />
 

@@ -1,5 +1,7 @@
 import { redirect } from "next/navigation";
-import { getStaff } from "@/lib/auth";
+import Link from "next/link";
+import { getStaff, hasModule } from "@/lib/auth";
+import { ORDER_TYPES } from "@/lib/order-types";
 import { TopNav } from "./_topnav";
 import { UserMenu } from "./_usermenu";
 import { MobileMenu } from "./_mobilemenu";
@@ -18,6 +20,8 @@ export default async function DashboardLayout({
   const displayName = staff.name || staff.email;
   const roleLabel = staff.role === "admin" ? "管理員" : "員工";
   const allowed = staff.role === "admin" ? null : staff.permissions || [];
+  // 開單唯一入口：有任何一類開單權限才顯示
+  const canOrder = ORDER_TYPES.some((t) => hasModule(staff, [t.module]));
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -36,6 +40,11 @@ export default async function DashboardLayout({
             <TopNav allowed={allowed} />
           </nav>
           <div className="flex-1 lg:hidden" />
+          {canOrder && (
+            <Link href="/new-order" prefetch={false} className="shrink-0 rounded-lg bg-[var(--gold)] px-3 py-1.5 text-sm font-medium text-white hover:opacity-90" aria-label="開新單">
+              ＋<span className="hidden sm:inline"> 開新單</span>
+            </Link>
+          )}
           <div className="shrink-0">
             <GlobalSearch />
           </div>

@@ -7,11 +7,9 @@ import type { ProductOrderRow } from "@/lib/product-orders";
 import { shopDomain } from "@/lib/shopify";
 import { productOrderProjectNo } from "@/lib/order-label";
 import { assignMissingProjectNos } from "@/lib/product-order-projects";
-import { getStaff, hasModule } from "@/lib/auth";
+import { getStaff } from "@/lib/auth";
 import { syncProductOrders } from "./actions";
 import { OrdersTable, type OrderRow } from "./_table";
-import { NewSouvenirOrder } from "./_new-order";
-import { loadCatalog } from "@/lib/catalog";
 import { TestRecordsBar } from "../_test-controls";
 
 export const dynamic = "force-dynamic";
@@ -61,9 +59,6 @@ export default async function OrdersPage({ searchParams }: {
   const params = await searchParams;
   const supabase = await createClient();
   const staff = await getStaff();
-  const canCreate = !!staff && hasModule(staff, ["orders"]);
-  // 訂單列表與產品目錄同時讀取
-  const catalogP = canCreate ? loadCatalog("souvenir") : null;
   const draftsP = loadDraftRows();
   const { data, error } = await supabase
     .from("product_orders").select("*")
@@ -79,7 +74,6 @@ export default async function OrdersPage({ searchParams }: {
     for (const o of orders) if (!o.project_no && assigned.has(o.shopify_order_id)) o.project_no = assigned.get(o.shopify_order_id);
   }
 
-  const { products, error: catalogError } = catalogP ? await catalogP : { products: [], error: "" };
 
   const orderId = (o: ProductOrderRow) => o.shopify_order_id.split("/").pop() || "";
   const rows: OrderRow[] = orders.map((o) => {
@@ -119,7 +113,6 @@ export default async function OrdersPage({ searchParams }: {
   return (
     <div>
       <PageHeader title="紀念品訂單">
-          {canCreate && <NewSouvenirOrder products={products} catalogError={catalogError} />}
           <form action={syncProductOrders}>
             <button className="rounded-lg border border-[var(--line)] px-4 py-2 text-sm hover:bg-[var(--cream)]">
               同步 Shopify 訂單
