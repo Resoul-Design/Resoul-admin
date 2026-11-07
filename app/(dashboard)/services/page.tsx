@@ -17,7 +17,9 @@ export default async function ServicesPage() {
   if (!available.length) redirect("/");
   const admin = createAdminClient();
   const typeLabel: Record<string, string> = { deposit: "接送服務", cremation: "火化預約", vet: "獸醫評估", product: "紀念品訂單", other: "其他" };
-  const typeHref: Record<string, string> = { deposit: "/deposits", cremation: "/bookings", vet: "/vet-assessments", product: "/orders", other: "/new-order" };\n  const serviceQueryHref = (label: string, invoice: unknown) => `${Object.fromEntries(Object.entries(typeLabel).map(([key, value]) => [value, typeHref[key]]))[label] || "/new-order"}?q=${encodeURIComponent(String(invoice))}`;
+  const typeHref: Record<string, string> = { deposit: "/deposits", cremation: "/bookings", vet: "/vet-assessments", product: "/orders", other: "/new-order" };
+  const labelHref: Record<string, string> = Object.fromEntries(Object.entries(typeLabel).map(([key, label]) => [label, typeHref[key]]));
+  const serviceQueryHref = (label: string, invoice: unknown) => `${labelHref[label] || "/new-order"}?q=${encodeURIComponent(String(invoice))}`;
   const statusLabel: Record<string, string> = { draft: "草稿", awaiting_payment: "待付款", pending: "處理中", paid: "已付款", completed: "已完成", cancelled: "已取消", failed: "失敗" };
   const statusSummary = (statuses: string[] = []) => { const set = new Set(statuses); if (set.has("pending")) return "處理中"; if (set.has("awaiting_payment") && set.has("paid")) return "部分待付款"; if (set.has("awaiting_payment")) return "待付款"; if (set.has("paid")) return "已付款"; return statuses.map((value) => statusLabel[value] || value).join("、") || "—"; };
   const [company, deposits, cremations, products] = await Promise.all([
@@ -44,7 +46,7 @@ export default async function ServicesPage() {
       if (String(row.created_at || "") > String(existing.created_at || "")) existing.created_at = row.created_at;
     }
   }
-  const invoiceRows = [...grouped.values()].sort((a, b) => String(b.created_at || "").localeCompare(String(a.created_at || ""))).slice(0, 200);
+  const invoiceRows = sourceRows.map((row) => ({ ...row, service_labels: [typeLabel[row.order_type] || row.order_type], statuses: row.status ? [row.status] : [], amount: Number(row.amount || 0) })).sort((a, b) => String(b.created_at || "").localeCompare(String(a.created_at || ""))).slice(0, 200);
   return (
     <div>
       <div className="mb-6 flex items-end justify-between gap-4">
@@ -59,4 +61,3 @@ export default async function ServicesPage() {
     </div>
   );
 }
-
