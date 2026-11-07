@@ -88,7 +88,7 @@ export async function lookupCustomer(phone: string): Promise<CustomerMatch | nul
     admin.from("cremation_bookings").select("owner_name, contact, pet_name, case_no, notes, source, invoice_no, created_at").ilike("contact", `%${key}%`).order("created_at", { ascending: false }).limit(20),
     admin.from("product_orders").select("customer_name, email, project_no, invoice_no, shopify_created_at").eq("phone_key", key).order("shopify_created_at", { ascending: false }).limit(20),
     admin.from("company_orders").select("customer_name, email, pet_name, project_no, invoice_no, order_type, created_at").eq("phone_key", key).order("created_at", { ascending: false }).limit(20),
-    admin.from("logistics_orders").select("owner_name, phone, pet_name, invoice_no, created_at").ilike("phone", `%${key}%`).order("created_at", { ascending: false }).limit(20),
+    admin.from("logistics_orders").select("owner_name, phone, email, pet_name, invoice_no, created_at").ilike("phone", `%${key}%`).order("created_at", { ascending: false }).limit(20),
   ]);
   const projects = new Map<string, { projectNo: string; invoiceNo: number | null; lastDate: string; labels: Set<string> }>();
   const add = (no: string | null | undefined, invoice: number | null | undefined, date: string | null | undefined, label: string) => {
@@ -129,6 +129,7 @@ export async function lookupCustomer(phone: string): Promise<CustomerMatch | nul
   for (const r of logistics.data || []) {
     if (phoneKey(r.phone) !== key) continue;
     names.push(r.owner_name || "");
+    email = email || r.email || "";
     if (r.pet_name) pets.add(r.pet_name);
     add(null, Number(r.invoice_no) || null, r.created_at, "客戶資料");
   }
