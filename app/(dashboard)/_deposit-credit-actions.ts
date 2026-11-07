@@ -10,6 +10,7 @@ import { shopifyGraphQL } from "@/lib/shopify";
 import { canonicalProjectNo, projectNoFromNotes } from "@/lib/order-label";
 import { appendNote } from "@/lib/payment-check";
 import { loadSouvenirDrafts } from "@/lib/souvenir-drafts";
+import { depositCreditValue } from "@/lib/deposit-amount";
 
 export type CreditTarget = { kind: "cremation"; id: string } | { kind: "draft"; id: string };
 export type AvailableCredit = { id: string; projectNo: string; owner: string; pet: string; amount: number; paidAt: string; invoiceNo: number | null; isTest: boolean };
@@ -141,7 +142,7 @@ export async function getCreditStatus(t: CreditTarget): Promise<CreditStatus> {
     .neq("status", "cancelled")
     .order("paid_at", { ascending: false });
   const available = (deps || []).map((d) => ({
-    id: d.id, projectNo: d.project_no || "", owner: d.owner_name || "", pet: d.pet_name || "", amount: Number(d.payment_amount || 1800),
+    id: d.id, projectNo: d.project_no || "", owner: d.owner_name || "", pet: d.pet_name || "", amount: depositCreditValue(d.payment_amount),
     paidAt: d.paid_at || "", invoiceNo: d.invoice_no ?? null, isTest: !!d.is_test,
   }));
   return { ...base, available };
@@ -167,7 +168,7 @@ export async function applyDepositCredit(t: CreditTarget, depositId: string): Pr
   if (!dep || dep.payment_status !== "paid") return { error: "此接送訂金未付款，不能抵扣。" };
   if (dep.project_no !== target.projectNo) return { error: `只可抵扣同一專案編號（${target.projectNo}）的接送訂金。` };
   if (dep.credit_target) return { error: "此接送訂金已用於另一張單。" };
-  const credit = Math.min(Number(dep.payment_amount || 1800), target.amount);
+  const credit = Math.min(depositCreditValue(dep.payment_amount), target.amount);
 
   // 先標記訂金已使用（避免同時套用兩次），再更新 Shopify 草稿
   const { data: claimed, error: claimErr } = await admin

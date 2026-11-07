@@ -15,6 +15,7 @@ import { findTimeSlot } from "@/lib/deposit-followup";
 import { isProjectNo, projectNoFromNotes, canonicalProjectNo } from "@/lib/order-label";
 import { phoneKey } from "@/lib/product-orders";
 import { appendNote } from "@/lib/payment-check";
+import { depositCreditValue } from "@/lib/deposit-amount";
 import { newCompanyProjectNo } from "@/lib/project-no";
 import { loadSiteContent } from "@/lib/site-content-server";
 import { ORDER_TYPE_MAP, RECEIVED_METHODS, type OrderType, type PaymentIntent } from "@/lib/order-types";
@@ -49,7 +50,7 @@ export type CustomerMatch = {
 };
 
 // 同一專案可扣除的接送訂金（已付款、未用、未取消）
-export type DepositCredit = { id: string; invoiceNo: number | null; amount: number; paidAt: string };
+export type DepositCredit = { id: string; invoiceNo: number | null; amount: number; paidAt: string; isTest: boolean };
 
 type Line = { variantId?: string; title?: string; price?: number; quantity: number; label: string };
 type DraftPlan = {
@@ -92,7 +93,7 @@ export async function lookupCustomer(phone: string): Promise<CustomerMatch | nul
   if (!key) return null;
   const admin = createAdminClient();
   const [dep, crem, prod, co, logistics] = await Promise.all([
-    admin.from("deposit_bookings").select("id, owner_name, contact, pet_name, project_no, invoice_no, created_at, payment_status, payment_amount, paid_at, credit_target, status").ilike("contact", `%${key}%`).order("created_at", { ascending: false }).limit(20),
+    admin.from("deposit_bookings").select("id, owner_name, contact, pet_name, project_no, invoice_no, created_at, payment_status, payment_amount, paid_at, credit_target, status, is_test").ilike("contact", `%${key}%`).order("created_at", { ascending: false }).limit(20),
     admin.from("cremation_bookings").select("owner_name, contact, pet_name, case_no, notes, source, invoice_no, created_at").ilike("contact", `%${key}%`).order("created_at", { ascending: false }).limit(20),
     admin.from("product_orders").select("customer_name, email, project_no, invoice_no, shopify_created_at").eq("phone_key", key).order("shopify_created_at", { ascending: false }).limit(20),
     admin.from("company_orders").select("customer_name, email, pet_name, project_no, invoice_no, order_type, created_at").eq("phone_key", key).order("created_at", { ascending: false }).limit(20),
@@ -118,7 +119,7 @@ export async function lookupCustomer(phone: string): Promise<CustomerMatch | nul
     add(r.project_no, r.invoice_no, r.created_at, "接送");
     const no = canonicalProjectNo(r.project_no);
     if (no !== "—" && r.payment_status === "paid" && !r.credit_target && r.status !== "cancelled") {
-      projects.get(no)?.deposits.push({ id: r.id, invoiceNo: r.invoice_no ?? null, amount: Number(r.payment_amount || 1800), paidAt: String(r.paid_at || r.created_at || "").slice(0, 10) });
+      projects.get(no)?.deposits.push({ id: r.id, invoiceNo: r.invoice_no ?? null, amount: depositCreditValue(r.payment_amount), paidAt: String(r.paid_at || r.created_at || "").slice(0, 10), isTest: !!r.is_test });
     }
   }
   for (const r of crem.data || []) {
@@ -273,7 +274,7 @@ export async function createOrder(input: NewOrderInput): Promise<{ id?: string; 
     if (!dep || dep.payment_status !== "paid" || dep.status === "cancelled") return { error: "此接送訂金未付款或已取消，不能扣除。" };
     if (String(dep.project_no || "").toUpperCase() !== projectNo.toUpperCase()) return { error: `只可扣除同一專案（${projectNo}）的接送訂金。` };
     if (dep.credit_target) return { error: "此接送訂金已用於另一張單。" };
-    const value = Math.min(Number(dep.payment_amount || 1800), amount);
+    const value = Math.min(depositCreditValue(dep.payment_amount), amount);
     if (value > 0) credit = { id: dep.id, amount: value, invoiceNo: dep.invoice_no ?? null, notes: dep.notes };
   }
   const creditText = credit ? `接送訂金${credit.invoiceNo ? `（單號 ${credit.invoiceNo}）` : ""} ${hk(credit.amount)}（${projectNo}）` : "";
@@ -333,7 +334,8 @@ export async function createOrder(input: NewOrderInput): Promise<{ id?: string; 
   const basePlan: DraftPlan = {
     email,
     note: [publicNote, otherDescription && input.type === "other" ? otherDescription : "", petName ? `寵物：${petName}` : "", `單據編號：${invoiceNo}`].filter(Boolean).join("\n"),
-    tags: [...def2.tags, projectNo, `Invoice ${invoiceNo}`],
+    // 標籤只放類型；舊專案（RSL- 或自訂編號）另加專案編號。單號不加標籤（已在自訂欄位 Invoice No 及備註）
+    tags: [...def2.tags, ...(projectNo !== String(invoiceNo) ? [projectNo] : [])],
     attributes: [
       { key: "Invoice No", value: String(invoiceNo) },
       { key: "Order Type", value: def2.label },
