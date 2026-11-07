@@ -234,19 +234,38 @@ export async function removeDepositCredit(t: CreditTarget): Promise<Result> {
 }
 
 // 接送服務頁：查看此訂金是否已用於抵扣
-export async function getDepositCreditUse(depositId: string): Promise<{ text: string; error?: string }> {
+export type DepositLedger = { invoiceNo: number; received: number; applied: number; balance: number; rows: { date: string; kind: string; amount: number }[] };
+const LEDGER_KIND: Record<string, string> = { received: "收取訂金", applied: "抵扣", released: "取消抵扣", refunded: "退款", adjustment: "調整" };
+
+// 按公司單號讀取訂金流水及可扣餘額
+async function loadLedger(invoiceNo: number | null | undefined): Promise<DepositLedger | undefined> {
+  if (!invoiceNo) return undefined;
+  const { data } = await createAdminClient().from("deposit_ledger").select("kind, amount, created_at").eq("invoice_no", invoiceNo).order("created_at");
+  if (!data) return undefined;
+  const sum = (kinds: string[]) => data.filter((r) => kinds.includes(r.kind)).reduce((n, r) => n + Number(r.amount), 0);
+  return {
+    invoiceNo,
+    received: sum(["received"]),
+    applied: -sum(["applied", "released"]),
+    balance: data.reduce((n, r) => n + Number(r.amount), 0),
+    rows: data.map((r) => ({ date: new Date(Date.parse(r.created_at) + 8 * 3600 * 1000).toISOString().slice(0, 10), kind: LEDGER_KIND[r.kind] || r.kind, amount: Number(r.amount) })),
+  };
+}
+
+export async function getDepositCreditUse(depositId: string): Promise<{ text: string; error?: string; ledger?: DepositLedger }> {
   const staff = await getStaff();
   if (!staff || !hasModule(staff, ["deposits"])) return { text: "", error: "沒有此功能的使用權限。" };
-  const { data, error } = await createAdminClient().from("deposit_bookings").select("payment_status, project_no, credit_target, credit_amount, credit_applied_at").eq("id", depositId).maybeSingle();
+  const { data, error } = await createAdminClient().from("deposit_bookings").select("payment_status, project_no, credit_target, credit_amount, credit_applied_at, invoice_no").eq("id", depositId).maybeSingle();
   if (error) return { text: "", error: NOT_READY };
   if (!data) return { text: "", error: "找不到此接送服務。" };
-  if (data.payment_status !== "paid") return { text: "此訂金尚未付款，付款後才可用於抵扣。" };
+  const ledger = await loadLedger(data.invoice_no);
+  if (data.payment_status !== "paid") return { text: "此訂金尚未付款，付款後才可用於抵扣。", ledger };
   if (!data.credit_target) {
     return { text: data.project_no
-      ? `此訂金尚未使用。只可抵扣同一專案編號（${data.project_no}）的火化預約或紀念品草稿訂單：在該單「💳 付款及單據 → 💰 套用接送訂金」使用。`
-      : "此訂金未有專案編號，不能用於抵扣。" };
+      ? `此訂金尚未使用。只可抵扣同一單號${data.invoice_no ? ` ${data.invoice_no}` : ""}（專案 ${data.project_no}）的火化預約或紀念品草稿訂單：在該單「💳 付款及單據 → 💰 套用接送訂金」使用。`
+      : "此訂金未有專案編號，不能用於抵扣。", ledger };
   }
   const kind = String(data.credit_target).startsWith("cremation:") ? "火化預約" : "紀念品訂單";
   const date = data.credit_applied_at ? new Date(Date.parse(data.credit_applied_at) + 8 * 3600 * 1000).toISOString().slice(0, 10) : "";
-  return { text: `已於 ${date} 用於${kind}，抵扣 ${hk(Number(data.credit_amount || 0))}。如需取消，請在該${kind}的「💰 套用接送訂金」取消。` };
+  return { text: `已於 ${date} 用於${kind}，抵扣 ${hk(Number(data.credit_amount || 0))}。如需取消，請在該${kind}的「💰 套用接送訂金」取消。`, ledger };
 }

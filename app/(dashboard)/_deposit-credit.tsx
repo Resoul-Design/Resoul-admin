@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { applyDepositCredit, getCreditStatus, getDepositCreditUse, removeDepositCredit, type CreditStatus, type CreditTarget } from "./_deposit-credit-actions";
+import { applyDepositCredit, getCreditStatus, getDepositCreditUse, removeDepositCredit, type CreditStatus, type CreditTarget, type DepositLedger } from "./_deposit-credit-actions";
 
 const btn = "rounded-lg border px-3 py-2 text-sm disabled:opacity-50";
 const hk = (n: number) => `HK$${n.toLocaleString("en-US", { maximumFractionDigits: 2 })}`;
@@ -88,9 +88,24 @@ export function DepositCreditPanel({ target }: { target: CreditTarget }) {
 export function DepositCreditInfo({ depositId }: { depositId: string }) {
   const [text, setText] = useState<string | null>(null);
   const [error, setError] = useState("");
+  const [ledger, setLedger] = useState<DepositLedger | undefined>();
   useEffect(() => {
-    getDepositCreditUse(depositId).then((r) => { setText(r.text); setError(r.error || ""); });
+    getDepositCreditUse(depositId).then((r) => { setText(r.text); setError(r.error || ""); setLedger(r.ledger); });
   }, [depositId]);
   if (text === null && !error) return <p className="text-sm text-[var(--soft)]">讀取中…</p>;
-  return <p className={"text-sm leading-6 " + (error ? "text-red-700" : "")}>{error || text}</p>;
+  return (
+    <div className="space-y-3 text-sm">
+      <p className={"leading-6 " + (error ? "text-red-700" : "")}>{error || text}</p>
+      {ledger && (
+        <div className="rounded-xl border border-[var(--line)] bg-white p-3">
+          <p className="font-medium">單號 {ledger.invoiceNo} 訂金：已收 {hk(ledger.received)} · 已扣 {hk(ledger.applied)} · 可扣餘額 <b>{hk(ledger.balance)}</b></p>
+          {ledger.rows.length > 0 && (
+            <ul className="mt-2 space-y-0.5 text-xs text-[var(--soft)]">
+              {ledger.rows.map((r, i) => <li key={i}>{r.date} · {r.kind} · {r.amount >= 0 ? "+" : "−"}{hk(Math.abs(r.amount))}</li>)}
+            </ul>
+          )}
+        </div>
+      )}
+    </div>
+  );
 }
