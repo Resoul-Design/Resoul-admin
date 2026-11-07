@@ -70,8 +70,8 @@ export function MetricsSection({ cur, prev, isLatest }: { cur: MonthMetrics; pre
           <p className="mt-2 text-[11px] leading-5 text-[var(--faint)]">本月新收到的預約（包括其後取消的）。</p>
         </div>
         <RatioCard title="訂金付款率" hint="本月落單的接送訂金中，已付款的比例（已取消不計）。" now={cur.depositPaid} prev={prev.depositPaid} />
-        <RatioCard title="訂金轉火化率" hint="本月已付的接送訂金中，其後有火化預約的比例（以 RSL 專案編號或電話對應）。" now={cur.depositToCremation} prev={prev.depositToCremation} />
-        <RatioCard title="紀念品加購率" hint="本月火化預約中，有購買紀念品的比例（以電話或 RSL 專案編號對應）。" now={cur.keepsakeAttach} prev={prev.keepsakeAttach} />
+        <RatioCard title="訂金轉火化率" hint="本月已付的接送訂金中，其後有火化預約的比例（以專案編號或電話對應）。" now={cur.depositToCremation} prev={prev.depositToCremation} />
+        <RatioCard title="紀念品加購率" hint="本月火化預約中，有購買紀念品的比例（以電話或專案編號對應）。" now={cur.keepsakeAttach} prev={prev.keepsakeAttach} />
 
         <div className={card + " sm:col-span-2"}>
           <div className="flex items-baseline justify-between gap-3">

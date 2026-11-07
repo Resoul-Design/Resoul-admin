@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useCloseRowActions } from "../_row-actions";
 import { updateBooking } from "./actions";
-import { isRslProjectNo } from "@/lib/order-label";
+import { isProjectNo } from "@/lib/order-label";
 import type { DraftCatalogProduct } from "@/lib/catalog";
 
 export type BookingData = {
@@ -74,7 +74,7 @@ export function EditBookingInline({ booking, products = [], vetFee }: { booking:
   const close = useCloseRowActions();
   const b = booking;
   const vet = String(b.source || "").includes("euthanasia");
-  const projectNo = isRslProjectNo(b.case_no) ? b.case_no?.toUpperCase() : "";
+  const projectNo = isProjectNo(b.case_no) ? b.case_no?.toUpperCase() : "";
   const paid = b.payment_status === "paid";
   const productOf = (name: string) => (name ? products.find((p) => p.title.includes(name)) : undefined);
   const [plan, setPlan] = useState(b.plan || "");
@@ -116,8 +116,8 @@ export function EditBookingInline({ booking, products = [], vetFee }: { booking:
     >
       <input type="hidden" name="id" value={b.id} />
 
-      <Field label="RSL 專案編號">
-        <input name="case_no" defaultValue={projectNo} className={inputCls} placeholder="RSL-260922-AB12" pattern="RSL-[A-Za-z0-9]+-[A-Za-z0-9]+" title="請輸入 RSL 開頭的專案編號" />
+      <Field label="專案編號">
+        <input name="case_no" defaultValue={projectNo} maxLength={40} className={inputCls} pattern="[\p{L}\p{N}][\p{L}\p{N} _\-]+" title="只可包含文字、數字、空格、連字號或底線（2–40 個字元）" />
       </Field>
       {/* 火化預約狀態由「更新進度」處理；獸醫評估仍在此更改狀態 */}
       {String(b.source || "").includes("euthanasia") && (

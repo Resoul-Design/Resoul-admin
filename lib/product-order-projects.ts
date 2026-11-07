@@ -1,5 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
-import { isRslProjectNo, projectNoFromItems } from "@/lib/order-label";
+import { isProjectNo, projectNoFromItems } from "@/lib/order-label";
 import { makeProjectNo } from "@/lib/project-no";
 import type { ProductLineItem } from "@/lib/product-orders";
 
@@ -17,7 +17,7 @@ export async function assignMissingProjectNos(): Promise<Map<string, string>> {
   if (error || !data) return assigned;
   for (const row of data as { shopify_order_id: string; shopify_created_at: string; line_items: ProductLineItem[] | null }[]) {
     const fromOrder = projectNoFromItems(row.line_items || undefined);
-    const projectNo = isRslProjectNo(fromOrder) ? fromOrder : makeProjectNo(row.shopify_created_at);
+    const projectNo = isProjectNo(fromOrder) ? fromOrder : makeProjectNo(row.shopify_created_at);
     const { error: updateError } = await admin
       .from("product_orders")
       .update({ project_no: projectNo })

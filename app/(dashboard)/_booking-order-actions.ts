@@ -7,7 +7,7 @@ import { revalidatePath } from "next/cache";
 import { getStaff, hasModule } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { shopDomain, shopifyGraphQL } from "@/lib/shopify";
-import { isRslProjectNo } from "@/lib/order-label";
+import { isProjectNo } from "@/lib/order-label";
 import { logAudit } from "@/lib/audit";
 import { CREMATION_TYPES, DEPOSIT_TYPES } from "@/lib/catalog";
 import { PLAN_CODES } from "@/lib/company";
@@ -103,7 +103,7 @@ export async function createBookingOrder(_prev: BookingOrderState, data: FormDat
   if (!ownerName) return { error: "請填寫主人稱呼。" };
   if (!contact) return { error: "請填寫聯絡電話。" };
   if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { error: "電郵格式無效。" };
-  if (enteredProject && !isRslProjectNo(enteredProject)) return { error: "專案編號格式應為 RSL-年月日-代碼；新客人請留空。" };
+  if (enteredProject && !isProjectNo(enteredProject)) return { error: "專案編號只可包含文字、數字、空格、連字號或底線（2–40 個字元）；新客人請留空。" };
   if (serviceDate && !/^\d{4}-\d{2}-\d{2}$/.test(serviceDate)) return { error: "日期格式無效。" };
   if (!/^gid:\/\/shopify\/ProductVariant\/[A-Za-z0-9_-]+$/.test(variantId)) return { error: "請選擇產品。" };
   const serviceTime = serviceTimeRaw ? findTimeSlot(serviceTimeRaw)?.zh || "" : "";

@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { hasModule, requireModule } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
-import { isRslProjectNo } from "@/lib/order-label";
+import { isProjectNo } from "@/lib/order-label";
 import { loadCatalog } from "@/lib/catalog";
 import { shopifyGraphQL } from "@/lib/shopify";
 
@@ -101,9 +101,9 @@ export async function updateBooking(formData: FormData) {
       await supabase.from("follow_up_marks").update({ payment_link: null, payment_link_at: null, payment_draft_id: null }).eq("entity", "cremation").eq("ref", id);
     }
   }
-  // 只有跨服務沿用的 RSL 編號可以寫入 case_no。
+  // 只有跨服務沿用的專案編號可以寫入 case_no。
   const providedCaseNo = g("case_no");
-  if (providedCaseNo && isRslProjectNo(providedCaseNo)) {
+  if (providedCaseNo && isProjectNo(providedCaseNo)) {
     update.case_no = providedCaseNo.toUpperCase();
   }
 

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { createClient } from "@/lib/supabase/server";
-import { isRslProjectNo } from "@/lib/order-label";
+import { isProjectNo } from "@/lib/order-label";
 import { addEntry, deleteEntry } from "./actions";
 
 // 專案詳細版面（接送服務、紀念品草稿共用）：資料欄 → 收入／支出／淨額 → 新增收支明細 → 明細表
@@ -61,7 +61,7 @@ export function ProjectLedger({
   const auto = autoIncome && autoIncome.amount > 0 && manualIncome === 0 ? autoIncome : null;
   const income = manualIncome > 0 ? manualIncome : auto?.amount || 0;
   const net = income - expense;
-  const rsl = isRslProjectNo(projectNo);
+  const rsl = isProjectNo(projectNo);
 
   return (
     <div>

@@ -6,7 +6,7 @@ import { getStaff, hasModule, requireModule } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { logAudit } from "@/lib/audit";
 import { shopDomain, shopifyGraphQL } from "@/lib/shopify";
-import { isRslProjectNo } from "@/lib/order-label";
+import { isProjectNo } from "@/lib/order-label";
 import { makeProjectNo } from "@/lib/project-no";
 import { assignMissingProjectNos } from "@/lib/product-order-projects";
 import { markShopifyTestOrders } from "@/lib/test-orders";
@@ -162,7 +162,7 @@ export async function createSouvenirDraftOrder(
   if (!customerName || customerName.length > 120) return { error: "請填寫有效的主人名稱。" };
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254) return { error: "請填寫有效的客人電郵，Shopify 會用它寄送付款連結。" };
   if (phone.length > 40 || petName.length > 120 || extraNote.length > 1000) return { error: "電話、寵物名稱或備註太長，請縮短後再試。" };
-  if (enteredProjectNo && !isRslProjectNo(enteredProjectNo)) return { error: "專案編號格式應為 RSL-年月日-代碼。" };
+  if (enteredProjectNo && !isProjectNo(enteredProjectNo)) return { error: "專案編號只可包含文字、數字、空格、連字號或底線（2–40 個字元）。" };
   // 未填專案編號（新客人）時自動產生新編號
   const projectNo = enteredProjectNo || makeProjectNo();
 
@@ -320,7 +320,7 @@ export async function linkOrderProject(orderId: string, rawProjectNo: string): P
   if (!staff) return { error: "登入狀態已失效，請重新登入。" };
   if (!hasModule(staff, ["orders"])) return { error: "沒有「紀念品訂單」權限。" };
   const projectNo = rawProjectNo.trim().toUpperCase();
-  if (!isRslProjectNo(projectNo)) return { error: "專案編號格式應為 RSL-年月日-代碼。" };
+  if (!isProjectNo(projectNo)) return { error: "專案編號只可包含文字、數字、空格、連字號或底線（2–40 個字元）。" };
   const admin = createAdminClient();
   const [d, b, o] = await Promise.all([
     admin.from("deposit_bookings").select("id", { count: "exact", head: true }).eq("project_no", projectNo),

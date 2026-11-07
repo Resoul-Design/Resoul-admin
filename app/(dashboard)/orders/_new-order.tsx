@@ -222,7 +222,7 @@ function DraftOrderForm({
             <input name="phone" maxLength={40} autoComplete="tel" className="mt-1 w-full rounded-lg border border-[var(--line)] bg-white px-3 py-1.5 outline-none focus:border-[var(--gold)]" />
           </label>
           <label className="block text-sm">專案編號（選填）
-            <input name="projectNo" placeholder="RSL-260924-ABC123" className="mt-1 w-full rounded-lg border border-[var(--line)] bg-white px-3 py-1.5 outline-none focus:border-[var(--gold)]" />
+            <input name="projectNo" maxLength={40} placeholder="新客人留空自動產生" className="mt-1 w-full rounded-lg border border-[var(--line)] bg-white px-3 py-1.5 outline-none focus:border-[var(--gold)]" />
           </label>
           <label className="block text-sm">寵物名稱（選填）
             <input name="petName" maxLength={120} className="mt-1 w-full rounded-lg border border-[var(--line)] bg-white px-3 py-1.5 outline-none focus:border-[var(--gold)]" />

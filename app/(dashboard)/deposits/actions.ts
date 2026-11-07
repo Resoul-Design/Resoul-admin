@@ -6,6 +6,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { logAudit } from "@/lib/audit";
 import { requireModule } from "@/lib/auth";
 import { shopifyGraphQL } from "@/lib/shopify";
+import { projectNoFromNotes } from "@/lib/order-label";
 
 const VALID = ["new", "contacted", "scheduled", "completed", "cancelled"];
 
@@ -91,7 +92,8 @@ export async function createDepositPaymentLink(id: string): Promise<{ link?: str
     const variantId = variants.productVariants.edges[0]?.node.id;
     if (!variantId) return { error: `Shopify 找不到訂金產品（SKU ${DEPOSIT_SKU}）。` };
 
-    const projectNo = (row.notes || "").match(/(?:專案編號|Project no\.)[：:]\s*(RSL-[A-Z0-9]+-[A-Z0-9]+)/i)?.[1] || "";
+    const notedProject = projectNoFromNotes(row.notes);
+    const projectNo = notedProject === "—" ? "" : notedProject;
     const refAttributes = [
       { key: "payment_ref", value: row.payment_ref },
       ...(projectNo ? [{ key: "Project No", value: projectNo }] : []),
