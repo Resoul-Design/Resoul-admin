@@ -19,6 +19,7 @@ export default async function ServicesPage() {
   const typeLabel: Record<string, string> = { deposit: "接送服務", cremation: "火化預約", vet: "獸醫評估", product: "紀念品訂單", other: "其他" };
   const typeHref: Record<string, string> = { deposit: "/deposits", cremation: "/bookings", vet: "/vet-assessments", product: "/orders", other: "/new-order" };
   const statusLabel: Record<string, string> = { draft: "草稿", awaiting_payment: "待付款", pending: "處理中", paid: "已付款", completed: "已完成", cancelled: "已取消", failed: "失敗" };
+  const statusSummary = (statuses: string[] = []) => { const set = new Set(statuses); if (set.has("pending")) return "處理中"; if (set.has("awaiting_payment") && set.has("paid")) return "部分待付款"; if (set.has("awaiting_payment")) return "待付款"; if (set.has("paid")) return "已付款"; return statuses.map((value) => statusLabel[value] || value).join("、") || "—"; };
   const [company, deposits, cremations, products] = await Promise.all([
     admin.from("company_orders").select("id, invoice_no, order_type, customer_name, phone, amount, status, created_at").order("created_at", { ascending: false }).limit(100),
     admin.from("deposit_bookings").select("id, invoice_no, owner_name, contact, payment_amount, payment_status, created_at").order("created_at", { ascending: false }).limit(100),

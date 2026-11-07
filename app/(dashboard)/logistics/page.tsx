@@ -22,6 +22,8 @@ export default async function LogisticsPage() {
     invoiceNo: text(row, "invoice_no", "invoice", "order_no") || "—",
     owner: text(row, "owner_name", "owner", "customer_name", "name"),
     phone: text(row, "phone", "contact", "customer_phone"),
+    email: text(row, "email", "customer_email"),
+    project: text(row, "project_no", "project", "case_no"),
     pet: text(row, "pet_name", "pet", "animal_name"),
     plan: text(row, "plan", "package", "product_name"),
     arrival: text(row, "arrival_at", "arrival_date", "received_at", "eta"),
