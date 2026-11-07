@@ -49,7 +49,8 @@ export async function updateBooking(formData: FormData) {
     contact: g("contact"),
     pet_name: g("pet_name"),
     pet_type: g("pet_type"),
-    plan,
+    // 獸醫評估表格沒有方案欄，不改動
+    ...(formData.has("plan") ? { plan } : {}),
     service_date: g("service_date"),
     service_time: g("service_time"),
     pickup_address: g("pickup_address"),

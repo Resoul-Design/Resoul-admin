@@ -3,6 +3,7 @@ import { bookingFollowUps } from "@/lib/follow-up-server";
 import { PageHeader } from "../_page-header";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { draftOrderNames } from "@/lib/draft-names";
+import { loadSiteContent } from "@/lib/site-content-server";
 import { getStaff, hasModule } from "@/lib/auth";
 import { loadCatalog } from "@/lib/catalog";
 import { NewBookingOrder } from "../_booking-order";
@@ -185,6 +186,8 @@ export async function BookingsPage({ mode, query = "", onlyFollow = false, showT
 
   // 查看測試記錄時不顯示跟進
   const follow = await bookingFollowUps(showTests ? [] : bookings, mode === "vet" ? "vet" : "cremation");
+  // 獸醫評估費用固定，跟「網站內容 → 上門安樂死收費」的劃一基本收費
+  const vetFee = mode === "vet" ? (await loadSiteContent()).content["prices.vet"].base : undefined;
   // 訂單編號：已付款＝Shopify 訂單號（#RS-…）；未付款而有付款連結＝草稿編號（#D…）
   const draftIdByBooking = new Map<string, string>();
   {
@@ -223,7 +226,7 @@ export async function BookingsPage({ mode, query = "", onlyFollow = false, showT
       petName: b.pet_name || "",
       petType: b.pet_type || "",
       plan: b.plan || "",
-      amountText: b.payment_amount != null ? (b.payment_currency || "HKD") + " " + Number(b.payment_amount).toLocaleString() : "—",
+      amountText: b.payment_amount != null ? (b.payment_currency || "HKD") + " " + Number(b.payment_amount).toLocaleString() : vet && vetFee != null ? "HKD " + vetFee.toLocaleString() : "—",
       sourceKey: vet ? "vet" : "cremation",
       sourceLabel: sourceLabel(b.source),
       statusKey: b.status,
@@ -291,7 +294,7 @@ export async function BookingsPage({ mode, query = "", onlyFollow = false, showT
           {mode === "vet" ? "暫無獸醫評估記錄。" : "暫無火化預約記錄。"}
         </div>
       ) : (
-        <BookingsTable key={query + (onlyFollow ? ":f" : "")} rows={tableRows} paymentReady={paymentColumnsReady} sourceMode={mode} initialQuery={query} staffName={staffName} followReady={follow.ready} initialOnlyFollow={onlyFollow} products={cremationCatalog?.products} />
+        <BookingsTable key={query + (onlyFollow ? ":f" : "")} rows={tableRows} paymentReady={paymentColumnsReady} sourceMode={mode} initialQuery={query} staffName={staffName} followReady={follow.ready} initialOnlyFollow={onlyFollow} products={cremationCatalog?.products} vetFee={vetFee} />
       )}
     </div>
   );

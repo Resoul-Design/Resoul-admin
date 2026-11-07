@@ -71,7 +71,7 @@ const SOURCE_FILTER = [
 ];
 
 // 「操作」視窗內的功能
-function rowActions(r: BookingRow, staffName: string, products?: DraftCatalogProduct[]): RowAction[] {
+function rowActions(r: BookingRow, staffName: string, products?: DraftCatalogProduct[], vetFee?: number): RowAction[] {
   const list: RowAction[] = [];
   if (r.followUp) {
     const { item, kind } = r.followUp;
@@ -119,7 +119,7 @@ function rowActions(r: BookingRow, staffName: string, products?: DraftCatalogPro
   }
   if (r.shopifyOrderUrl) list.push({ kind: "link", key: "invoice", label: "🛒 Shopify 訂單", href: r.shopifyOrderUrl });
   list.push({ kind: "panel", key: "test", label: r.isTest ? "🧪 取消測試標記" : "🧪 標記為測試", title: "測試記錄", node: <TestFlagPanel entity={r.sourceKey} id={r.id} isTest={r.isTest} /> });
-  list.push({ kind: "panel", key: "edit", label: "✏️ 編輯資料", title: "編輯預約", node: <EditBookingInline booking={r.booking} products={r.sourceKey === "cremation" ? products : undefined} /> });
+  list.push({ kind: "panel", key: "edit", label: "✏️ 編輯資料", title: "編輯預約", node: <EditBookingInline booking={r.booking} products={r.sourceKey === "cremation" ? products : undefined} vetFee={vetFee} /> });
   return list;
 }
 
@@ -132,6 +132,7 @@ export function BookingsTable({
   followReady = true,
   initialOnlyFollow = false,
   products,
+  vetFee,
 }: {
   rows: BookingRow[];
   paymentReady: boolean;
@@ -141,6 +142,7 @@ export function BookingsTable({
   followReady?: boolean;
   initialOnlyFollow?: boolean;
   products?: DraftCatalogProduct[];
+  vetFee?: number;
 }) {
   const [q, setQ] = useState(initialQuery);
   const [onlyFollow, setOnlyFollow] = useState(initialOnlyFollow);
@@ -261,7 +263,7 @@ export function BookingsTable({
                       <div className="px-4 whitespace-nowrap">{paymentReady ? <span className={"inline-block px-2 py-0.5 rounded-full text-xs " + r.paymentClass}>{r.paymentLabel}</span> : <span className="text-[var(--faint)] text-xs">待 migration</span>}</div>
                       <div className="px-4 whitespace-nowrap"><span className={"inline-block whitespace-nowrap px-2 py-0.5 rounded-full text-xs " + r.statusClass}>{r.statusLabel}</span></div>
                     </div>
-                    <div className="mt-1.5 flex items-center justify-end gap-3 px-4">{r.followWaiting && <span className="text-xs text-[var(--soft)]">{r.followWaiting}</span>}<RowActions heading={r.owner || "—"} sub={r.invoiceNo} alertLabel={r.followUp ? followAction(r.followUp.item.entity, r.followUp.kind) : undefined} actions={rowActions(r, staffName, products)} /></div>
+                    <div className="mt-1.5 flex items-center justify-end gap-3 px-4">{r.followWaiting && <span className="text-xs text-[var(--soft)]">{r.followWaiting}</span>}<RowActions heading={r.owner || "—"} sub={r.invoiceNo} alertLabel={r.followUp ? followAction(r.followUp.item.entity, r.followUp.kind) : undefined} actions={rowActions(r, staffName, products, vetFee)} /></div>
                   </td>
                 </tr>
                 </Fragment>
@@ -311,7 +313,7 @@ export function BookingsTable({
               </dl>
               <div className="mt-3 flex items-center justify-end gap-3 border-t border-[var(--line)] pt-3">
                 {r.followWaiting && <span className="text-xs text-[var(--soft)]">{r.followWaiting}</span>}
-                <RowActions heading={r.owner || "—"} sub={r.invoiceNo} alertLabel={r.followUp ? followAction(r.followUp.item.entity, r.followUp.kind) : undefined} actions={rowActions(r, staffName, products)} />
+                <RowActions heading={r.owner || "—"} sub={r.invoiceNo} alertLabel={r.followUp ? followAction(r.followUp.item.entity, r.followUp.kind) : undefined} actions={rowActions(r, staffName, products, vetFee)} />
               </div>
             </div>
           ))}

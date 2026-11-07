@@ -70,9 +70,10 @@ function weightFromNotes(notes: string | null) {
 }
 
 // 操作視窗內的編輯表格；products＝Shopify 火化方案（只限火化預約），揀方案及體重後自動帶出收費
-export function EditBookingInline({ booking, products = [] }: { booking: BookingData; products?: DraftCatalogProduct[] }) {
+export function EditBookingInline({ booking, products = [], vetFee }: { booking: BookingData; products?: DraftCatalogProduct[]; vetFee?: number }) {
   const close = useCloseRowActions();
   const b = booking;
+  const vet = String(b.source || "").includes("euthanasia");
   const projectNo = isRslProjectNo(b.case_no) ? b.case_no?.toUpperCase() : "";
   const paid = b.payment_status === "paid";
   const productOf = (name: string) => (name ? products.find((p) => p.title.includes(name)) : undefined);
@@ -145,7 +146,7 @@ export function EditBookingInline({ booking, products = [] }: { booking: Booking
         <input name="pet_type" defaultValue={b.pet_type || ""} className={inputCls} />
       </Field>
 
-      <Field label="方案">
+      {!vet && <Field label="方案">
         <select name="plan" value={plan} onChange={(e) => changePlan(e.target.value)} className={inputCls}>
           <option value="">未定</option>
           {PLANS.map((p) => (
@@ -154,8 +155,8 @@ export function EditBookingInline({ booking, products = [] }: { booking: Booking
             </option>
           ))}
         </select>
-      </Field>
-      {products.length > 0 && (
+      </Field>}
+      {!vet && products.length > 0 && (
         <Field label="寵物體重">
           <select name="variant_id" value={variantId} onChange={(e) => changeWeight(e.target.value)} disabled={!variants.length} className={inputCls + " disabled:opacity-60"}>
             <option value="">{variants.length ? "請選擇體重" : "請先選方案"}</option>
@@ -167,9 +168,15 @@ export function EditBookingInline({ booking, products = [] }: { booking: Booking
           </select>
         </Field>
       )}
-      <Field label="收費金額（HK$）">
-        <input name="payment_amount" inputMode="numeric" value={amount} onChange={(e) => setAmount(e.target.value)} readOnly={paid} className={inputCls} placeholder="與客人確認後填寫" title={paid ? "已付款，不能修改金額" : ""} />
-      </Field>
+      {vet ? (
+        <Field label="評估費用（固定）">
+          <input value={vetFee != null ? `HK$${vetFee.toLocaleString("en-US")}` : "—"} readOnly tabIndex={-1} className={inputCls + " bg-[var(--cream)] text-[var(--soft)]"} />
+        </Field>
+      ) : (
+        <Field label="收費金額（HK$）">
+          <input name="payment_amount" inputMode="numeric" value={amount} onChange={(e) => setAmount(e.target.value)} readOnly={paid} className={inputCls} placeholder="與客人確認後填寫" title={paid ? "已付款，不能修改金額" : ""} />
+        </Field>
+      )}
       <Field label="接送地址">
         <input name="pickup_address" defaultValue={b.pickup_address || ""} className={inputCls} />
       </Field>
