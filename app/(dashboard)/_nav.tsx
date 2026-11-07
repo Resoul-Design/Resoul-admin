@@ -28,7 +28,7 @@ export const GROUPS: Group[] = [
     icon: "✦",
     children: [
       { label: "倉存 · 出貨", href: "/inventory" },
-      { label: "物流客戶", href: "/logistics" },
+      { label: "客戶資料", href: "/logistics" },
       { label: "回覆助手", href: "/replies" },
     ],
   },

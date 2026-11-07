@@ -31,6 +31,6 @@ export default async function LogisticsPage() {
     updated: text(row, "updated_at", "synced_at", "created_at"),
     raw: row,
   }));
-  return <div><h1 className="mb-5 text-2xl font-semibold">物流客戶</h1><LogisticsTable rows={rows} error={error?.message || null} /></div>;
+  return <div><h1 className="mb-5 text-2xl font-semibold">客戶資料</h1><LogisticsTable rows={rows} error={error?.message || null} /></div>;
 }
 

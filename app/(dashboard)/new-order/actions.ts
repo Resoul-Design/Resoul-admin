@@ -83,11 +83,12 @@ export async function lookupCustomer(phone: string): Promise<CustomerMatch | nul
   const key = phoneKey(phone);
   if (!key) return null;
   const admin = createAdminClient();
-  const [dep, crem, prod, co] = await Promise.all([
+  const [dep, crem, prod, co, logistics] = await Promise.all([
     admin.from("deposit_bookings").select("owner_name, contact, pet_name, project_no, invoice_no, created_at").ilike("contact", `%${key}%`).order("created_at", { ascending: false }).limit(20),
     admin.from("cremation_bookings").select("owner_name, contact, pet_name, case_no, notes, source, invoice_no, created_at").ilike("contact", `%${key}%`).order("created_at", { ascending: false }).limit(20),
     admin.from("product_orders").select("customer_name, email, project_no, invoice_no, shopify_created_at").eq("phone_key", key).order("shopify_created_at", { ascending: false }).limit(20),
     admin.from("company_orders").select("customer_name, email, pet_name, project_no, invoice_no, order_type, created_at").eq("phone_key", key).order("created_at", { ascending: false }).limit(20),
+    admin.from("logistics_orders").select("owner_name, phone, pet_name, invoice_no, created_at").ilike("phone", `%${key}%`).order("created_at", { ascending: false }).limit(20),
   ]);
   const projects = new Map<string, { projectNo: string; invoiceNo: number | null; lastDate: string; labels: Set<string> }>();
   const add = (no: string | null | undefined, invoice: number | null | undefined, date: string | null | undefined, label: string) => {
@@ -124,6 +125,12 @@ export async function lookupCustomer(phone: string): Promise<CustomerMatch | nul
     email = email || r.email || "";
     if (r.pet_name) pets.add(r.pet_name);
     add(r.project_no, r.invoice_no, r.created_at, ORDER_TYPE_MAP[r.order_type as OrderType]?.label || "其他");
+  }
+  for (const r of logistics.data || []) {
+    if (phoneKey(r.phone) !== key) continue;
+    names.push(r.owner_name || "");
+    if (r.pet_name) pets.add(r.pet_name);
+    add(null, Number(r.invoice_no) || null, r.created_at, "客戶資料");
   }
   if (!projects.size && !names.some(Boolean)) return null;
   return {
@@ -326,6 +333,11 @@ export async function createOrder(input: NewOrderInput): Promise<{ id?: string; 
     return { error: "未能建立開單記錄，請確認已執行 db/migration_20261108_company_invoice_no.sql。" };
   }
 
+  await admin.from("logistics_orders").upsert({
+    invoice_no: String(invoiceNo), owner_name: name, phone, pet_name: petName || null,
+    plan: planName || def2.label, status: "新訂單", created_at: new Date().toISOString(),
+  }, { onConflict: "invoice_no" });
+
   await logAudit("create_unified_order", "company_orders", order.id, `${def2.label}｜單號 ${invoiceNo}｜${projectNo}｜${hk(amount)}`);
   const sync = await syncToShopify(order.id, staff);
   revalidateAll();
@@ -436,3 +448,4 @@ export async function changeInvoiceNo(oldNo: number, newNoText: string, reason: 
   revalidateAll();
   return {};
 }
+
