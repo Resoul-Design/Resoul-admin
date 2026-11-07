@@ -80,6 +80,24 @@ export function verifyHmac(searchParams: URLSearchParams): boolean {
   }
 }
 
+// 產品列表每件只讀首批款式（避免查詢成本超限）；款式較多的產品用此函數讀取餘下款式
+export async function fetchRemainingVariants<T>(productId: string, after: string | null, fields: string): Promise<T[]> {
+  type Resp = { product: { variants: { pageInfo: { hasNextPage: boolean; endCursor: string | null }; edges: { node: T }[] } } | null };
+  const query = `query RemainingVariants($id: ID!, $after: String) {
+    product(id: $id) { variants(first: 100, after: $after) { pageInfo { hasNextPage endCursor } edges { node { ${fields} } } } }
+  }`;
+  const rows: T[] = [];
+  let cursor = after;
+  while (cursor) {
+    const data: Resp = await shopifyGraphQL<Resp>(query, { id: productId, after: cursor });
+    const page: NonNullable<Resp["product"]>["variants"] | undefined = data.product?.variants;
+    if (!page) break;
+    rows.push(...page.edges.map((e) => e.node));
+    cursor = page.pageInfo.hasNextPage ? page.pageInfo.endCursor : null;
+  }
+  return rows;
+}
+
 // 之後模組用：呼叫 Admin GraphQL API
 export async function shopifyGraphQL<T = unknown>(
   query: string,

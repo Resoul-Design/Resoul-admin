@@ -1,5 +1,5 @@
 import { unstable_cache } from "next/cache";
-import { shopifyGraphQL } from "@/lib/shopify";
+import { fetchRemainingVariants, shopifyGraphQL } from "@/lib/shopify";
 
 // Shopify 上架產品目錄：紀念品訂單、火化預約及接送服務的「新增訂單」共用。
 export type DraftCatalogProduct = {
@@ -22,7 +22,10 @@ type CatalogResponse = {
         id: string;
         title: string;
         productType: string | null;
-        variants: { edges: { node: { id: string; title: string; sku: string | null; price: string | null } }[] };
+        variants: {
+          pageInfo: { hasNextPage: boolean; endCursor: string | null };
+          edges: { node: { id: string; title: string; sku: string | null; price: string | null } }[];
+        };
       };
     }[];
   };
@@ -34,7 +37,7 @@ const CATALOG_QUERY = `query DraftCatalog($after: String) {
     pageInfo { hasNextPage endCursor }
     edges { node {
       id title productType
-      variants(first: 20) { edges { node { id title sku price } } }
+      variants(first: 20) { pageInfo { hasNextPage endCursor } edges { node { id title sku price } } }
     } }
   }
 }`;
@@ -49,6 +52,9 @@ const getCatalogCached = unstable_cache(
       const catalog: CatalogResponse = await shopifyGraphQL<CatalogResponse>(CATALOG_QUERY, { after });
       for (const { node } of catalog.products.edges) {
         const variants = node.variants.edges.map(({ node: variant }) => variant);
+        if (node.variants.pageInfo.hasNextPage) {
+          variants.push(...await fetchRemainingVariants<(typeof variants)[number]>(node.id, node.variants.pageInfo.endCursor, "id title sku price"));
+        }
         if (!variants.length) continue;
         products.push({ id: node.id, title: node.title, productType: (node.productType || "").trim() || "未分類", variants });
       }
@@ -57,7 +63,7 @@ const getCatalogCached = unstable_cache(
     }
     return products;
   },
-  ["draft-catalog"],
+  ["draft-catalog-v2"],
   { revalidate: 300 }
 );
 

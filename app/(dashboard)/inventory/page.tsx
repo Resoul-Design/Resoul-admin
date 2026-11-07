@@ -1,5 +1,5 @@
 import { PageHeader } from "../_page-header";
-import { shopifyGraphQL } from "@/lib/shopify";
+import { shopifyGraphQL, fetchRemainingVariants } from "@/lib/shopify";
 import { InventoryList, type Group } from "./_list";
 
 export const dynamic = "force-dynamic";
@@ -15,6 +15,7 @@ type ProductsResp = {
         productType: string | null;
         featuredImage: { url: string } | null;
         variants: {
+          pageInfo: { hasNextPage: boolean; endCursor: string | null };
           edges: {
             node: {
               id: string;
@@ -37,7 +38,7 @@ const QUERY = `query InventoryProducts($after: String) {
     edges { node {
       id title status productType
       featuredImage { url }
-      variants(first: 25) { edges { node { id title sku price inventoryQuantity } } }
+      variants(first: 25) { pageInfo { hasNextPage endCursor } edges { node { id title sku price inventoryQuantity } } }
     } }
   }
 }`;
@@ -54,7 +55,13 @@ export default async function InventoryPage() {
     let after: string | null = null;
     for (let page = 0; page < MAX_PAGES; page++) {
       const data: ProductsResp = await shopifyGraphQL<ProductsResp>(QUERY, { after });
-      products.push(...data.products.edges.map((e) => e.node));
+      for (const { node } of data.products.edges) {
+        if (node.variants.pageInfo.hasNextPage) {
+          const more = await fetchRemainingVariants<ShopifyProduct["variants"]["edges"][number]["node"]>(node.id, node.variants.pageInfo.endCursor, "id title sku price inventoryQuantity");
+          node.variants.edges.push(...more.map((v) => ({ node: v })));
+        }
+        products.push(node);
+      }
       if (!data.products.pageInfo.hasNextPage) break;
       after = data.products.pageInfo.endCursor;
     }
