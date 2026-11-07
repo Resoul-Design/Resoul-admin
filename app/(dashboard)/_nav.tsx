@@ -25,6 +25,7 @@ export const GROUPS: Group[] = [
       { label: "獸醫評估", href: "/vet-assessments" },
       { label: "紀念品訂單", href: "/orders" },
       { label: "倉存 · 出貨", href: "/inventory" },
+      { label: "物流客戶", href: "/logistics" },
       { label: "回覆助手", href: "/replies" },
     ],
   },
@@ -176,3 +177,4 @@ export function NavLinks({
     </nav>
   );
 }
+
