@@ -265,7 +265,7 @@ export async function getDepositCreditUse(depositId: string): Promise<{ text: st
       ? `此訂金尚未使用。只可抵扣同一單號${data.invoice_no ? ` ${data.invoice_no}` : ""}（專案 ${data.project_no}）的火化預約或紀念品草稿訂單：在該單「💳 付款及單據 → 💰 套用接送訂金」使用。`
       : "此訂金未有專案編號，不能用於抵扣。", ledger };
   }
-  const kind = String(data.credit_target).startsWith("cremation:") ? "火化預約" : "紀念品訂單";
+  const kind = String(data.credit_target).startsWith("cremation:") ? "火化預約／安樂在家" : String(data.credit_target).startsWith("company:") ? "開新單" : "紀念品訂單";
   const date = data.credit_applied_at ? new Date(Date.parse(data.credit_applied_at) + 8 * 3600 * 1000).toISOString().slice(0, 10) : "";
   return { text: `已於 ${date} 用於${kind}，抵扣 ${hk(Number(data.credit_amount || 0))}。如需取消，請在該${kind}的「💰 套用接送訂金」取消。`, ledger };
 }

@@ -127,6 +127,7 @@ export function NewOrderForm({ catalog, allowed, prefill }: { catalog: NewOrderC
   const [intent, setIntent] = useState<PaymentIntent>("link");
   const [method, setMethod] = useState("");
   const [more, setMore] = useState(false);
+  const [creditId, setCreditId] = useState("");
 
   // C. 類型欄位（切換類型時清空）
   const [planId, setPlanId] = useState("");
@@ -158,6 +159,10 @@ export function NewOrderForm({ catalog, allowed, prefill }: { catalog: NewOrderC
   const souvenirById = useMemo(() => new Map(catalog.souvenir.flatMap((p) => p.variants.map((v) => [v.id, v] as const))), [catalog.souvenir]);
   const linesTotal = lines.reduce((n, l) => n + price(souvenirById.get(l.variantId)) * l.quantity, 0);
 
+  // 同一專案已付而未用的接送訂金（接送訂金單本身不可扣）
+  const projectDeposits = type && type !== "deposit" ? match?.projects.find((p) => p.projectNo === projectNo)?.deposits || [] : [];
+  const chosenCredit = projectDeposits.find((d) => d.id === creditId) || null;
+
   // D. 摘要（顯示用；實際金額由伺服器按 Shopify 價錢計算）
   const summary = (() => {
     const items: string[] = [];
@@ -173,6 +178,7 @@ export function NewOrderForm({ catalog, allowed, prefill }: { catalog: NewOrderC
       items.push("上門獸醫評估");
       total += catalog.vet.base;
       for (const i of surcharges) { items.push(`附加費：${catalog.vet.surcharges[i]?.zh}`); total += catalog.vet.surcharges[i]?.price || 0; }
+      if (lines.length) { items.push(`加購 ${lines.length} 項`); total += linesTotal; }
     } else if (type === "product") {
       if (lines.length) items.push(`${lines.reduce((n, l) => n + l.quantity, 0)} 件商品`);
       total += linesTotal;
@@ -182,6 +188,7 @@ export function NewOrderForm({ catalog, allowed, prefill }: { catalog: NewOrderC
     }
     return { items, total };
   })();
+  const creditAmount = chosenCredit ? Math.min(chosenCredit.amount, summary.total) : 0;
 
   const missing = [
     !name.trim() && "客人姓名",
@@ -216,7 +223,8 @@ export function NewOrderForm({ catalog, allowed, prefill }: { catalog: NewOrderC
         ...(type === "cremation" ? { variantId, lines } : {}),
         ...(type === "deposit" ? { variantId: depositVariant?.v.id } : {}),
         ...(type === "product" ? { lines } : {}),
-        ...(type === "vet" ? { vetSurcharges: surcharges } : {}),
+        ...(type === "vet" ? { vetSurcharges: surcharges, lines } : {}),
+        ...(chosenCredit ? { depositCreditId: chosenCredit.id } : {}),
         ...(type === "other" ? { other: { title: otherTitle, amount: Number(otherAmount), description: otherDesc } } : {}),
       });
       if (res.error) return setError(res.error);
@@ -363,7 +371,16 @@ export function NewOrderForm({ catalog, allowed, prefill }: { catalog: NewOrderC
                 </select>
               </label>
             )}
-            {type !== "deposit" && <p className="mt-2 text-xs text-[var(--soft)]">要先收訂金：另開一張「預約接送訂金」單（同一專案、同一單號），之後在此單套用訂金抵扣。</p>}
+            {projectDeposits.length > 0 && (
+              <div className="mt-3 rounded-xl border border-[var(--line)] bg-white p-3 text-sm">
+                <div className="mb-1 font-medium">扣除接送訂金（同一專案）</div>
+                <label className="mr-4 inline-flex items-center gap-1.5"><input type="radio" name="credit" checked={!chosenCredit} onChange={() => setCreditId("")} />不扣除</label>
+                {projectDeposits.map((d) => (
+                  <label key={d.id} className="mr-4 inline-flex items-center gap-1.5"><input type="radio" name="credit" checked={chosenCredit?.id === d.id} onChange={() => setCreditId(d.id)} />單號 {d.invoiceNo ?? "—"} · {hk(d.amount)} · 已付 {d.paidAt}</label>
+                ))}
+              </div>
+            )}
+            {type !== "deposit" && !projectDeposits.length && <p className="mt-2 text-xs text-[var(--soft)]">要先收訂金：另開一張「預約接送訂金」單（同一專案、同一單號）；客人已付訂金時，選擇該專案後可在此直接扣除。</p>}
           </div>
 
           <div className="mt-4 border-t border-[var(--line)] pt-3">
@@ -390,6 +407,9 @@ export function NewOrderForm({ catalog, allowed, prefill }: { catalog: NewOrderC
                     ))}
                   </div>
                 )}
+                {type === "vet" && (
+                  <div className="sm:col-span-2"><div className="mb-1 text-sm">加購紀念品</div><LinePicker products={catalog.souvenir} lines={lines} onChange={setLines} /></div>
+                )}
                 <label className={label}>對外備註（會顯示在 Shopify 單據）<input value={publicNote} onChange={(e) => setPublicNote(e.target.value)} maxLength={500} className={input + " mt-1"} /></label>
                 <label className={label}>內部備註（只在後台）<input value={internalNote} onChange={(e) => setInternalNote(e.target.value)} maxLength={1000} className={input + " mt-1"} /></label>
                 {!match && (
@@ -407,7 +427,7 @@ export function NewOrderForm({ catalog, allowed, prefill }: { catalog: NewOrderC
             <dt className="text-[var(--soft)]">客人</dt><dd>{name || "—"} · {phone || "—"}</dd>
             <dt className="text-[var(--soft)]">類型</dt><dd>{ORDER_TYPE_MAP[type].icon} {ORDER_TYPE_MAP[type].label}</dd>
             <dt className="text-[var(--soft)]">內容</dt><dd>{summary.items.join("、") || "—"}</dd>
-            <dt className="text-[var(--soft)]">金額</dt><dd className="font-medium">{hk(summary.total)}</dd>
+            <dt className="text-[var(--soft)]">金額</dt><dd className="font-medium">{hk(summary.total)}{creditAmount > 0 && ` − 接送訂金 ${hk(creditAmount)} ＝ 應付 ${hk(summary.total - creditAmount)}`}</dd>
             <dt className="text-[var(--soft)]">專案</dt><dd>{projectNo && projectNo !== "new" ? `沿用 ${projectNo}（同一單號）` : "新專案（確認後編配單號，專案編號與單號相同）"}</dd>
             <dt className="text-[var(--soft)]">會做</dt>
             <dd>建立後台記錄及公司單號 → {intent === "received" ? "Shopify 訂單直接標記已付款" : "建立 Shopify 付款連結"}（標籤含類型及專案編號）</dd>

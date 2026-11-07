@@ -81,10 +81,39 @@ function bookingDoc(r: Row): InvoiceDoc | null {
     paymentRef: /^PAY-/i.test(str(r.payment_ref)) ? str(r.payment_ref) : "",
     items: [{ sku, title: product, unit: amount, qty: 1 }],
     subtotal: amount,
-    discount: 0,
-    total: amount,
+    discount: Math.min(amount, num(r.deposit_credit)),
+    total: amount - Math.min(amount, num(r.deposit_credit)),
     isTest: !!r.is_test,
     shopifyOrderId: str(r.shopify_order_id),
+  };
+}
+
+// 開新單（紀念品、其他）：由開單記錄產生，毋須等 Shopify 訂單同步到紀念品訂單表
+const COMPANY_KIND: Record<string, string> = { product: "紀念品 Keepsakes", other: "其他 Other", cremation: "火化服務 Cremation", vet: "獸醫評估 Vet assessment", deposit: "接送訂金 Pick-up deposit" };
+function companyDoc(r: Row): InvoiceDoc | null {
+  if (r.status !== "paid" || !r.invoice_no) return null;
+  const d = (r.details || {}) as { lines?: { label: string; price?: number | null; quantity?: number }[]; depositCredit?: { amount?: number } | null };
+  const items = (d.lines || []).map((l) => ({ sku: "", title: l.label, unit: l.price ?? null, qty: l.quantity || 1 }));
+  const subtotal = items.length && items.every((it) => it.unit != null) ? items.reduce((n, it) => n + (it.unit || 0) * it.qty, 0) : num(r.amount);
+  const discount = Math.min(subtotal, num(d.depositCredit?.amount));
+  return {
+    ref: `company:${str(r.id)}`,
+    no: String(r.invoice_no),
+    companyNo: true,
+    date: str(r.updated_at || r.created_at),
+    kind: COMPANY_KIND[str(r.order_type)] || "其他 Other",
+    issuedTo: str(r.customer_name),
+    pet: str(r.pet_name),
+    phone: str(r.phone),
+    email: str(r.email),
+    project: str(r.project_no),
+    paymentRef: /^PAY-/i.test(str(r.payment_ref)) ? str(r.payment_ref) : "",
+    items,
+    subtotal,
+    discount,
+    total: subtotal - discount,
+    isTest: false,
+    shopifyOrderId: str(r.shopify_order_id) || undefined,
   };
 }
 
@@ -131,19 +160,21 @@ export async function loadInvoices(q: InvoiceQuery, staff: Staff): Promise<Invoi
   const bookingAllowed = (r: Row) => (str(r.source).includes("euthanasia") ? can.vet : can.cremation);
 
   if (q.refs?.length) {
-    const ids = { deposit: [] as string[], booking: [] as string[], order: [] as string[] };
+    const ids = { deposit: [] as string[], booking: [] as string[], order: [] as string[], company: [] as string[] };
     for (const ref of q.refs.slice(0, 200)) {
       const [type, id] = ref.split(":");
-      if (id && (type === "deposit" || type === "booking" || type === "order")) ids[type].push(type === "order" ? `gid://shopify/Order/${id}` : id);
+      if (id && (type === "deposit" || type === "booking" || type === "order" || type === "company")) ids[type].push(type === "order" ? `gid://shopify/Order/${id}` : id);
     }
-    const [d, b, o] = await Promise.all([
+    const [d, b, o, c] = await Promise.all([
       ids.deposit.length && can.deposit ? admin.from("deposit_bookings").select("*").in("id", ids.deposit) : null,
       ids.booking.length && (can.cremation || can.vet) ? admin.from("cremation_bookings").select("*").in("id", ids.booking) : null,
       ids.order.length && can.order ? admin.from("product_orders").select("*").in("shopify_order_id", ids.order) : null,
+      ids.company.length && can.order ? admin.from("company_orders").select("*").in("id", ids.company.filter((x) => /^[0-9a-f-]{36}$/i.test(x))).is("linked_id", null) : null,
     ]);
     for (const r of (d?.data || []) as Row[]) { const doc = depositDoc(r); if (doc) docs.push(doc); }
     for (const r of (b?.data || []) as Row[]) { const doc = bookingAllowed(r) ? bookingDoc(r) : null; if (doc) docs.push(doc); }
     for (const r of (o?.data || []) as ProductOrderRow[]) { const doc = orderDoc(r); if (doc) docs.push(doc); }
+    for (const r of (c?.data || []) as Row[]) { const doc = companyDoc(r); if (doc) docs.push(doc); }
   } else if (q.from && q.to && /^\d{4}-\d{2}-\d{2}$/.test(q.from) && /^\d{4}-\d{2}-\d{2}$/.test(q.to)) {
     const kinds = new Set(q.kinds?.length ? q.kinds : ["deposit", "cremation", "order"]);
     // 香港日期 → UTC 時間範圍

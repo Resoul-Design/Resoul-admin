@@ -14,6 +14,7 @@ import { PLAN_CODES } from "@/lib/company";
 import { findTimeSlot } from "@/lib/deposit-followup";
 import { isProjectNo, projectNoFromNotes, canonicalProjectNo } from "@/lib/order-label";
 import { phoneKey } from "@/lib/product-orders";
+import { appendNote } from "@/lib/payment-check";
 import { newCompanyProjectNo } from "@/lib/project-no";
 import { loadSiteContent } from "@/lib/site-content-server";
 import { ORDER_TYPE_MAP, RECEIVED_METHODS, type OrderType, type PaymentIntent } from "@/lib/order-types";
@@ -34,7 +35,8 @@ export type NewOrderInput = {
   paymentIntent: PaymentIntent;
   receivedMethod?: string;
   variantId?: string; // 告別套餐、接送訂金
-  lines?: NewOrderLine[]; // 紀念品；告別套餐的加購
+  lines?: NewOrderLine[]; // 紀念品；告別套餐及安樂在家的加購
+  depositCreditId?: string; // 扣除同一專案已付的接送訂金（deposit_bookings.id）
   vetSurcharges?: number[]; // 安樂在家附加費（網站內容的序號）
   other?: { title: string; amount: number; description?: string };
 };
@@ -43,11 +45,17 @@ export type CustomerMatch = {
   name: string;
   email: string;
   pets: string[];
-  projects: { projectNo: string; invoiceNo: number | null; lastDate: string; labels: string[] }[];
+  projects: { projectNo: string; invoiceNo: number | null; lastDate: string; labels: string[]; deposits: DepositCredit[] }[];
 };
 
+// 同一專案可扣除的接送訂金（已付款、未用、未取消）
+export type DepositCredit = { id: string; invoiceNo: number | null; amount: number; paidAt: string };
+
 type Line = { variantId?: string; title?: string; price?: number; quantity: number; label: string };
-type DraftPlan = { lineItems: Record<string, unknown>[]; note: string; tags: string[]; attributes: { key: string; value: string }[]; email: string };
+type DraftPlan = {
+  lineItems: Record<string, unknown>[]; note: string; tags: string[]; attributes: { key: string; value: string }[]; email: string;
+  appliedDiscount?: { title: string; description: string; value: number; valueType: "FIXED_AMOUNT" };
+};
 
 const DRAFT_CREATE = `mutation UnifiedDraftCreate($input: DraftOrderInput!) {
   draftOrderCreate(input: $input) { draftOrder { id name invoiceUrl } userErrors { field message } }
@@ -84,17 +92,17 @@ export async function lookupCustomer(phone: string): Promise<CustomerMatch | nul
   if (!key) return null;
   const admin = createAdminClient();
   const [dep, crem, prod, co, logistics] = await Promise.all([
-    admin.from("deposit_bookings").select("owner_name, contact, pet_name, project_no, invoice_no, created_at").ilike("contact", `%${key}%`).order("created_at", { ascending: false }).limit(20),
+    admin.from("deposit_bookings").select("id, owner_name, contact, pet_name, project_no, invoice_no, created_at, payment_status, payment_amount, paid_at, credit_target, status").ilike("contact", `%${key}%`).order("created_at", { ascending: false }).limit(20),
     admin.from("cremation_bookings").select("owner_name, contact, pet_name, case_no, notes, source, invoice_no, created_at").ilike("contact", `%${key}%`).order("created_at", { ascending: false }).limit(20),
     admin.from("product_orders").select("customer_name, email, project_no, invoice_no, shopify_created_at").eq("phone_key", key).order("shopify_created_at", { ascending: false }).limit(20),
     admin.from("company_orders").select("customer_name, email, pet_name, project_no, invoice_no, order_type, created_at").eq("phone_key", key).order("created_at", { ascending: false }).limit(20),
     admin.from("logistics_orders").select("owner_name, phone, email, pet_name, invoice_no, created_at").ilike("phone", `%${key}%`).order("created_at", { ascending: false }).limit(20),
   ]);
-  const projects = new Map<string, { projectNo: string; invoiceNo: number | null; lastDate: string; labels: Set<string> }>();
+  const projects = new Map<string, { projectNo: string; invoiceNo: number | null; lastDate: string; labels: Set<string>; deposits: DepositCredit[] }>();
   const add = (no: string | null | undefined, invoice: number | null | undefined, date: string | null | undefined, label: string) => {
     const projectNo = canonicalProjectNo(no);
     if (projectNo === "—") return;
-    const cur = projects.get(projectNo) || { projectNo, invoiceNo: invoice ?? null, lastDate: "", labels: new Set<string>() };
+    const cur = projects.get(projectNo) || { projectNo, invoiceNo: invoice ?? null, lastDate: "", labels: new Set<string>(), deposits: [] };
     cur.labels.add(label);
     if (invoice && !cur.invoiceNo) cur.invoiceNo = invoice;
     if ((date || "") > cur.lastDate) cur.lastDate = (date || "").slice(0, 10);
@@ -108,6 +116,10 @@ export async function lookupCustomer(phone: string): Promise<CustomerMatch | nul
     names.push(r.owner_name || "");
     if (r.pet_name) pets.add(r.pet_name);
     add(r.project_no, r.invoice_no, r.created_at, "接送");
+    const no = canonicalProjectNo(r.project_no);
+    if (no !== "—" && r.payment_status === "paid" && !r.credit_target && r.status !== "cancelled") {
+      projects.get(no)?.deposits.push({ id: r.id, invoiceNo: r.invoice_no ?? null, amount: Number(r.payment_amount || 1800), paidAt: String(r.paid_at || r.created_at || "").slice(0, 10) });
+    }
   }
   for (const r of crem.data || []) {
     if (phoneKey(r.contact) !== key) continue;
@@ -139,9 +151,10 @@ export async function lookupCustomer(phone: string): Promise<CustomerMatch | nul
     email,
     pets: [...pets].slice(0, 5),
     projects: [...projects.values()]
-      .sort((a, b) => b.lastDate.localeCompare(a.lastDate))
-      .slice(0, 6)
-      .map((p) => ({ projectNo: p.projectNo, invoiceNo: p.invoiceNo, lastDate: p.lastDate, labels: [...p.labels] })),
+      // 按單號由新到舊；未有單號的舊專案排最後
+      .sort((a, b) => (b.invoiceNo ?? -1) - (a.invoiceNo ?? -1) || b.lastDate.localeCompare(a.lastDate))
+      .slice(0, 10)
+      .map((p) => ({ projectNo: p.projectNo, invoiceNo: p.invoiceNo, lastDate: p.lastDate, labels: [...p.labels], deposits: p.deposits })),
   };
 }
 
@@ -220,6 +233,18 @@ export async function createOrder(input: NewOrderInput): Promise<{ id?: string; 
         if (!s) return { error: "附加費資料無效，請重新選擇。" };
         lines.push({ title: `附加費：${s.zh}${s.en ? ` ${s.en}` : ""}`, price: s.price, quantity: 1, label: `附加費：${s.zh}（${hk(s.price)}）` });
       }
+      // 加購紀念品（與告別套餐相同規則）
+      const extra = (input.lines || []).filter((l) => l && l.variantId);
+      if (extra.length > 20) return { error: "加購最多 20 項。" };
+      if (extra.some((l) => !/^gid:\/\/shopify\/ProductVariant\/\d+$/.test(l.variantId) || !Number.isInteger(Number(l.quantity)) || l.quantity < 1 || l.quantity > 99)) return { error: "加購商品資料無效，請重新選擇。" };
+      if (extra.length) {
+        const variants = await loadVariants([...new Set(extra.map((l) => l.variantId))]);
+        for (const l of extra) {
+          const v = variants.get(l.variantId);
+          if (!v || v.product.status !== "ACTIVE" || [...CREMATION_TYPES, ...DEPOSIT_TYPES].includes((v.product.productType || "").trim())) return { error: "加購只可選紀念品。" };
+          lines.push({ variantId: v.id, price: Number(v.price || 0), quantity: Number(l.quantity), label: variantLabel(v) });
+        }
+      }
     } else {
       const title = t(input.other?.title, 120);
       const amount = Number(input.other?.amount);
@@ -236,6 +261,22 @@ export async function createOrder(input: NewOrderInput): Promise<{ id?: string; 
   // 新專案：專案編號＝單號（例如 290）；沿用舊專案則保留原編號
   const projectNo = enteredProject || (await newCompanyProjectNo(admin));
   if (!projectNo) return { error: "未能編配單號，請稍後再試。" };
+
+  // 扣除接送訂金：只限同一專案、已付款、未用、未取消
+  let credit: { id: string; amount: number; invoiceNo: number | null; notes: string | null } | null = null;
+  const creditId = t(input.depositCreditId, 40);
+  if (creditId) {
+    if (input.type === "deposit") return { error: "接送訂金單不能再扣除訂金。" };
+    if (!/^[0-9a-f-]{36}$/i.test(creditId)) return { error: "接送訂金資料無效。" };
+    if (!enteredProject) return { error: "只可扣除同一專案的接送訂金，請先選擇客人原有專案。" };
+    const { data: dep } = await admin.from("deposit_bookings").select("id, project_no, payment_status, payment_amount, credit_target, status, invoice_no, notes").eq("id", creditId).maybeSingle();
+    if (!dep || dep.payment_status !== "paid" || dep.status === "cancelled") return { error: "此接送訂金未付款或已取消，不能扣除。" };
+    if (String(dep.project_no || "").toUpperCase() !== projectNo.toUpperCase()) return { error: `只可扣除同一專案（${projectNo}）的接送訂金。` };
+    if (dep.credit_target) return { error: "此接送訂金已用於另一張單。" };
+    const value = Math.min(Number(dep.payment_amount || 1800), amount);
+    if (value > 0) credit = { id: dep.id, amount: value, invoiceNo: dep.invoice_no ?? null, notes: dep.notes };
+  }
+  const creditText = credit ? `接送訂金${credit.invoiceNo ? `（單號 ${credit.invoiceNo}）` : ""} ${hk(credit.amount)}（${projectNo}）` : "";
   const paymentRef = makePaymentRef();
   const who = staff.name || staff.email;
   const otherDescription = t(input.other?.description, 500);
@@ -255,6 +296,7 @@ export async function createOrder(input: NewOrderInput): Promise<{ id?: string; 
       slot ? `希望時段: ${slot}` : "",
       lines.length > 1 ? `${input.type === "vet" ? "收費" : "加購"}: ${lines.slice(input.type === "vet" ? 0 : 1).map((l) => `${l.label}×${l.quantity}`).join("、")}` : "",
       referrerPhone ? `推薦人電話: ${referrerPhone}` : "",
+      credit ? `💰 接送訂金抵扣：${creditText}` : "",
       `後台開新單：${who}`,
       internalNote ? `備註: ${internalNote}` : "",
     ].filter(Boolean).join(" | ");
@@ -288,7 +330,7 @@ export async function createOrder(input: NewOrderInput): Promise<{ id?: string; 
   const def2 = ORDER_TYPE_MAP[input.type];
   const booking = linkedTable !== null;
   const refAttrs = [{ key: "Project No", value: projectNo }, ...(booking ? [{ key: "payment_ref", value: paymentRef }] : [])];
-  const plan: DraftPlan = {
+  const basePlan: DraftPlan = {
     email,
     note: [publicNote, otherDescription && input.type === "other" ? otherDescription : "", petName ? `寵物：${petName}` : "", `單據編號：${invoiceNo}`].filter(Boolean).join("\n"),
     tags: [...def2.tags, projectNo, `Invoice ${invoiceNo}`],
@@ -307,20 +349,32 @@ export async function createOrder(input: NewOrderInput): Promise<{ id?: string; 
         : { title: l.title, quantity: l.quantity, originalUnitPriceWithCurrency: { amount: (l.price || 0).toFixed(2), currencyCode: "HKD" }, requiresShipping: false, taxable: false, customAttributes: refAttrs }
     ),
   };
+  // 扣訂金：Shopify 草稿加「接送訂金抵扣」折扣，並在備註、自訂欄位及標籤留下記錄（與列表的訂金抵扣相同格式）
+  const plan: DraftPlan = credit
+    ? {
+        ...basePlan,
+        note: [basePlan.note, `💰 接送訂金抵扣：${creditText}`].join("\n"),
+        attributes: [...basePlan.attributes, { key: "Deposit credit", value: creditText }],
+        tags: [...basePlan.tags, "Deposit Credit"],
+        appliedDiscount: { title: "接送訂金抵扣", description: creditText.slice(0, 255), value: credit.amount, valueType: "FIXED_AMOUNT" },
+      }
+    : basePlan;
+  const details = {
+    lines: lines.map((l) => ({ label: l.label, quantity: l.quantity, price: l.price })),
+    petType: petType || null, serviceDate: serviceDate || null, serviceSlot: slot || null, address: address || null,
+    internalNote: internalNote || null, publicNote: publicNote || null, receivedMethod: intent === "received" ? method : null,
+    other: input.type === "other" ? { title: lines[0].title, description: otherDescription || null } : null,
+    vetSurcharges: input.type === "vet" ? input.vetSurcharges || [] : null,
+    depositCredit: credit ? { depositId: credit.id, amount: credit.amount, invoiceNo: credit.invoiceNo } : null,
+    draft: plan,
+  };
   const { data: order, error: orderError } = await admin
     .from("company_orders")
     .insert({
       client_token: input.clientToken, invoice_no: invoiceNo, project_no: projectNo, order_type: input.type, status: "draft",
       customer_name: name, phone, phone_key: phoneKey(phone), email: email || null, pet_name: petName || null, referrer_phone: referrerPhone || null,
       amount, payment_intent: intent, payment_ref: paymentRef, linked_table: linkedTable, linked_id: linkedId, created_by: who,
-      details: {
-        lines: lines.map((l) => ({ label: l.label, quantity: l.quantity, price: l.price })),
-        petType: petType || null, serviceDate: serviceDate || null, serviceSlot: slot || null, address: address || null,
-        internalNote: internalNote || null, publicNote: publicNote || null, receivedMethod: intent === "received" ? method : null,
-        other: input.type === "other" ? { title: lines[0].title, description: otherDescription || null } : null,
-        vetSurcharges: input.type === "vet" ? input.vetSurcharges || [] : null,
-        draft: plan,
-      },
+      details,
     })
     .select("id")
     .single();
@@ -339,10 +393,33 @@ export async function createOrder(input: NewOrderInput): Promise<{ id?: string; 
     plan: planName || def2.label, status: "新訂單", created_at: new Date().toISOString(),
   }, { onConflict: "invoice_no" });
 
+  // 扣訂金：先標記訂金已使用（同時兩張單只有一張成功），失敗則照常開單但不扣
+  let creditWarning = "";
+  if (credit) {
+    const target = linkedTable === "cremation_bookings" && linkedId ? `cremation:${linkedId}` : `company:${order.id}`;
+    const today = new Date(Date.now() + 8 * 3600 * 1000).toISOString().slice(0, 10);
+    const { data: claimed } = await admin
+      .from("deposit_bookings")
+      .update({ credit_target: target, credit_amount: credit.amount, credit_applied_at: new Date().toISOString(), notes: appendNote(credit.notes, `💰 接送訂金抵扣 ${today}：${hk(credit.amount)} 用於${def2.label}（單號 ${invoiceNo}）`) })
+      .eq("id", credit.id).is("credit_target", null).select("id");
+    if (claimed?.length) {
+      if (linkedTable === "cremation_bookings" && linkedId) await admin.from("cremation_bookings").update({ deposit_credit: credit.amount, deposit_credit_ref: credit.id }).eq("id", linkedId);
+      await logAudit("apply_deposit_credit", "deposit_bookings", credit.id, `開新單｜${def2.label}｜單號 ${invoiceNo}｜抵扣 ${hk(credit.amount)}`);
+    } else {
+      await admin.from("company_orders").update({ details: { ...details, depositCredit: null, draft: basePlan } }).eq("id", order.id);
+      if (linkedTable && linkedId) {
+        const { data: row } = await admin.from(linkedTable).select("notes").eq("id", linkedId).maybeSingle();
+        await admin.from(linkedTable).update({ notes: String(row?.notes || "").replace(` | 💰 接送訂金抵扣：${creditText}`, "") }).eq("id", linkedId);
+      }
+      creditWarning = "此接送訂金剛被另一張單使用，此單未有扣除訂金。";
+    }
+  }
+
   await logAudit("create_unified_order", "company_orders", order.id, `${def2.label}｜單號 ${invoiceNo}｜${projectNo}｜${hk(amount)}`);
   const sync = await syncToShopify(order.id, staff);
   revalidateAll();
-  return { id: order.id, ...(sync.error ? { warning: sync.error } : {}) };
+  const warning = [creditWarning, sync.error || ""].filter(Boolean).join(" ");
+  return { id: order.id, ...(warning ? { warning } : {}) };
 }
 
 // ---- Shopify 同步（開單時及「重試同步」）----
@@ -378,6 +455,7 @@ async function syncToShopify(id: string, staff: Staff): Promise<{ error?: string
             tags: [...plan.tags, syncTag(id)],
             customAttributes: plan.attributes,
             lineItems: plan.lineItems,
+            ...(plan.appliedDiscount ? { appliedDiscount: plan.appliedDiscount } : {}),
           },
           { name: o.customer_name, phone: o.phone, email: plan.email }
         );

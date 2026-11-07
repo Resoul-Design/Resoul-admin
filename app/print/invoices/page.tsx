@@ -6,7 +6,7 @@ import { PrintButton } from "../_print-button";
 
 export const dynamic = "force-dynamic";
 
-// 發票（可列印或另存 PDF）：?refs=deposit:<id>,booking:<id>,order:<id>；或 ?from=YYYY-MM-DD&to=YYYY-MM-DD&kinds=deposit,cremation,vet,order
+// 發票（可列印或另存 PDF）：?refs=deposit:<id>,booking:<id>,order:<id>,company:<id>；或 ?from=YYYY-MM-DD&to=YYYY-MM-DD&kinds=deposit,cremation,vet,order
 export default async function InvoicesPage({ searchParams }: { searchParams: Promise<{ refs?: string; from?: string; to?: string; kinds?: string | string[] }> }) {
   const staff = await getStaff();
   if (!staff) redirect("/login");

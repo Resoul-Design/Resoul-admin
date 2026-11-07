@@ -22,37 +22,31 @@ export default async function ServicesPage() {
   const serviceQueryHref = (label: string, invoice: unknown) => `${labelHref[label] || "/new-order"}?q=${encodeURIComponent(String(invoice))}`;
   const serviceOrder: Record<string, number> = { deposit: 1, cremation: 2, vet: 3, product: 4, other: 5 };
   const statusLabel: Record<string, string> = { draft: "草稿", awaiting_payment: "待付款", pending: "處理中", paid: "已付款", completed: "已完成", cancelled: "已取消", failed: "失敗" };
-  const statusSummary = (statuses: string[] = []) => { const set = new Set(statuses); if (set.has("pending")) return "處理中"; if (set.has("awaiting_payment") && set.has("paid")) return "部分待付款"; if (set.has("awaiting_payment")) return "待付款"; if (set.has("paid")) return "已付款"; return statuses.map((value) => statusLabel[value] || value).join("、") || "—"; };
+  // 每筆服務記錄列一行（同一專案共用單號，故同一單號可有多行）。
+  // 開新單記錄若已連結接送／火化記錄，只列服務記錄，避免重複；紀念品訂單已同步的 Shopify 訂單亦不重複列出開單記錄。
   const [company, deposits, cremations, products] = await Promise.all([
-    admin.from("company_orders").select("id, invoice_no, order_type, customer_name, phone, amount, status, created_at").order("created_at", { ascending: false }).limit(100),
-    admin.from("deposit_bookings").select("id, invoice_no, owner_name, contact, payment_amount, payment_status, created_at").order("created_at", { ascending: false }).limit(100),
-    admin.from("cremation_bookings").select("id, invoice_no, owner_name, contact, payment_amount, payment_status, created_at").order("created_at", { ascending: false }).limit(100),
-    admin.from("product_orders").select("id, invoice_no, customer_name, phone, amount, status, shopify_created_at").order("shopify_created_at", { ascending: false }).limit(100),
+    admin.from("company_orders").select("id, invoice_no, order_type, customer_name, phone, amount, status, created_at, linked_id, shopify_order_id, details").is("linked_id", null).neq("status", "cancelled").order("created_at", { ascending: false }).limit(100),
+    admin.from("deposit_bookings").select("id, invoice_no, owner_name, contact, payment_amount, payment_status, shopify_order_name, created_at").eq("is_test", false).order("created_at", { ascending: false }).limit(100),
+    admin.from("cremation_bookings").select("id, invoice_no, owner_name, contact, payment_amount, payment_status, shopify_order_name, source, created_at").eq("is_test", false).order("created_at", { ascending: false }).limit(100),
+    admin.from("product_orders").select("shopify_order_id, invoice_no, customer_name, phone, total_amount, financial_status, cancelled_at, shopify_created_at").eq("is_test", false).order("shopify_created_at", { ascending: false }).limit(100),
   ]);
-  const sourceRows = [
-    ...(company.data || []),
-    ...(deposits.data || []).map((r) => ({ id: `deposit-${r.id}`, invoice_no: r.invoice_no, order_type: "deposit", customer_name: r.owner_name, phone: r.contact, amount: r.payment_amount, status: r.payment_status, created_at: r.created_at })),
-    ...(cremations.data || []).map((r) => ({ id: `cremation-${r.id}`, invoice_no: r.invoice_no, order_type: "cremation", customer_name: r.owner_name, phone: r.contact, amount: r.payment_amount, status: r.payment_status, created_at: r.created_at })),
-    ...(products.data || []).map((r) => ({ id: `product-${r.id}`, invoice_no: r.invoice_no, order_type: "product", customer_name: r.customer_name, phone: r.phone, amount: r.amount, status: r.status, created_at: r.shopify_created_at })),
+  type InvoiceRow = { id: string; invoice_no: number | null; order_type: string; customer_name: string | null; phone: string | null; amount: number; status: string; created_at: string; ref: string };
+  const productOrderIds = new Set((products.data || []).map((r) => r.shopify_order_id));
+  const productStatus = (r: { financial_status: string | null; cancelled_at: string | null }) =>
+    r.cancelled_at ? "cancelled" : ["PAID", "PARTIALLY_REFUNDED", "REFUNDED"].includes(r.financial_status || "") ? "paid" : "awaiting_payment";
+  const sourceRows: InvoiceRow[] = [
+    ...(company.data || []).filter((r) => !(r.shopify_order_id && productOrderIds.has(r.shopify_order_id))).map((r) => {
+      const credit = Number((r.details as { depositCredit?: { amount?: number } | null } | null)?.depositCredit?.amount || 0);
+      return { id: `company-${r.id}`, invoice_no: r.invoice_no, order_type: r.order_type, customer_name: r.customer_name, phone: r.phone, amount: Number(r.amount || 0) - credit, status: r.status, created_at: r.created_at, ref: r.status === "paid" ? `company:${r.id}` : "" };
+    }),
+    ...(deposits.data || []).map((r) => ({ id: `deposit-${r.id}`, invoice_no: r.invoice_no, order_type: "deposit", customer_name: r.owner_name, phone: r.contact, amount: Number(r.payment_amount || 0), status: r.payment_status || "", created_at: r.created_at, ref: r.payment_status === "paid" && r.shopify_order_name ? `deposit:${r.id}` : "" })),
+    ...(cremations.data || []).map((r) => ({ id: `cremation-${r.id}`, invoice_no: r.invoice_no, order_type: String(r.source || "").includes("euthanasia") ? "vet" : "cremation", customer_name: r.owner_name, phone: r.contact, amount: Number(r.payment_amount || 0), status: r.payment_status || "", created_at: r.created_at, ref: r.payment_status === "paid" && r.shopify_order_name ? `booking:${r.id}` : "" })),
+    ...(products.data || []).map((r) => ({ id: `product-${r.shopify_order_id}`, invoice_no: r.invoice_no, order_type: "product", customer_name: r.customer_name, phone: r.phone, amount: Number(r.total_amount || 0), status: productStatus(r), created_at: r.shopify_created_at, ref: productStatus(r) === "paid" ? `order:${String(r.shopify_order_id).split("/").pop()}` : "" })),
   ].filter((r) => r.invoice_no != null);
-  const grouped = new Map<string, (typeof sourceRows)[number] & { service_labels?: string[]; statuses?: string[]; amount?: number }>();
-  for (const row of sourceRows) {
-    const key = String(row.invoice_no);
-    const existing = grouped.get(key);
-    if (!existing) grouped.set(key, { ...row, service_labels: [typeLabel[row.order_type] || row.order_type], statuses: row.status ? [row.status] : [], amount: Number(row.amount || 0) });
-    else {
-      existing.service_labels = [...new Set([...(existing.service_labels || []), typeLabel[row.order_type] || row.order_type])];
-      existing.statuses = [...new Set([...(existing.statuses || []), ...(row.status ? [row.status] : [])])];
-      existing.amount = Number(existing.amount || 0) + Number(row.amount || 0);
-      if (String(row.created_at || "") > String(existing.created_at || "")) existing.created_at = row.created_at;
-    }
-  }
-  const invoiceRows = sourceRows.map((row) => ({ ...row, service_labels: [typeLabel[row.order_type] || row.order_type], statuses: row.status ? [row.status] : [], amount: Number(row.amount || 0) })).sort((a, b) => {
-    const aInvoice = Number(a.invoice_no);
-    const bInvoice = Number(b.invoice_no);
-    const invoiceOrder = Number.isFinite(aInvoice) && Number.isFinite(bInvoice) ? bInvoice - aInvoice : String(b.invoice_no).localeCompare(String(a.invoice_no), "zh-Hant", { numeric: true });
-    return invoiceOrder || (serviceOrder[a.order_type] || 99) - (serviceOrder[b.order_type] || 99) || String(b.created_at || "").localeCompare(String(a.created_at || ""));
-  }).slice(0, 200);
+  // 單號由大至細；同一單號按服務類型、建立時間排列
+  const invoiceRows = sourceRows.sort((a, b) =>
+    Number(b.invoice_no) - Number(a.invoice_no) || (serviceOrder[a.order_type] || 99) - (serviceOrder[b.order_type] || 99) || String(b.created_at || "").localeCompare(String(a.created_at || ""))
+  ).slice(0, 200);
   return (
     <div>
       <div className="mb-6 flex items-end justify-between gap-4">
@@ -61,7 +55,7 @@ export default async function ServicesPage() {
       </div>
       <section className="mt-8">
         <div className="mb-3 flex items-center justify-between"><h2 className="text-xl font-semibold">全部發票</h2><span className="text-sm text-[var(--soft)]">共 {invoiceRows?.length || 0} 張</span></div>
-        <div className="overflow-x-auto rounded-2xl border border-[var(--line)] bg-[var(--card)]"><table className="w-full min-w-[760px] text-sm"><thead><tr className="bg-[var(--head)] text-left text-[var(--soft)]">{["發票／單號", "服務類型", "客戶", "電話", "金額", "狀態", "建立時間", "功能"].map((h) => <th key={h} className="px-4 py-3 font-medium">{h}</th>)}</tr></thead><tbody>{invoiceRows.map((row) => <tr key={row.invoice_no} className="border-t border-[var(--line)]"><td className="px-4 py-3 font-medium text-[var(--gold)]">#{row.invoice_no}</td><td className="px-4 py-3">{row.service_labels?.length ? <div className="space-y-1">{row.service_labels.map((label) => <Link key={label} href={serviceQueryHref(label, row.invoice_no)} className="block text-[var(--gold)] hover:underline">{label} ↗</Link>)}</div> : "—"}</td><td className="px-4 py-3">{row.customer_name || "—"}</td><td className="px-4 py-3">{row.phone || "—"}</td><td className="px-4 py-3">HK$ {Number(row.amount || 0).toLocaleString()}</td><td className="px-4 py-3">{row.statuses?.length ? <div className="space-y-1">{row.statuses.map((s) => <div key={s}>{statusLabel[s] || s}</div>)}</div> : "—"}</td><td className="px-4 py-3 text-xs text-[var(--soft)]">{String(row.created_at || "").slice(0, 16).replace("T", " ")}</td><td className="px-4 py-3"><Link href={`/logistics/${encodeURIComponent(String(row.invoice_no))}`} className="text-[var(--gold)] hover:underline">查看發票資料</Link></td></tr>)}</tbody></table>{!invoiceRows.length && <div className="p-8 text-center text-sm text-[var(--soft)]">暫時沒有發票記錄。</div>}</div>
+        <div className="overflow-x-auto rounded-2xl border border-[var(--line)] bg-[var(--card)]"><table className="w-full min-w-[760px] text-sm"><thead><tr className="bg-[var(--head)] text-left text-[var(--soft)]">{["發票／單號", "服務類型", "客戶", "電話", "金額", "狀態", "建立時間", "功能"].map((h) => <th key={h} className="px-4 py-3 font-medium">{h}</th>)}</tr></thead><tbody>{invoiceRows.map((row) => <tr key={row.id} className="border-t border-[var(--line)]"><td className="px-4 py-3 font-medium text-[var(--gold)]">#{row.invoice_no}</td><td className="px-4 py-3"><Link href={serviceQueryHref(typeLabel[row.order_type] || row.order_type, row.invoice_no)} className="text-[var(--gold)] hover:underline">{typeLabel[row.order_type] || row.order_type} ↗</Link></td><td className="px-4 py-3">{row.customer_name || "—"}</td><td className="px-4 py-3">{row.phone || "—"}</td><td className="px-4 py-3">HK$ {Number(row.amount || 0).toLocaleString()}</td><td className="px-4 py-3">{statusLabel[row.status] || row.status || "—"}</td><td className="px-4 py-3 text-xs text-[var(--soft)]">{String(row.created_at || "").slice(0, 16).replace("T", " ")}</td><td className="px-4 py-3"><div className="flex flex-wrap gap-x-3 gap-y-1"><Link href={`/logistics/${encodeURIComponent(String(row.invoice_no))}`} className="text-[var(--gold)] hover:underline">查看資料</Link>{row.ref && <><a href={`/print/invoices?refs=${encodeURIComponent(row.ref)}`} target="_blank" rel="noopener" className="text-[var(--gold)] hover:underline">發票 PDF</a><a href={`/print/invoices/word?refs=${encodeURIComponent(row.ref)}`} className="text-[var(--gold)] hover:underline">Word</a></>}</div></td></tr>)}</tbody></table>{!invoiceRows.length && <div className="p-8 text-center text-sm text-[var(--soft)]">暫時沒有發票記錄。</div>}</div>
       </section>
       <div className="mt-6 rounded-xl border border-[var(--line)] bg-[var(--head)] px-4 py-3 text-sm text-[var(--soft)]">四個服務共用同一個入口；原有頁面、搜尋、編輯、付款及跟進功能全部保留。</div>
     </div>
