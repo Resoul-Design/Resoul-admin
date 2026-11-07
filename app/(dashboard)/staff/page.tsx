@@ -4,6 +4,7 @@ import { getStaff } from "@/lib/auth";
 import { createStaff, updateStaff } from "./actions";
 import { ConfirmSubmitButton } from "./_confirm";
 import { PermsButton } from "./_perms";
+import { ResetPasswordButton } from "./_reset-password";
 
 export const dynamic = "force-dynamic";
 
@@ -78,7 +79,7 @@ export default async function StaffPage() {
               <th className="px-4 py-3 font-medium">角色</th>
               <th className="px-4 py-3 font-medium">狀態</th>
               {isAdmin && <th className="px-4 py-3 font-medium">功能權限</th>}
-              {isAdmin && <th className="px-4 py-3 font-medium text-right">更新</th>}
+              {isAdmin && <th className="px-4 py-3 font-medium text-right">操作</th>}
             </tr>
           </thead>
           <tbody>
@@ -125,7 +126,8 @@ export default async function StaffPage() {
                   </td>
                 )}
                 {isAdmin && (
-                  <td className="px-4 py-3 text-right">
+                  <td className="px-4 py-3 text-right whitespace-nowrap">
+                    <span className="mr-2"><ResetPasswordButton id={s.id} name={s.name || s.email} /></span>
                     <ConfirmSubmitButton
                       form={`f-${s.id}`}
                       message="確定更新此員工的角色／狀態？"
@@ -163,6 +165,7 @@ export default async function StaffPage() {
                 </form>
                 <div className="mt-2 flex items-center gap-3">
                   <PermsButton id={s.id} name={s.name || s.email} role={s.role} permissions={s.permissions || []} />
+                  <ResetPasswordButton id={s.id} name={s.name || s.email} />
                   <ConfirmSubmitButton form={`m-${s.id}`} message="確定更新此員工的角色／狀態？" className="text-xs px-3 py-1 rounded-md bg-[var(--gold)] text-white hover:opacity-90">儲存</ConfirmSubmitButton>
                 </div>
               </>

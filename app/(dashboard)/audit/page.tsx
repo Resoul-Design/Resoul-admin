@@ -127,6 +127,8 @@ function describe(l: Log, names: Names): string {
       ].filter(Boolean);
       return `更新員工${quote(who)}資料${bits.length ? `：${bits.join("、")}` : ""}`;
     }
+    case "reset_staff_password":
+      return `重設員工${quote(who)}的密碼`;
     case "update_permissions": {
       const keys = d.split(",").map((k) => k.trim()).filter(Boolean);
       return keys.length

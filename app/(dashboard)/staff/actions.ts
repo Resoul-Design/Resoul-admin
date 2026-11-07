@@ -72,6 +72,24 @@ export async function updateStaff(formData: FormData) {
   revalidatePath("/staff");
 }
 
+// 管理員為員工重設密碼（密碼不寫入審計記錄）
+export async function resetStaffPassword(id: string, password: string): Promise<{ error?: string }> {
+  await requireAdmin();
+  if (!/^[0-9a-f-]{36}$/i.test(id)) return { error: "員工記錄無效。" };
+  if (password.length < 8 || password.length > 72) return { error: "密碼須為 8 至 72 個字元。" };
+  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) return { error: "未設定服務金鑰，未能重設密碼。" };
+  const admin = createAdminClient();
+  const { data: target } = await admin.from("staff").select("id").eq("id", id).maybeSingle();
+  if (!target) return { error: "找不到此員工。" };
+  const { error } = await admin.auth.admin.updateUserById(id, { password });
+  if (error) {
+    console.error("[reset_staff_password]", error.message);
+    return { error: /password/i.test(error.message) ? "密碼不符合要求，請改用較複雜的密碼。" : "未能重設密碼，請稍後再試。" };
+  }
+  await logAudit("reset_staff_password", "staff", id);
+  return {};
+}
+
 // ---- 排更 ----
 export async function addShift(formData: FormData) {
   const me = await requireModule("roster");
