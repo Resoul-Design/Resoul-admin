@@ -99,7 +99,7 @@ export async function createDepositPaymentLink(id: string): Promise<{ link?: str
     const input = {
       note: ["Resoul Admin 接送訂金（重新產生付款連結）", row.owner_name ? `主人：${row.owner_name}` : "", row.pet_name ? `寵物：${row.pet_name}` : "", projectNo ? `專案編號：${projectNo}` : ""].filter(Boolean).join("\n"),
       tags: ["Resoul Admin", "Pickup Deposit"],
-      customAttributes: refAttributes,
+      customAttributes: [...refAttributes, ...(row.pet_name ? [{ key: "Pet", value: row.pet_name }] : [])],
       lineItems: [{ variantId, quantity: 1, customAttributes: refAttributes }],
     };
     const result = await createDraftWithCustomer<DepositDraftResponse>(DEPOSIT_DRAFT_MUTATION, input, { name: row.owner_name, phone: row.contact });

@@ -148,7 +148,7 @@ export async function createFollowPaymentLink(entity: FollowEntity, ref: string)
     ...(creditText ? { appliedDiscount: { title: "接送訂金抵扣", description: creditText, value: creditAmount, valueType: "FIXED_AMOUNT" } } : {}),
     note: ["Resoul Admin 火化預約（付款跟進）", `主人：${b.owner_name || "—"}`, `電話：${b.contact || "—"}`, b.pet_name ? `寵物：${b.pet_name}` : "", projectNo !== "—" ? `專案編號：${projectNo}` : "", creditText ? `💰 接送訂金抵扣：${creditText}` : ""].filter(Boolean).join("\n"),
     tags: ["Resoul Admin", "Cremation", ...(creditText ? ["Deposit Credit"] : [])],
-    customAttributes: [...attrs, ...(creditText ? [{ key: "Deposit credit", value: creditText }] : [])],
+    customAttributes: [...attrs, ...(b.pet_name ? [{ key: "Pet", value: String(b.pet_name) }] : []), ...(creditText ? [{ key: "Deposit credit", value: creditText }] : [])],
     lineItems: [lineItem],
   };
   try {

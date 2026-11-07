@@ -168,7 +168,7 @@ export async function createBookingOrder(_prev: BookingOrderState, data: FormDat
     ...(email ? { email } : {}),
     note: [`Resoul Admin ${mode === "deposit" ? "接送訂金" : "火化預約"}`, `主人：${ownerName}`, `電話：${contact}`, petName ? `寵物：${petName}` : "", `專案編號：${projectNo}`].filter(Boolean).join("\n"),
     tags: ["Resoul Admin", mode === "deposit" ? "Pickup Deposit" : "Cremation"],
-    customAttributes: refAttributes,
+    customAttributes: [...refAttributes, ...(petName ? [{ key: "Pet", value: petName }] : [])],
     lineItems: [{ variantId, quantity: 1, customAttributes: refAttributes }],
   };
 
