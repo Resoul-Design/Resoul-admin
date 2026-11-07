@@ -20,6 +20,7 @@ export default async function ServicesPage() {
   const typeHref: Record<string, string> = { deposit: "/deposits", cremation: "/bookings", vet: "/vet-assessments", product: "/orders", other: "/new-order" };
   const labelHref: Record<string, string> = Object.fromEntries(Object.entries(typeLabel).map(([key, label]) => [label, typeHref[key]]));
   const serviceQueryHref = (label: string, invoice: unknown) => `${labelHref[label] || "/new-order"}?q=${encodeURIComponent(String(invoice))}`;
+  const serviceOrder: Record<string, number> = { deposit: 1, cremation: 2, vet: 3, product: 4, other: 5 };
   const statusLabel: Record<string, string> = { draft: "草稿", awaiting_payment: "待付款", pending: "處理中", paid: "已付款", completed: "已完成", cancelled: "已取消", failed: "失敗" };
   const statusSummary = (statuses: string[] = []) => { const set = new Set(statuses); if (set.has("pending")) return "處理中"; if (set.has("awaiting_payment") && set.has("paid")) return "部分待付款"; if (set.has("awaiting_payment")) return "待付款"; if (set.has("paid")) return "已付款"; return statuses.map((value) => statusLabel[value] || value).join("、") || "—"; };
   const [company, deposits, cremations, products] = await Promise.all([
@@ -46,7 +47,12 @@ export default async function ServicesPage() {
       if (String(row.created_at || "") > String(existing.created_at || "")) existing.created_at = row.created_at;
     }
   }
-  const invoiceRows = sourceRows.map((row) => ({ ...row, service_labels: [typeLabel[row.order_type] || row.order_type], statuses: row.status ? [row.status] : [], amount: Number(row.amount || 0) })).sort((a, b) => String(b.created_at || "").localeCompare(String(a.created_at || ""))).slice(0, 200);
+  const invoiceRows = sourceRows.map((row) => ({ ...row, service_labels: [typeLabel[row.order_type] || row.order_type], statuses: row.status ? [row.status] : [], amount: Number(row.amount || 0) })).sort((a, b) => {
+    const aInvoice = Number(a.invoice_no);
+    const bInvoice = Number(b.invoice_no);
+    const invoiceOrder = Number.isFinite(aInvoice) && Number.isFinite(bInvoice) ? bInvoice - aInvoice : String(b.invoice_no).localeCompare(String(a.invoice_no), "zh-Hant", { numeric: true });
+    return invoiceOrder || (serviceOrder[a.order_type] || 99) - (serviceOrder[b.order_type] || 99) || String(b.created_at || "").localeCompare(String(a.created_at || ""));
+  }).slice(0, 200);
   return (
     <div>
       <div className="mb-6 flex items-end justify-between gap-4">
