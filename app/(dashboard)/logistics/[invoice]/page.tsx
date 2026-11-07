@@ -10,6 +10,7 @@ export default async function LogisticsDetail({ params }: { params: Promise<{ in
   const { data, error } = await createAdminClient().from("logistics_orders").select("*").eq("invoice_no", invoice).maybeSingle();
   if (error || !data) notFound();
   const row = data as Record<string, unknown>;
+  const hiddenKeys = new Set(["overwritten_fields", "raw_row", "is_test"]);
   const labels: Record<string, string> = {
     invoice_no: "發票編號", row_status: "訂單狀態", pet_name: "寵物名稱", animal: "動物類型", breed: "品種",
     owner_name: "主人姓名", phone: "聯絡電話", arrival_date: "到達日期", arrival_time: "到達時間", pickup_type: "接送方式",
@@ -30,7 +31,7 @@ export default async function LogisticsDetail({ params }: { params: Promise<{ in
     ["火化與紀念服務", ["package_name", "ceremony_or_order_date", "ceremony_time", "shower_date", "memorial_addon_price", "back_to_nature_price", "urn_storage_rental_price"]],
     ["費用與付款", ["invoice_amount", "package_price", "deposit_received", "other_surcharge", "discount_code", "discount_price", "balance_settled"]],
   ] as const;
-  const used = new Set<string>(groups.flatMap(([, keys]) => keys));
+  const used = new Set<string>([...groups.flatMap(([, keys]) => keys), ...hiddenKeys]);
   const valueText = (key: string, value: unknown) => {
     if (key === "source") return ({ basic_info_logistic: "基本物流資料", excel: "Excel 同步", manual: "手動輸入" } as Record<string, string>)[String(value)] || String(value);
     if (key === "urn_pickup_status") return ({ Completed: "已完成", Pending: "待處理", Cancelled: "已取消" } as Record<string, string>)[String(value)] || String(value);
