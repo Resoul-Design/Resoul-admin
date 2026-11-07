@@ -10,7 +10,9 @@ const services = [
   { label: "紀念品訂單", description: "管理紀念品訂單、付款及出貨狀態。", href: "/orders", icon: "🎁", key: "orders" },
 ] as const;
 
-export default async function ServicesPage() {
+export default async function ServicesPage({ searchParams }: { searchParams: Promise<{ test?: string }> }) {
+  // 測試記錄預設隱藏；?test=1 只顯示測試記錄（與接送服務等列表相同）
+  const showTest = (await searchParams).test === "1";
   const staff = await getStaff();
   if (!staff) redirect("/login");
   const available = services.filter((service) => hasModule(staff, [service.key]));
@@ -26,25 +28,27 @@ export default async function ServicesPage() {
   // 開新單記錄若已連結接送／火化記錄，只列服務記錄，避免重複；紀念品訂單已同步的 Shopify 訂單亦不重複列出開單記錄。
   const [company, deposits, cremations, products] = await Promise.all([
     admin.from("company_orders").select("id, invoice_no, order_type, customer_name, phone, amount, status, created_at, linked_id, shopify_order_id, details").is("linked_id", null).neq("status", "cancelled").order("created_at", { ascending: false }).limit(100),
-    admin.from("deposit_bookings").select("id, invoice_no, owner_name, contact, payment_amount, payment_status, shopify_order_name, created_at").eq("is_test", false).order("created_at", { ascending: false }).limit(100),
-    admin.from("cremation_bookings").select("id, invoice_no, owner_name, contact, payment_amount, payment_status, shopify_order_name, source, created_at").eq("is_test", false).order("created_at", { ascending: false }).limit(100),
-    admin.from("product_orders").select("shopify_order_id, invoice_no, customer_name, phone, total_amount, financial_status, cancelled_at, shopify_created_at").eq("is_test", false).order("shopify_created_at", { ascending: false }).limit(100),
+    admin.from("deposit_bookings").select("id, invoice_no, owner_name, contact, payment_amount, payment_status, shopify_order_name, created_at, is_test").order("created_at", { ascending: false }).limit(100),
+    admin.from("cremation_bookings").select("id, invoice_no, owner_name, contact, payment_amount, payment_status, shopify_order_name, source, created_at, is_test").order("created_at", { ascending: false }).limit(100),
+    admin.from("product_orders").select("shopify_order_id, invoice_no, customer_name, phone, total_amount, financial_status, cancelled_at, shopify_created_at, is_test").order("shopify_created_at", { ascending: false }).limit(100),
   ]);
-  type InvoiceRow = { id: string; invoice_no: number | null; order_type: string; customer_name: string | null; phone: string | null; amount: number; status: string; created_at: string; ref: string };
+  type InvoiceRow = { id: string; invoice_no: number | null; order_type: string; customer_name: string | null; phone: string | null; amount: number; status: string; created_at: string; ref: string; test: boolean };
   const productOrderIds = new Set((products.data || []).map((r) => r.shopify_order_id));
   const productStatus = (r: { financial_status: string | null; cancelled_at: string | null }) =>
     r.cancelled_at ? "cancelled" : ["PAID", "PARTIALLY_REFUNDED", "REFUNDED"].includes(r.financial_status || "") ? "paid" : "awaiting_payment";
   const sourceRows: InvoiceRow[] = [
     ...(company.data || []).filter((r) => !(r.shopify_order_id && productOrderIds.has(r.shopify_order_id))).map((r) => {
       const credit = Number((r.details as { depositCredit?: { amount?: number } | null } | null)?.depositCredit?.amount || 0);
-      return { id: `company-${r.id}`, invoice_no: r.invoice_no, order_type: r.order_type, customer_name: r.customer_name, phone: r.phone, amount: Number(r.amount || 0) - credit, status: r.status, created_at: r.created_at, ref: r.status === "paid" ? `company:${r.id}` : "" };
+      return { id: `company-${r.id}`, invoice_no: r.invoice_no, order_type: r.order_type, customer_name: r.customer_name, phone: r.phone, amount: Number(r.amount || 0) - credit, status: r.status, created_at: r.created_at, ref: r.status === "paid" ? `company:${r.id}` : "", test: false };
     }),
-    ...(deposits.data || []).map((r) => ({ id: `deposit-${r.id}`, invoice_no: r.invoice_no, order_type: "deposit", customer_name: r.owner_name, phone: r.contact, amount: Number(r.payment_amount || 0), status: r.payment_status || "", created_at: r.created_at, ref: r.payment_status === "paid" && r.shopify_order_name ? `deposit:${r.id}` : "" })),
-    ...(cremations.data || []).map((r) => ({ id: `cremation-${r.id}`, invoice_no: r.invoice_no, order_type: String(r.source || "").includes("euthanasia") ? "vet" : "cremation", customer_name: r.owner_name, phone: r.contact, amount: Number(r.payment_amount || 0), status: r.payment_status || "", created_at: r.created_at, ref: r.payment_status === "paid" && r.shopify_order_name ? `booking:${r.id}` : "" })),
-    ...(products.data || []).map((r) => ({ id: `product-${r.shopify_order_id}`, invoice_no: r.invoice_no, order_type: "product", customer_name: r.customer_name, phone: r.phone, amount: Number(r.total_amount || 0), status: productStatus(r), created_at: r.shopify_created_at, ref: productStatus(r) === "paid" ? `order:${String(r.shopify_order_id).split("/").pop()}` : "" })),
+    ...(deposits.data || []).map((r) => ({ id: `deposit-${r.id}`, invoice_no: r.invoice_no, order_type: "deposit", customer_name: r.owner_name, phone: r.contact, amount: Number(r.payment_amount || 0), status: r.payment_status || "", created_at: r.created_at, ref: r.payment_status === "paid" && r.shopify_order_name ? `deposit:${r.id}` : "", test: !!r.is_test })),
+    ...(cremations.data || []).map((r) => ({ id: `cremation-${r.id}`, invoice_no: r.invoice_no, order_type: String(r.source || "").includes("euthanasia") ? "vet" : "cremation", customer_name: r.owner_name, phone: r.contact, amount: Number(r.payment_amount || 0), status: r.payment_status || "", created_at: r.created_at, ref: r.payment_status === "paid" && r.shopify_order_name ? `booking:${r.id}` : "", test: !!r.is_test })),
+    ...(products.data || []).map((r) => ({ id: `product-${r.shopify_order_id}`, invoice_no: r.invoice_no, order_type: "product", customer_name: r.customer_name, phone: r.phone, amount: Number(r.total_amount || 0), status: productStatus(r), created_at: r.shopify_created_at, ref: productStatus(r) === "paid" ? `order:${String(r.shopify_order_id).split("/").pop()}` : "", test: !!r.is_test })),
   ].filter((r) => r.invoice_no != null);
+  const testCount = sourceRows.filter((r) => r.test).length;
+  const visibleRows = sourceRows.filter((r) => r.test === showTest);
   // 單號由大至細；同一單號按服務類型、建立時間排列
-  const invoiceRows = sourceRows.sort((a, b) =>
+  const invoiceRows = visibleRows.sort((a, b) =>
     Number(b.invoice_no) - Number(a.invoice_no) || (serviceOrder[a.order_type] || 99) - (serviceOrder[b.order_type] || 99) || String(b.created_at || "").localeCompare(String(a.created_at || ""))
   ).slice(0, 200);
   return (
@@ -54,8 +58,8 @@ export default async function ServicesPage() {
         <span className="text-sm text-[var(--soft)]">共 {available.length} 個服務模組</span>
       </div>
       <section className="mt-8">
-        <div className="mb-3 flex items-center justify-between"><h2 className="text-xl font-semibold">全部發票</h2><span className="text-sm text-[var(--soft)]">共 {invoiceRows?.length || 0} 張</span></div>
-        <div className="overflow-x-auto rounded-2xl border border-[var(--line)] bg-[var(--card)]"><table className="w-full min-w-[760px] text-sm"><thead><tr className="bg-[var(--head)] text-left text-[var(--soft)]">{["發票／單號", "服務類型", "客戶", "電話", "金額", "狀態", "建立時間", "功能"].map((h) => <th key={h} className="px-4 py-3 font-medium">{h}</th>)}</tr></thead><tbody>{invoiceRows.map((row) => <tr key={row.id} className="border-t border-[var(--line)]"><td className="px-4 py-3 font-medium text-[var(--gold)]">#{row.invoice_no}</td><td className="px-4 py-3"><Link href={serviceQueryHref(typeLabel[row.order_type] || row.order_type, row.invoice_no)} className="text-[var(--gold)] hover:underline">{typeLabel[row.order_type] || row.order_type} ↗</Link></td><td className="px-4 py-3">{row.customer_name || "—"}</td><td className="px-4 py-3">{row.phone || "—"}</td><td className="px-4 py-3">HK$ {Number(row.amount || 0).toLocaleString()}</td><td className="px-4 py-3">{statusLabel[row.status] || row.status || "—"}</td><td className="px-4 py-3 text-xs text-[var(--soft)]">{String(row.created_at || "").slice(0, 16).replace("T", " ")}</td><td className="px-4 py-3"><div className="flex flex-wrap gap-x-3 gap-y-1"><Link href={`/logistics/${encodeURIComponent(String(row.invoice_no))}`} className="text-[var(--gold)] hover:underline">查看資料</Link>{row.ref && <><a href={`/print/invoices?refs=${encodeURIComponent(row.ref)}`} target="_blank" rel="noopener" className="text-[var(--gold)] hover:underline">發票 PDF</a><a href={`/print/invoices/word?refs=${encodeURIComponent(row.ref)}`} className="text-[var(--gold)] hover:underline">Word</a></>}</div></td></tr>)}</tbody></table>{!invoiceRows.length && <div className="p-8 text-center text-sm text-[var(--soft)]">暫時沒有發票記錄。</div>}</div>
+        <div className="mb-3 flex items-center justify-between"><h2 className="text-xl font-semibold">{showTest ? "測試記錄" : "全部發票"}</h2><span className="text-sm text-[var(--soft)]">共 {invoiceRows?.length || 0} 張</span></div>
+        {showTest ? <div className="mb-3 rounded-xl border border-[var(--line)] bg-[var(--card)] px-4 py-3 text-sm">正在查看測試記錄（不計入正式發票）。<Link href="/services" className="ml-2 text-[var(--gold)] hover:underline">返回正式記錄</Link></div> : testCount > 0 && <div className="mb-3 rounded-xl border border-[var(--line)] bg-[var(--card)] px-4 py-3 text-sm text-[var(--soft)]">另有 {testCount} 筆測試記錄已隱藏。<Link href="/services?test=1" className="ml-2 text-[var(--gold)] hover:underline">查看測試記錄</Link></div>}<div className="overflow-x-auto rounded-2xl border border-[var(--line)] bg-[var(--card)]"><table className="w-full min-w-[760px] text-sm"><thead><tr className="bg-[var(--head)] text-left text-[var(--soft)]">{["發票／單號", "服務類型", "客戶", "電話", "金額", "狀態", "建立時間", "功能"].map((h) => <th key={h} className="px-4 py-3 font-medium">{h}</th>)}</tr></thead><tbody>{invoiceRows.map((row) => <tr key={row.id} className="border-t border-[var(--line)]"><td className="px-4 py-3 font-medium text-[var(--gold)]">#{row.invoice_no}</td><td className="px-4 py-3"><Link href={serviceQueryHref(typeLabel[row.order_type] || row.order_type, row.invoice_no)} className="text-[var(--gold)] hover:underline">{typeLabel[row.order_type] || row.order_type} ↗</Link></td><td className="px-4 py-3">{row.customer_name || "—"}</td><td className="px-4 py-3">{row.phone || "—"}</td><td className="px-4 py-3">HK$ {Number(row.amount || 0).toLocaleString()}</td><td className="px-4 py-3">{statusLabel[row.status] || row.status || "—"}</td><td className="px-4 py-3 text-xs text-[var(--soft)]">{String(row.created_at || "").slice(0, 16).replace("T", " ")}</td><td className="px-4 py-3"><div className="flex flex-wrap gap-x-3 gap-y-1"><Link href={`/logistics/${encodeURIComponent(String(row.invoice_no))}`} className="text-[var(--gold)] hover:underline">查看資料</Link>{row.ref && <><a href={`/print/invoices?refs=${encodeURIComponent(row.ref)}`} target="_blank" rel="noopener" className="text-[var(--gold)] hover:underline">發票 PDF</a><a href={`/print/invoices/word?refs=${encodeURIComponent(row.ref)}`} className="text-[var(--gold)] hover:underline">Word</a></>}</div></td></tr>)}</tbody></table>{!invoiceRows.length && <div className="p-8 text-center text-sm text-[var(--soft)]">暫時沒有發票記錄。</div>}</div>
       </section>
       <div className="mt-6 rounded-xl border border-[var(--line)] bg-[var(--head)] px-4 py-3 text-sm text-[var(--soft)]">四個服務共用同一個入口；原有頁面、搜尋、編輯、付款及跟進功能全部保留。</div>
     </div>

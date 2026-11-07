@@ -64,6 +64,9 @@ export default async function LogisticsDetail({ params }: { params: Promise<{ in
     if (["status", "row_status", "logistics_status", "payment_status", "deposit_status", "balance_status", "service_status", "progress"].includes(key)) return ({ awaiting_payment: "待付款", pending: "處理中", paid: "已付款", completed: "已完成", cancelled: "已取消", new: "新收到", scheduled: "已排期", pickup: "已接送", cremating: "火化中", ready: "可取回" } as Record<string, string>)[String(value)] || String(value);
     if (key === "order_type") return ({ deposit: "預約接送訂金", cremation: "善終／告別套餐", vet: "安樂在家／獸醫評估", product: "紀念品／加購", other: "其他／自訂" } as Record<string, string>)[String(value)] || String(value);
     if (key === "source" || key === "linked_table") return ({ basic_info_logistic: "物流客戶資料", excel: "Excel 同步", manual: "手動輸入", company_orders: "系統發票", deposit_bookings: "預約接送訂金", cremation_bookings: "善終／告別套餐", product_orders: "紀念品訂單", "admin:deposit": "後台開單（接送訂金）", "admin:cremation": "後台開單（火化）", "admin:euthanasia": "後台開單（安樂在家）", "web:pickup-deposit": "網站預約接送", "web:cremation": "網站火化預約", "web:euthanasia": "網站獸醫評估" } as Record<string, string>)[String(value)] || String(value);
+    // 訂金用於哪張單：顯示類型，不顯示系統 ID
+    if (key === "credit_target") { const v = String(value); return v.startsWith("cremation:") ? "火化預約／安樂在家" : v.startsWith("company:") ? "開新單（紀念品／其他）" : v.startsWith("draft:") ? "紀念品付款連結" : v; }
+    if (key === "deposit_credit_ref") return "接送訂金記錄";
     if (key === "payment_intent") return ({ link: "付款連結", received: "已收款" } as Record<string, string>)[String(value)] || String(value);
     // 時間：轉為香港時間
     if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(value)) { const d = new Date(value); if (!Number.isNaN(d.getTime())) return new Date(d.getTime() + 8 * 3600 * 1000).toISOString().slice(0, 16).replace("T", " "); }
