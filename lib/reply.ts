@@ -19,7 +19,7 @@ export type ReplySnippet = {
 // 回覆時可選的客人記錄（接送訂金或火化／獸醫預約）
 export type ReplyRecord = {
   ref: string; // "deposit:<id>" 或 "booking:<id>"
-  kind: "接送服務" | "火化預約" | "獸醫評估";
+  kind: "接送服務" | "火化預約" | "獸醫評估" | "客戶資料";
   created_at: string;
   owner_name: string | null;
   contact: string | null;
@@ -85,3 +85,4 @@ export function detectLang(text: string): ReplyLang | null {
   if (/[㐀-鿿]/.test(text)) return "zh";
   return /[A-Za-z]/.test(text) ? "en" : null;
 }
+

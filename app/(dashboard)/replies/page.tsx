@@ -36,7 +36,7 @@ const langOf = (notes: string | null): ReplyLang => (/Project no\./i.test(notes 
 export default async function RepliesPage({ searchParams }: { searchParams: Promise<{ ref?: string }> }) {
   const { ref } = await searchParams;
   const supabase = createAdminClient();
-  const [snippetsRes, depositsRes, bookingsRes, staff, site] = await Promise.all([
+  const [snippetsRes, depositsRes, bookingsRes, customerRes, staff, site] = await Promise.all([
     supabase.from("reply_snippets").select("id, slug, category, title, zh, en, sort_order, active").eq("active", true).order("sort_order"),
     supabase
       .from("deposit_bookings")
@@ -48,6 +48,7 @@ export default async function RepliesPage({ searchParams }: { searchParams: Prom
       .select("id, created_at, owner_name, contact, pet_name, service_date, service_time, notes, case_no, source").eq("is_test", false)
       .order("created_at", { ascending: false })
       .limit(300),
+    supabase.from("logistics_orders").select("invoice_no, created_at, owner_name, phone, pet_name, arrival_date, arrival_time").order("created_at", { ascending: false }).limit(300),
     getStaff(),
     loadSiteContent(),
   ]);
@@ -79,6 +80,18 @@ export default async function RepliesPage({ searchParams }: { searchParams: Prom
       projectNo: projectOf(r.case_no, projectNoFromNotes(r.notes)),
       lang: langOf(r.notes),
     })),
+    ...((customerRes.data ?? []) as unknown as Array<{ invoice_no: string | number; created_at: string; owner_name: string | null; phone: string | null; pet_name: string | null; arrival_date: string | null; arrival_time: string | null }>).map((r) => ({
+      ref: `customer:${r.invoice_no}`,
+      kind: "客戶資料" as const,
+      created_at: r.created_at,
+      owner_name: r.owner_name,
+      contact: r.phone,
+      pet_name: r.pet_name,
+      service_date: r.arrival_date,
+      service_time: r.arrival_time,
+      projectNo: String(r.invoice_no || ""),
+      lang: "zh" as ReplyLang,
+    })),
   ].sort((a, b) => b.created_at.localeCompare(a.created_at));
 
   const staffName = staff?.name?.trim() || staff?.email?.split("@")[0] || "同事";
@@ -98,3 +111,4 @@ export default async function RepliesPage({ searchParams }: { searchParams: Prom
     </div>
   );
 }
+
