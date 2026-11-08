@@ -8,6 +8,7 @@ import { MobileMenu } from "./_mobilemenu";
 import { Suspense } from "react";
 import { NavProgress } from "./_nav-progress";
 import { GlobalSearch } from "./_global-search";
+import { SyncAllButton } from "./_sync-all-button";
 
 export default async function DashboardLayout({
   children,
@@ -40,6 +41,7 @@ export default async function DashboardLayout({
             <TopNav allowed={allowed} />
           </nav>
           <div className="flex-1 lg:hidden" />
+          {hasModule(staff, ["sync"]) && <SyncAllButton />}
           {canOrder && (
             <Link href="/new-order" prefetch={false} className="shrink-0 rounded-lg bg-[var(--gold)] px-3 py-1.5 text-sm font-medium text-white hover:opacity-90" aria-label="開新單">
               ＋<span className="hidden sm:inline"> 開新單</span>
