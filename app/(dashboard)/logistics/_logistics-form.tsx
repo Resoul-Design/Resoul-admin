@@ -20,7 +20,7 @@ export function LogisticsForm({ invoice, initial, exists, isAdmin }: { invoice: 
     start(async () => {
       const res = await updateCustomerData(invoice, values);
       if (res.error) return setMsg({ ok: false, text: res.error });
-      setMsg({ ok: true, text: "已保存。" });
+      setMsg(res.warning ? { ok: false, text: `已保存。${res.warning}` } : { ok: true, text: "已保存。" });
       router.refresh();
     });
   }
