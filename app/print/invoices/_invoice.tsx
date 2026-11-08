@@ -41,6 +41,8 @@ export const INVOICE_CSS = `
 .inv-sign div{letter-spacing:.3em;color:#5d6f62;font-size:15px;margin-top:10px}
 .inv-foot{text-align:center;margin-top:20px;color:#6f6a63}.inv-foot .msg{font-size:14px}.inv-foot .contact{font-size:11.5px;letter-spacing:.04em;margin-top:4px;color:#8a8379}
 .inv-test{margin-bottom:12px;border:1px dashed #d97706;color:#b45309;border-radius:8px;padding:4px 10px;font-size:12px;display:inline-block}
+@media screen and (min-width:641px) and (max-width:900px){.inv-in{padding:30px 26px 24px}.inv-title{font-size:38px;padding:12px 26px}.inv-brand img{height:60px}.inv-box{min-width:280px}.inv th{font-size:11.5px;letter-spacing:.08em}.inv td{font-size:14px}.inv .code{padding-right:12px}.inv .price{padding-right:14px}.inv-bottom{gap:24px}.inv-tot{min-width:260px}}
+@media screen and (max-width:640px){.inv{font-size:13px;margin:12px auto}.inv-in{padding:22px 16px 18px}.inv-top{flex-direction:column-reverse;align-items:flex-start;gap:14px}.inv-brand{text-align:left}.inv-brand img{height:48px}.inv-title{font-size:30px;padding:10px 20px;border-radius:14px}.inv-meta{flex-direction:column;gap:10px;margin-top:18px}.inv-box{min-width:0;width:100%;padding:12px 14px}.inv-row .inv-k,.inv-no .inv-k{min-width:104px}.inv-no{padding-top:0}.inv table{margin-top:22px;table-layout:auto}.inv colgroup,.inv thead{display:none}.inv table,.inv tbody,.inv tr,.inv td{display:block;width:100%!important}.inv tr{border-bottom:1px solid #e4ded4;padding:12px 0}.inv td{padding:2px 0;font-size:14px}.inv .desc{padding-left:0}.inv .code{padding-right:0}.inv td.code:empty{display:none}.inv td[data-label]{display:flex;justify-content:space-between;gap:12px;text-align:right;padding-right:0}.inv td[data-label]::before{content:attr(data-label);color:#8a8379;font-size:11px;letter-spacing:.1em;text-transform:uppercase;text-align:left}.inv-bottom{flex-direction:column;gap:22px;margin-top:26px}.inv-remarks{max-width:100%}.inv-tot{min-width:0;width:100%}.inv-sign img{width:140px;max-width:50%}}
 @media print{.no-print{display:none!important}html,body{background:#fff!important}.inv{margin:0 auto}}
 `;
 
@@ -91,11 +93,11 @@ export function Invoice({ d }: { d: InvoiceDoc }) {
           <tbody>
             {d.items.map((it, i) => (
               <tr key={i}>
-                <td className="code">{it.sku}</td>
+                <td className="code" data-label="Item Code">{it.sku}</td>
                 <td className="desc">{it.title}</td>
-                <td className="r price num">{it.unit != null ? money(it.unit) : "—"}</td>
-                <td className="c num">{it.qty}</td>
-                <td className="r num">{it.unit != null ? money(it.unit * it.qty) : "—"}</td>
+                <td className="r price num" data-label="Unit Price">{it.unit != null ? money(it.unit) : "—"}</td>
+                <td className="c num" data-label="Qty">{it.qty}</td>
+                <td className="r num" data-label="Subtotal">{it.unit != null ? money(it.unit * it.qty) : "—"}</td>
               </tr>
             ))}
           </tbody>
