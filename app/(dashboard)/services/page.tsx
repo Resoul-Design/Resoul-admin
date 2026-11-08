@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { after } from "next/server";
+import { syncOrderAttributes } from "@/lib/shopify-order-attrs";
 import { getStaff, hasModule } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -13,6 +15,8 @@ const services = [
 export default async function ServicesPage({ searchParams }: { searchParams: Promise<{ test?: string }> }) {
   // 測試記錄預設隱藏；?test=1 只顯示測試記錄（與接送服務等列表相同）
   const showTest = (await searchParams).test === "1";
+  // 頁面顯示後在背景補上最近 Shopify 訂單的單號等資料欄位（不影響載入速度）
+  after(() => syncOrderAttributes({ first: 30 }).then((r) => { if (r.errors.length) console.error("[order_attrs]", r.errors.join(" | ")); }).catch((e) => console.error("[order_attrs]", e instanceof Error ? e.message : "unknown")));
   const staff = await getStaff();
   if (!staff) redirect("/login");
   const available = services.filter((service) => hasModule(staff, [service.key]));

@@ -1,4 +1,5 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
+import { syncOrderAttributes } from "@/lib/shopify-order-attrs";
 import { revalidateTag } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { assignMissingProjectNos } from "@/lib/product-order-projects";
@@ -65,6 +66,7 @@ export async function POST(request: Request) {
     await assignMissingProjectNos();
     if (order.test) await markShopifyTestOrders([{ id: order.admin_graphql_api_id || (order.id ? `gid://shopify/Order/${order.id}` : null), name: order.name || null }]);
     revalidateTag("shopify-orders");
+    after(() => syncOrderAttributes({ orderIds: [order.admin_graphql_api_id || `gid://shopify/Order/${order.id}`] }).catch(() => {}));
     return NextResponse.json({ ok: true, matched: false, productOrder: true });
   }
 
@@ -117,5 +119,7 @@ export async function POST(request: Request) {
   if (ids.length) await supabase.from("company_orders").update({ status: "paid", shopify_order_id: order.admin_graphql_api_id || (order.id ? `gid://shopify/Order/${order.id}` : null), updated_at: new Date().toISOString() }).in("linked_id", ids).eq("status", "awaiting_payment");
 
   revalidateTag("shopify-orders");
+  // 補上 Shopify 訂單的單號等資料欄位
+  after(() => syncOrderAttributes({ orderIds: [order.admin_graphql_api_id || `gid://shopify/Order/${order.id}`] }).catch(() => {}));
   return NextResponse.json({ ok: true, matched: (data || []).length > 0 });
 }
