@@ -8,3 +8,8 @@
 .DS_Store
 *.tsbuildinfo
 next-env.d.ts
+
+# 含客戶個人資料的檔案（repo 為公開，絕不可上載 GitHub）
+db/seed_*.sql
+*.xlsx
+*.xls
