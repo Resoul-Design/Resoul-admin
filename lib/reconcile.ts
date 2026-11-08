@@ -17,6 +17,7 @@ export type Issue = {
 };
 export type ReconcileResult = { checkedAt: string; counts: Record<string, number>; issues: Issue[] };
 
+const TYPE: Record<string, string> = { deposit: "預約接送訂金", cremation: "善終／告別套餐", vet: "安樂在家", product: "紀念品／加購", other: "其他／自訂" };
 const gid = (id: unknown) => { const s = String(id || ""); return s.startsWith("gid://") ? s : /^\d+$/.test(s) ? `gid://shopify/Order/${s}` : ""; };
 const num = (v: unknown) => Number(v || 0);
 const paidS = (o: SOrder) => ["PAID", "PARTIALLY_REFUNDED"].includes(o.displayFinancialStatus);
@@ -88,13 +89,13 @@ export async function reconcile(): Promise<ReconcileResult> {
     const no = String(c.invoice_no ?? "—");
     const d = c.shopify_draft_id ? byDraft.get(String(c.shopify_draft_id)) : undefined;
     if (d?.order && testOrder.has(d.order.id)) continue;
-    if (!c.shopify_draft_id && c.status !== "cancelled") add({ category: "開新單未同步 Shopify", invoiceNo: no, text: `${c.order_type}：請在單詳情按「重試同步」`, link: `/new-order/${c.id}` });
-    else if (d && d.status === "COMPLETED" && c.status !== "paid" && c.status !== "cancelled") add({ category: "開新單記錄未標記已付款", invoiceNo: no, text: `${c.order_type}：Shopify 已付款（${d.order?.name}）`, fix: { kind: "company-paid", id: String(c.id), orderId: d.order?.id } });
-    else if (d && d.status === "OPEN" && c.status === "paid") add({ category: "開新單狀態不一致", invoiceNo: no, text: `${c.order_type}：後台已付款，Shopify 付款連結未付款`, link: `/new-order/${c.id}` });
+    if (!c.shopify_draft_id && c.status !== "cancelled") add({ category: "開新單未同步 Shopify", invoiceNo: no, text: `${TYPE[String(c.order_type)] || c.order_type}：請在單詳情按「重試同步」`, link: `/new-order/${c.id}` });
+    else if (d && d.status === "COMPLETED" && c.status !== "paid" && c.status !== "cancelled") add({ category: "開新單記錄未標記已付款", invoiceNo: no, text: `${TYPE[String(c.order_type)] || c.order_type}：Shopify 已付款（${d.order?.name}）`, fix: { kind: "company-paid", id: String(c.id), orderId: d.order?.id } });
+    else if (d && d.status === "OPEN" && c.status === "paid") add({ category: "開新單狀態不一致", invoiceNo: no, text: `${TYPE[String(c.order_type)] || c.order_type}：後台已付款，Shopify 付款連結未付款`, link: `/new-order/${c.id}` });
     if (d && !c.linked_id) {
       const expect = num(c.amount) - num((c.details as { depositCredit?: { amount?: number } | null } | null)?.depositCredit?.amount);
       const got = num(d.totalPriceSet.shopMoney.amount);
-      if (Math.abs(expect - got) > 0.5) add({ category: "金額不一致", invoiceNo: no, text: `開新單 ${c.order_type}：後台 HK$${expect}，Shopify HK$${got}`, link: `/new-order/${c.id}` });
+      if (Math.abs(expect - got) > 0.5) add({ category: "金額不一致", invoiceNo: no, text: `開新單 ${TYPE[String(c.order_type)] || c.order_type}：後台 HK$${expect}，Shopify HK$${got}`, link: `/new-order/${c.id}` });
     }
   }
   // 4) 紀念品訂單
