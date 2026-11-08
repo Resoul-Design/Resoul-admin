@@ -2,7 +2,8 @@ import { getStaff, hasModule } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
-import { updateCustomerData } from "../actions";
+import { LogisticsForm } from "../_logistics-form";
+import { LOGISTICS_FIELDS } from "@/lib/logistics-fields";
 import { RecordEditor } from "../_record-editor";
 
 export const dynamic = "force-dynamic";
@@ -63,7 +64,7 @@ export default async function LogisticsDetail({ params }: { params: Promise<{ in
   const valueText = (key: string, value: unknown) => {
     if (["status", "row_status", "logistics_status", "payment_status", "deposit_status", "balance_status", "service_status", "progress"].includes(key)) return ({ awaiting_payment: "待付款", pending: "處理中", paid: "已付款", completed: "已完成", cancelled: "已取消", new: "新收到", scheduled: "已排期", pickup: "已接送", cremating: "火化中", ready: "可取回" } as Record<string, string>)[String(value)] || String(value);
     if (key === "order_type") return ({ deposit: "預約接送訂金", cremation: "善終／告別套餐", vet: "安樂在家／獸醫評估", product: "紀念品／加購", other: "其他／自訂" } as Record<string, string>)[String(value)] || String(value);
-    if (key === "source" || key === "linked_table") return ({ basic_info_logistic: "物流客戶資料", excel: "Excel 同步", manual: "手動輸入", company_orders: "系統發票", deposit_bookings: "預約接送訂金", cremation_bookings: "善終／告別套餐", product_orders: "紀念品訂單", "admin:deposit": "後台開單（接送訂金）", "admin:cremation": "後台開單（火化）", "admin:euthanasia": "後台開單（安樂在家）", "web:pickup-deposit": "網站預約接送", "web:cremation": "網站火化預約", "web:euthanasia": "網站獸醫評估" } as Record<string, string>)[String(value)] || String(value);
+    if (key === "source" || key === "linked_table") return ({ basic_info_logistic: "物流客戶資料", excel: "Excel 同步", manual: "手動輸入", company_orders: "系統發票", deposit_bookings: "預約接送訂金", cremation_bookings: "善終／告別套餐", product_orders: "紀念品訂單", "admin:deposit": "後台開單（接送訂金）", "admin:cremation": "後台開單（火化）", "admin:euthanasia": "後台開單（安樂在家）", admin: "後台建立", "web:pickup-deposit": "網站預約接送", "web:cremation": "網站火化預約", "web:euthanasia": "網站獸醫評估" } as Record<string, string>)[String(value)] || String(value);
     // 訂金用於哪張單：顯示類型，不顯示系統 ID
     if (key === "credit_target") { const v = String(value); return v.startsWith("cremation:") ? "火化預約／安樂在家" : v.startsWith("company:") ? "開新單（紀念品／其他）" : v.startsWith("draft:") ? "紀念品付款連結" : v; }
     if (key === "deposit_credit_ref") return "接送訂金記錄";
@@ -86,6 +87,19 @@ export default async function LogisticsDetail({ params }: { params: Promise<{ in
       {(company.data || []).filter((o) => !o.linked_id).map((o) => <RecordEditor key={o.id} kind="company" id={o.id} title={`${valueText("order_type", o.order_type)}（${dateOf(o.created_at)}）`} initial={{ owner_name: s(o.customer_name), contact: s(o.phone), email: s(o.email), pet_name: s(o.pet_name) }} />)}
     </section>
   );
+  // 客戶資料表格預設值：有 Excel 記錄用記錄，否則由服務記錄帶入（保存後建立）
+  const lg = logistics.data as Record<string, unknown> | null;
+  const svc = (dep || cre || null) as Record<string, unknown> | null;
+  const fallback: Record<string, unknown> = {
+    owner_name: svc?.owner_name ?? co?.customer_name ?? pro?.customer_name, phone: svc?.contact ?? co?.phone ?? pro?.phone,
+    email: co?.email ?? pro?.email, pet_name: svc?.pet_name ?? co?.pet_name, animal: svc?.pet_type,
+    arrival_date: svc?.service_date, arrival_time: svc?.service_time, pickup_from: svc?.pickup_address, package_name: svc?.plan,
+    invoice_amount: svc?.payment_amount ?? co?.amount ?? pro?.total_amount,
+  };
+  const formInitial: Record<string, string> = Object.fromEntries(LOGISTICS_FIELDS.map((f) => {
+    const v = lg ? lg[f.key] : fallback[f.key];
+    return [f.key, v == null ? "" : String(v).slice(0, f.type === "date" ? 10 : 2000)];
+  }));
   const render = (key: string, value: unknown) => <div key={key} className="rounded-xl border border-[var(--line)] bg-[var(--card)] p-4"><div className="text-xs text-[var(--soft)]">{labels[key] || key}</div><div className="mt-1 break-words whitespace-pre-wrap text-sm">{valueText(key, value)}</div></div>;
-  return <div><div className="mb-5 flex items-center gap-3"><Link href="/logistics" className="text-sm text-[var(--gold)] hover:underline">← 客戶資料</Link><h1 className="text-2xl font-semibold">{invoice}</h1></div>{editors}{logistics.data && <form action={updateCustomerData.bind(null, invoice)} className="mb-6 rounded-2xl border border-[var(--line)] bg-[var(--head)] p-4"><h2 className="mb-3 text-lg font-semibold">編輯客戶資料</h2><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3"><label className="text-sm">主人姓名<input name="owner_name" defaultValue={String(row.owner_name || "")} className="mt-1 w-full rounded-lg border border-[var(--line)] bg-white px-3 py-2" /></label><label className="text-sm">電話<input name="phone" defaultValue={String(row.phone || "")} className="mt-1 w-full rounded-lg border border-[var(--line)] bg-white px-3 py-2" /></label><label className="text-sm">寵物名稱<input name="pet_name" defaultValue={String(row.pet_name || "")} className="mt-1 w-full rounded-lg border border-[var(--line)] bg-white px-3 py-2" /></label><label className="text-sm">到達日期<input name="arrival_date" defaultValue={String(row.arrival_date || "")} className="mt-1 w-full rounded-lg border border-[var(--line)] bg-white px-3 py-2" /></label><label className="text-sm">套餐<input name="package_name" defaultValue={String(row.package_name || "")} className="mt-1 w-full rounded-lg border border-[var(--line)] bg-white px-3 py-2" /></label><label className="text-sm">紀念品備註<input name="memorial_remarks" defaultValue={String(row.memorial_remarks || "")} className="mt-1 w-full rounded-lg border border-[var(--line)] bg-white px-3 py-2" /></label></div><button className="mt-4 rounded-lg bg-[var(--gold)] px-4 py-2 text-sm text-white">儲存修改</button></form>}<div className="space-y-6">{groups.map(([title, keys]) => { const entries = keys.map((key) => [key, row[key]] as const).filter(([, value]) => value !== null && value !== undefined && value !== ""); return entries.length ? <section key={title}><h2 className="mb-3 text-lg font-semibold">{title}</h2><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{entries.map(([key, value]) => render(key, value))}</div></section> : null; })}{Object.entries(row).filter(([key, value]) => !used.has(key) && value !== null && value !== "").length > 0 && <section><h2 className="mb-3 text-lg font-semibold">其他資料</h2><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{Object.entries(row).filter(([key, value]) => !used.has(key) && value !== null && value !== "").map(([key, value]) => render(key, value))}</div></section>}</div></div>;
+  return <div><div className="mb-5 flex items-center gap-3"><Link href="/logistics" className="text-sm text-[var(--gold)] hover:underline">← 客戶資料</Link><h1 className="text-2xl font-semibold">{invoice}</h1></div>{editors}<LogisticsForm invoice={invoice} initial={formInitial} exists={!!logistics.data} isAdmin={staff.role === "admin"} /><div className="space-y-6">{groups.map(([title, keys]) => { const entries = keys.map((key) => [key, row[key]] as const).filter(([, value]) => value !== null && value !== undefined && value !== ""); return entries.length ? <section key={title}><h2 className="mb-3 text-lg font-semibold">{title}</h2><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{entries.map(([key, value]) => render(key, value))}</div></section> : null; })}{Object.entries(row).filter(([key, value]) => !used.has(key) && value !== null && value !== "").length > 0 && <section><h2 className="mb-3 text-lg font-semibold">其他資料</h2><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{Object.entries(row).filter(([key, value]) => !used.has(key) && value !== null && value !== "").map(([key, value]) => render(key, value))}</div></section>}</div></div>;
 }

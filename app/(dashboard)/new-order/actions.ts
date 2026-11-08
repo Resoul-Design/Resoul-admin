@@ -390,10 +390,11 @@ export async function createOrder(input: NewOrderInput): Promise<{ id?: string; 
     return { error: "未能建立開單記錄，請確認已執行 db/migration_20261108_company_invoice_no.sql。" };
   }
 
-  await admin.from("logistics_orders").upsert({
-    invoice_no: String(invoiceNo), owner_name: name, phone, pet_name: petName || null,
-    plan: planName || def2.label, status: "新訂單", created_at: new Date().toISOString(),
-  }, { onConflict: "invoice_no" });
+  const { error: logisticsError } = await admin.from("logistics_orders").upsert({
+    invoice_no: invoiceNo, source: "admin", owner_name: name, phone, email: email || null, pet_name: petName || null, animal: petType || null,
+    package_name: planName || def2.label, arrival_date: serviceDate || null, arrival_time: slot || null, pickup_from: address || null, invoice_amount: amount,
+  }, { onConflict: "invoice_no", ignoreDuplicates: true });
+  if (logisticsError) console.error("[new_order_logistics]", logisticsError.message);
 
   // 扣訂金：先標記訂金已使用（同時兩張單只有一張成功），失敗則照常開單但不扣
   let creditWarning = "";
