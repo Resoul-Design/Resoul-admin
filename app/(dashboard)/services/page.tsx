@@ -28,13 +28,16 @@ export default async function ServicesPage({ searchParams }: { searchParams: Pro
   const labelHref: Record<string, string> = Object.fromEntries(Object.entries(typeLabel).map(([key, label]) => [label, typeHref[key]]));
   const serviceQueryHref = (label: string, invoice: unknown) => `${labelHref[label] || "/new-order"}?q=${encodeURIComponent(String(invoice))}`;
   const serviceOrder: Record<string, number> = { deposit: 1, cremation: 2, vet: 3, product: 4, other: 5 };
-  const statusLabel: Record<string, string> = { draft: "草稿", awaiting_payment: "待付款", pending: "處理中", paid: "已付款", completed: "已完成", cancelled: "已取消", failed: "失敗" };
+  const statusLabel: Record<string, string> = { draft: "草稿", awaiting_payment: "待付款", pending: "處理中", paid: "已付款", completed: "已完成", cancelled: "已取消", cancelled_refunded: "已取消（已退款）", refunded: "已退款", partially_refunded: "部分退款", failed: "失敗" };
+  // 狀態統一：取消優先（連同退款），其次付款狀態
+  const bookingStatus = (r: { status?: string | null; payment_status?: string | null }) =>
+    r.status === "cancelled" ? (r.payment_status === "refunded" ? "cancelled_refunded" : "cancelled") : r.payment_status || "";
   // 每筆服務記錄列一行（同一專案共用單號，故同一單號可有多行）。
   // 開新單記錄若已連結接送／火化記錄，只列服務記錄，避免重複；紀念品訂單已同步的 Shopify 訂單亦不重複列出開單記錄。
   const [company, deposits, cremations, products, linkedOrders, draftMarks] = await Promise.all([
     admin.from("company_orders").select("id, invoice_no, order_type, customer_name, phone, amount, status, created_at, linked_id, shopify_order_id, shopify_draft_id, details").is("linked_id", null).neq("status", "cancelled").order("created_at", { ascending: false }).limit(100),
-    admin.from("deposit_bookings").select("id, invoice_no, owner_name, contact, payment_amount, payment_status, shopify_order_name, created_at, is_test, shopify_order_id, payment_draft_id").order("created_at", { ascending: false }).limit(100),
-    admin.from("cremation_bookings").select("id, invoice_no, owner_name, contact, payment_amount, payment_status, shopify_order_name, source, created_at, is_test, deposit_credit, notes, shopify_order_id").order("created_at", { ascending: false }).limit(100),
+    admin.from("deposit_bookings").select("id, invoice_no, owner_name, contact, payment_amount, payment_status, shopify_order_name, created_at, is_test, shopify_order_id, payment_draft_id, status").order("created_at", { ascending: false }).limit(100),
+    admin.from("cremation_bookings").select("id, invoice_no, owner_name, contact, payment_amount, payment_status, shopify_order_name, source, created_at, is_test, deposit_credit, notes, shopify_order_id, status").order("created_at", { ascending: false }).limit(100),
     admin.from("product_orders").select("shopify_order_id, invoice_no, customer_name, phone, total_amount, financial_status, cancelled_at, shopify_created_at, is_test").order("shopify_created_at", { ascending: false }).limit(100),
     // 開新單的項目（判斷火化／安樂在家有否加購紀念品）
     admin.from("company_orders").select("linked_id, details").not("linked_id", "is", null).order("created_at", { ascending: false }).limit(300),
@@ -75,15 +78,15 @@ export default async function ServicesPage({ searchParams }: { searchParams: Pro
   };
   const productOrderIds = new Set((products.data || []).map((r) => r.shopify_order_id));
   const productStatus = (r: { financial_status: string | null; cancelled_at: string | null }) =>
-    r.cancelled_at ? "cancelled" : ["PAID", "PARTIALLY_REFUNDED", "REFUNDED"].includes(r.financial_status || "") ? "paid" : "awaiting_payment";
+    r.cancelled_at ? (r.financial_status === "REFUNDED" ? "cancelled_refunded" : "cancelled") : r.financial_status === "REFUNDED" ? "refunded" : r.financial_status === "PARTIALLY_REFUNDED" ? "partially_refunded" : r.financial_status === "PAID" ? "paid" : "awaiting_payment";
   const sourceRows: InvoiceRow[] = [
     ...(company.data || []).filter((r) => !(r.shopify_order_id && productOrderIds.has(r.shopify_order_id))).map((r) => {
       const credit = Number((r.details as { depositCredit?: { amount?: number } | null } | null)?.depositCredit?.amount || 0);
       return { id: `company-${r.id}`, invoice_no: r.invoice_no, order_type: r.order_type, customer_name: r.customer_name, phone: r.phone, amount: Number(r.amount || 0) - credit, status: r.status, created_at: r.created_at, ref: r.status === "paid" ? `company:${r.id}` : "", test: false, shopify: shopifyHref(r.shopify_order_id, r.shopify_draft_id) };
     }),
-    ...(deposits.data || []).map((r) => ({ id: `deposit-${r.id}`, invoice_no: r.invoice_no, order_type: "deposit", customer_name: r.owner_name, phone: r.contact, amount: Number(r.payment_amount || 0), status: r.payment_status || "", created_at: r.created_at, ref: r.payment_status === "paid" && r.shopify_order_name ? `deposit:${r.id}` : "", test: !!r.is_test, shopify: shopifyHref(r.shopify_order_id, r.payment_draft_id) })),
-    ...(cremations.data || []).map((r) => ({ id: `cremation-${r.id}`, invoice_no: r.invoice_no, order_type: String(r.source || "").includes("euthanasia") ? "vet" : "cremation", extra: withAddons.has(String(r.id)) || /加購[:：]/.test(String(r.notes || "")) ? "＋紀念品" : "", customer_name: r.owner_name, phone: r.contact, amount: Number(r.payment_amount || 0) - Number(r.deposit_credit || 0), status: r.payment_status || "", created_at: r.created_at, ref: r.payment_status === "paid" && r.shopify_order_name ? `booking:${r.id}` : "", test: !!r.is_test, shopify: shopifyHref(r.shopify_order_id, bookingDraft.get(String(r.id))) })),
-    ...(products.data || []).map((r) => ({ id: `product-${r.shopify_order_id}`, invoice_no: r.invoice_no, order_type: "product", customer_name: r.customer_name, phone: r.phone, amount: Number(r.total_amount || 0), status: productStatus(r), created_at: r.shopify_created_at, ref: productStatus(r) === "paid" ? `order:${String(r.shopify_order_id).split("/").pop()}` : "", test: !!r.is_test, shopify: shopifyHref(r.shopify_order_id) })),
+    ...(deposits.data || []).map((r) => ({ id: `deposit-${r.id}`, invoice_no: r.invoice_no, order_type: "deposit", customer_name: r.owner_name, phone: r.contact, amount: Number(r.payment_amount || 0), status: bookingStatus(r), created_at: r.created_at, ref: r.payment_status === "paid" && r.shopify_order_name ? `deposit:${r.id}` : "", test: !!r.is_test, shopify: shopifyHref(r.shopify_order_id, r.payment_draft_id) })),
+    ...(cremations.data || []).map((r) => ({ id: `cremation-${r.id}`, invoice_no: r.invoice_no, order_type: String(r.source || "").includes("euthanasia") ? "vet" : "cremation", extra: withAddons.has(String(r.id)) || /加購[:：]/.test(String(r.notes || "")) ? "＋紀念品" : "", customer_name: r.owner_name, phone: r.contact, amount: Number(r.payment_amount || 0) - Number(r.deposit_credit || 0), status: bookingStatus(r), created_at: r.created_at, ref: r.payment_status === "paid" && r.shopify_order_name ? `booking:${r.id}` : "", test: !!r.is_test, shopify: shopifyHref(r.shopify_order_id, bookingDraft.get(String(r.id))) })),
+    ...(products.data || []).map((r) => ({ id: `product-${r.shopify_order_id}`, invoice_no: r.invoice_no, order_type: "product", customer_name: r.customer_name, phone: r.phone, amount: Number(r.total_amount || 0), status: productStatus(r), created_at: r.shopify_created_at, ref: ["paid", "partially_refunded"].includes(productStatus(r)) ? `order:${String(r.shopify_order_id).split("/").pop()}` : "", test: !!r.is_test, shopify: shopifyHref(r.shopify_order_id) })),
   ].filter((r) => r.invoice_no != null);
   const testCount = sourceRows.filter((r) => r.test).length;
   const visibleRows = sourceRows.filter((r) => r.test === showTest);
