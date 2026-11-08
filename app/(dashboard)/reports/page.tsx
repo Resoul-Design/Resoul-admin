@@ -148,6 +148,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
       <div className="rounded-2xl border border-[var(--line)] bg-[var(--card)] p-5">
         <h2 className="text-base mb-3">匯出 CSV</h2>
         <div className="flex flex-wrap gap-3">
+          <a href="/api/export/services" className="px-4 py-2 rounded-lg text-sm bg-[var(--gold)] text-white hover:opacity-90">匯出全部服務資料（Excel）</a>
           <a href="/api/export/bookings?category=vet" className="px-4 py-2 rounded-lg text-sm bg-[var(--gold)] text-white hover:opacity-90">匯出獸醫評估</a>
           <a href="/api/export/bookings?category=cremation" className="px-4 py-2 rounded-lg text-sm bg-[var(--gold)] text-white hover:opacity-90">匯出火化預約</a>
           <a href="/api/export/deposits" className="px-4 py-2 rounded-lg text-sm bg-[var(--gold)] text-white hover:opacity-90">匯出接送服務</a>
