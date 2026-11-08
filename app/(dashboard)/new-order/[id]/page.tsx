@@ -6,6 +6,8 @@ import { shopDomain, shopifyGraphQL } from "@/lib/shopify";
 import { ORDER_STATUS_LABEL, ORDER_TYPE_MAP, type OrderType } from "@/lib/order-types";
 import { PageHeader, headerLinkClass } from "../../_page-header";
 import { ChangeInvoiceNo, CopyLink, RetrySync, WhatsAppLink } from "./_panels";
+import { ConvertToCremation } from "./_convert";
+import { PLAN_CODES } from "@/lib/company";
 import { invoiceLabel } from "@/lib/invoice-label";
 
 export const dynamic = "force-dynamic";
@@ -68,6 +70,8 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
   if (status !== o.status) await admin.from("company_orders").update({ status, updated_at: new Date().toISOString() }).eq("id", id);
 
   const d = (o.details || {}) as Detail;
+  // 紀念品／其他單在 Shopify 加入了火化方案：可轉為火化預約
+  const hasPlan = !["cremation", "vet", "deposit"].includes(o.order_type) && !o.linked_id && o.status !== "cancelled" && (d.lines || []).some((l) => Object.keys(PLAN_CODES).some((k) => l.label.includes(k)));
   const host = shopDomain().replace(/^https?:\/\//, "").replace(/\/+$/, "");
   const digits = String(o.phone || "").replace(/\D/g, "");
   const waNumber = digits.length === 8 ? `852${digits}` : digits;
@@ -81,6 +85,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
         <Link href="/new-order" className={headerLinkClass}>＋ 開新單</Link>
       </PageHeader>
 
+      {hasPlan && <ConvertToCremation id={o.id} />}
       {unsynced && status !== "paid" && (
         <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
           <p className="font-medium">Shopify 未同步</p>

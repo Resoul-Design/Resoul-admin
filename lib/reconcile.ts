@@ -2,6 +2,7 @@
 // 只讀取；修正由 app/(dashboard)/sync/_reconcile-actions.ts 執行（只改後台，按 Shopify 實際資料）。
 import { createAdminClient } from "@/lib/supabase/admin";
 import { shopifyGraphQL } from "@/lib/shopify";
+import { PLAN_CODES } from "@/lib/company";
 
 type Money = { shopMoney: { amount: string } };
 type SOrder = { id: string; name: string; createdAt: string; displayFinancialStatus: string; cancelledAt: string | null; test: boolean; totalPriceSet: Money; customAttributes: { key: string; value: string | null }[] };
@@ -94,6 +95,9 @@ export async function reconcile(opts: { includeTest?: boolean } = {}): Promise<R
     if (!c.shopify_draft_id && c.status !== "cancelled") add({ category: "開新單未同步 Shopify", invoiceNo: no, text: `${TYPE[String(c.order_type)] || c.order_type}：請在單詳情按「重試同步」`, link: `/new-order/${c.id}` });
     else if (d && d.status === "COMPLETED" && c.status !== "paid" && c.status !== "cancelled") add({ category: "開新單記錄未標記已付款", invoiceNo: no, text: `${TYPE[String(c.order_type)] || c.order_type}：Shopify 已付款（${d.order?.name}）`, fix: { kind: "company-paid", id: String(c.id), orderId: d.order?.id } });
     else if (d && d.status === "OPEN" && c.status === "paid") add({ category: "開新單狀態不一致", invoiceNo: no, text: `${TYPE[String(c.order_type)] || c.order_type}：後台已付款，Shopify 付款連結未付款`, link: `/new-order/${c.id}` });
+    // 紀念品／其他單含火化方案：提示轉為火化預約
+    const lines = ((c.details as { lines?: { label: string }[] } | null)?.lines || []);
+    if (!c.linked_id && c.status !== "cancelled" && ["product", "other"].includes(String(c.order_type)) && lines.some((l) => Object.keys(PLAN_CODES).some((k) => String(l.label).includes(k)))) add({ category: "紀念品單含火化方案", invoiceNo: no, text: `${TYPE[String(c.order_type)] || c.order_type}：請在單詳情按「轉為火化預約」`, link: `/new-order/${c.id}` });
     // 未付款的付款連結：在 Shopify 加減項目後，後台跟隨（比較折扣前的項目合計）
     if (d && d.status !== "COMPLETED" && c.status !== "cancelled") {
       const got = num(d.subtotalPriceSet?.shopMoney.amount ?? d.totalPriceSet.shopMoney.amount);
