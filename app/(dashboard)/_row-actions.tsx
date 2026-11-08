@@ -17,7 +17,7 @@ const item = "flex w-full items-center justify-between gap-3 rounded-xl border p
 const GROUPS: { key: string; label: string; keys: string[] }[] = [
   { key: "status", label: "📋 狀態及服務", keys: ["status", "progress", "cremation", "create-cremation", "project"] },
   { key: "contact", label: "💬 聯絡及排期", keys: ["wa", "cal"] },
-  { key: "pay", label: "💳 付款及單據", keys: ["paylink", "markpaid", "credit", "pay", "invoice", "invoice-pdf", "invoice-word"] },
+  { key: "pay", label: "💳 付款及單據", keys: ["paylink", "credit", "pay", "invoice", "invoice-pdf", "invoice-word"] },
   { key: "data", label: "⚙️ 資料", keys: ["edit", "test"] },
 ];
 const GROUP_MIN = 5; // 功能少於此數目時直接列出

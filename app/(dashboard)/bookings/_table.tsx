@@ -11,7 +11,6 @@ import type { DraftCatalogProduct } from "@/lib/catalog";
 import { WHATSAPP_CONFIRM, whatsappHref } from "./_whatsapp";
 import { RowActions, type RowAction } from "../_row-actions";
 import { TestFlagPanel } from "../_test-controls";
-import { ManualPaidPanel } from "../_manual-paid";
 import { DepositCreditPanel } from "../_deposit-credit";
 import { ServiceProgress } from "../_service-progress";
 import type { ProgressData } from "@/lib/booking-progress";
@@ -122,7 +121,6 @@ function rowActions(r: BookingRow, staffName: string, products?: DraftCatalogPro
     list.push({ kind: "link", key: "invoice-word", label: "📝 發票 Word", href: r.invoiceHref.replace("/print/invoices?", "/print/invoices/word?") });
   }
   if (r.sourceKey === "cremation" && r.booking.payment_status !== "paid" && r.statusKey !== "cancelled") {
-    list.push({ kind: "panel", key: "markpaid", label: "✅ 確認已收款（人手）", title: "確認已收款", node: <ManualPaidPanel entity="cremation" id={r.id} expected={r.booking.payment_amount != null ? Number(r.booking.payment_amount) : null} /> });
     list.push({ kind: "panel", key: "credit", label: "💰 套用接送訂金", title: "接送訂金抵扣", node: <DepositCreditPanel target={{ kind: "cremation", id: r.id }} /> });
   }
   if (r.shopifyOrderUrl) list.push({ kind: "link", key: "invoice", label: "🛒 Shopify 訂單", href: r.shopifyOrderUrl });
