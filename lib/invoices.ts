@@ -25,6 +25,7 @@ export type InvoiceDoc = {
   isTest: boolean;
   shopifyOrderId?: string; // 只供讀取 Shopify 訂單備註
   companyNo?: boolean; // 發票編號已是公司單號（舊單才會改讀 Shopify 備註的單據編號）
+  remarks?: string[]; // Shopify 訂單備註及附加資料（與 Order Printer 範本相同）；未讀到 Shopify 時沿用後台資料
 };
 
 type Row = Record<string, unknown>;
@@ -221,12 +222,24 @@ export function parseOrderExtras(note: string | null | undefined, attrs: { key: 
   };
 }
 
+// Order Printer 範本不放入 Remarks 的附加資料（內部欄位、寵物、單號、訂金）
+const HIDDEN_ATTRS = new Set(["Deposit", "訂金", "deposit", "Owner of", "毛孩名", "Pet", "pet", "Invoice No", "Invoice No.", "單據編號", "payment_ref", "booking_ref", "Owner", "Phone", "Order Type", "referrer_phone", "Original Project No", "Booking source", "project_no", "Project No", "Deposit credit"]);
+export function orderRemarks(note: string | null | undefined, attrs: { key: string; value: string | null }[] = []): string[] {
+  const lines = String(note || "").split(/\r?\n/).map((l) => l.trim()).filter((l) => {
+    if (!l) return false;
+    const label = (l.replace("：", ":").split(":")[0] || "").trim().toLowerCase();
+    return !l.replace("：", ":").includes(":") || !["寵物", "單據編號", "發票編號", "invoice no.", "invoice no", "invoice number"].includes(label);
+  });
+  return [...lines, ...attrs.filter((a) => a.value?.trim() && !HIDDEN_ATTRS.has(a.key)).map((a) => `${a.key}: ${a.value}`)];
+}
+
 // 與 Shopify 發票範本一致；讀取失敗或訂單已刪除時沿用後台資料
 async function applyOrderExtras(docs: InvoiceDoc[]) {
   const gid = (id?: string) => (!id ? "" : id.startsWith("gid://") ? id : /^\d+$/.test(id) ? `gid://shopify/Order/${id}` : "");
   const ids = [...new Set(docs.map((d) => gid(d.shopifyOrderId)).filter(Boolean))];
   type ShopifyLine = { title: string; variantTitle: string | null; sku: string | null; quantity: number; originalUnitPriceSet: { shopMoney: { amount: string } } | null };
   const found = new Map<string, ReturnType<typeof parseOrderExtras>>();
+  const remarks = new Map<string, string[]>();
   const lines = new Map<string, ShopifyLine[]>();
   for (let i = 0; i < ids.length; i += 100) {
     try {
@@ -237,6 +250,7 @@ async function applyOrderExtras(docs: InvoiceDoc[]) {
       for (const n of res.nodes) {
         if (!n?.id) continue;
         found.set(n.id, parseOrderExtras(n.note, n.customAttributes));
+        remarks.set(n.id, orderRemarks(n.note, n.customAttributes));
         if (n.lineItems?.nodes.length) lines.set(n.id, n.lineItems.nodes);
       }
     } catch (e) {
@@ -258,6 +272,8 @@ async function applyOrderExtras(docs: InvoiceDoc[]) {
         d.discount = Math.max(0, d.subtotal - d.total);
       }
     }
+    const r = remarks.get(gid(d.shopifyOrderId));
+    if (r) d.remarks = r;
     const extra = found.get(gid(d.shopifyOrderId));
     if (!extra) continue;
     if (extra.invoiceNo && !d.companyNo) d.no = extra.invoiceNo;

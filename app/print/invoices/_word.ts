@@ -16,7 +16,7 @@ import {
 } from "docx";
 import { COMPANY } from "@/lib/company";
 import type { InvoiceDoc } from "@/lib/invoices";
-import { invoiceDate, invoiceMoney, invoiceRemarks } from "./_invoice";
+import { invoiceDate, invoiceMoney, invoiceRemarks, invoiceTotals } from "./_invoice";
 
 export type InvoiceImages = { wordmark?: Uint8Array | null; signature?: Uint8Array | null };
 
@@ -24,7 +24,6 @@ const INK = "3B2F27";
 const SOFT = "6F6156";
 const LINE = "CFC4B0";
 const LIGHT = "E6DCCB";
-const GREEN = "5F7F54";
 const AMBER = "B45309";
 const WIDTH = 9906; // A4 減左右邊界 1000
 const FONT = { ascii: "Georgia", hAnsi: "Georgia", eastAsia: "Microsoft JhengHei", cs: "Microsoft JhengHei" };
@@ -90,9 +89,7 @@ function invoiceBlocks(d: InvoiceDoc, images: InvoiceImages, first: boolean) {
   const issued: [string, string][] = [["Issued to:", d.issuedTo || "—"]];
   if (d.pet) issued.push(["Owner of:", d.pet]);
   issued.push(["Phone number:", d.phone || "—"]);
-  if (d.email) issued.push(["Email:", d.email]);
   const info: [string, string][] = [["Invoice No.:", d.no]];
-  if (d.project) info.push(["Project No.:", d.project]);
   info.push(["Date:", invoiceDate(d.date)]);
   const left = 5500;
   blocks.push(new Table({
@@ -170,10 +167,7 @@ function invoiceBlocks(d: InvoiceDoc, images: InvoiceImages, first: boolean) {
         width: { size: totalsWidth, type: WidthType.DXA },
         borders: noBorders,
         children: [
-          line("SUBTOTAL", invoiceMoney(d.subtotal)),
-          line("DISCOUNT", invoiceMoney(d.discount)),
-          line("TOTAL (HKD)", invoiceMoney(d.total), true),
-          new Paragraph({ alignment: AlignmentType.RIGHT, spacing: { before: 120 }, children: [text("PAID", { color: GREEN, bold: true, size: 24 })] }),
+          ...invoiceTotals(d).map(([k, v], i, all) => line(k.toUpperCase(), invoiceMoney(v), i === all.length - 1)),
         ],
       }),
     ] })],
