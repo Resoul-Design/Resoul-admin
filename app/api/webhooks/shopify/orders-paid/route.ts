@@ -92,11 +92,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true, matched: true, alreadyPaid: true });
   }
 
+  // 已扣接送訂金：payment_amount 保持未扣訂金前的收費（實付＋訂金），避免發票重複扣減
+  const credit = Number(pendingRows[0]?.deposit_credit || 0);
   const { data, error } = await supabase
     .from("cremation_bookings")
     .update({
       payment_status: "paid",
-      payment_amount: order.total_price ? Number(order.total_price) : null,
+      payment_amount: order.total_price ? Number(order.total_price) + credit : null,
       payment_currency: order.currency || null,
       shopify_order_id: order.admin_graphql_api_id || (order.id ? String(order.id) : null),
       shopify_order_name: order.name || (order.order_number ? `#${order.order_number}` : null),
@@ -110,6 +112,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Supabase update failed" }, { status: 500 });
   }
   if (order.test) await markShopifyTestOrders([{ name: order.name || (order.order_number ? `#${order.order_number}` : null) }]);
+  // 開新單記錄跟隨標記已付款
+  const ids = (data || []).map((r) => r.id);
+  if (ids.length) await supabase.from("company_orders").update({ status: "paid", shopify_order_id: order.admin_graphql_api_id || (order.id ? `gid://shopify/Order/${order.id}` : null), updated_at: new Date().toISOString() }).in("linked_id", ids).eq("status", "awaiting_payment");
 
   revalidateTag("shopify-orders");
   return NextResponse.json({ ok: true, matched: (data || []).length > 0 });

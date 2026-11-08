@@ -55,7 +55,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
       // 讀取失敗時沿用記錄狀態
     }
   }
-  if (status !== o.status && status !== "paid") await admin.from("company_orders").update({ status, updated_at: new Date().toISOString() }).eq("id", id);
+  if (status !== o.status) await admin.from("company_orders").update({ status, updated_at: new Date().toISOString() }).eq("id", id);
 
   const d = (o.details || {}) as Detail;
   const host = shopDomain().replace(/^https?:\/\//, "").replace(/\/+$/, "");
