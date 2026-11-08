@@ -69,8 +69,12 @@ export function planImport(text: string, opts: { isAdmin: boolean }): ImportPlan
   for (let r = 1; r < table.length; r++) {
     const line = r + 1;
     const cells = table[r];
-    const invoiceNo = Number(String(cells[invoiceCol] ?? "").replace(/[^\d]/g, ""));
-    if (!Number.isInteger(invoiceNo) || invoiceNo < 1) { errors.push(`第 ${line} 行：單號無效`); continue; }
+    // 只接受純數字單號（可帶 #、逗號、空格）；「66B」等附加單不可當成 66，否則會覆蓋原單
+    const rawNo = String(cells[invoiceCol] ?? "").trim();
+    if (!rawNo) continue;
+    const cleanNo = rawNo.replace(/^#/, "").replace(/[,\s]/g, "").replace(/\.0+$/, "");
+    const invoiceNo = /^\d+$/.test(cleanNo) ? Number(cleanNo) : NaN;
+    if (!Number.isInteger(invoiceNo) || invoiceNo < 1) { errors.push(`第 ${line} 行：單號「${rawNo}」不是數字，已略過（附加單如 66B 請在原單號的資料內處理）`); continue; }
     const values: Record<string, string | number> = {};
     cols.forEach((f, i) => {
       if (!f || (f.adminOnly && !opts.isAdmin)) return;
