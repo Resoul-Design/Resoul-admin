@@ -350,6 +350,37 @@
       </ul>
       <p>每個區塊修改後按「儲存」，網站約一分鐘內更新。中英文須一併填寫；常見問題的英文留空時，該題不會在英文網站顯示。權限名稱為「網站內容」，可在員工管理授權。需先於 Supabase 執行 <code>db/migration_site_content.sql</code>；未執行時頁面會顯示黃色提示，亦未能儲存。<span class="en">Click Save after editing a section; the website updates within about a minute. Fill in both Chinese and English; an FAQ item without English is hidden on the English site. The permission is called 網站內容 (Site content) and can be granted in Staff. Requires db/migration_site_content.sql in Supabase; until then the page shows a yellow notice and cannot save.</span></p>
       <div class="callout warn"><span class="tag">注意 NOTE</span>網上付款金額以 Shopify 產品價錢為準：修改火化收費時，須同步修改 Shopify 火化方案（風／雲／星之旅）各體重的價錢；接送訂金 HK$1,800 由 Shopify「預約接送訂金」產品設定，不在此頁修改。網頁原始檔仍保留原有內容（供搜尋器使用及讀取失敗時顯示），後台修改較多時，可請開發人員同步更新原始檔。<span class="en">Online payments use the Shopify product prices: when changing cremation fees, also update each weight's price on the Shopify cremation plans (Breeze / Cloud / Star). The HK$1,800 deposit is set on the Shopify deposit product, not here. The page source keeps the original content (for search engines and as a fallback); after many edits, ask the developer to sync the source files.</span></div>
+    
+      <h3>人手操作清單（後台及 Shopify）<span class="en">Manual steps checklist (admin &amp; Shopify)</span></h3>
+      <p>以下列出系統不會自動完成、需要同事人手處理的步驟。其餘（付款後標記已付款、公司單號、訂金流水、Shopify 付款連結建立等）均由系統自動處理。<span class="en">These are the steps the system does not do for you and staff must handle by hand. Everything else (marking paid after payment, invoice numbers, the deposit ledger, creating Shopify payment links, etc.) is automatic.</span></p>
+      <h3>後台<span class="en">Admin</span></h3>
+      <ul class="tight">
+        <li>開新單（電話或面談落單）：頁頂「＋ 開新單」→ 輸入客人電話、揀類型及內容、揀付款方式 → 按「建立單據」。<span class="en">Open a new order (phone or walk-in): ＋ 開新單 at the top → enter the phone, pick the type and items, choose the payment option → 建立單據.</span></li>
+        <li>發送付款連結：揀「稍後付款」後，在單詳情按「複製連結」或「WhatsApp」，並在 WhatsApp 人手按傳送；客人付款後系統自動標記已付款。<span class="en">Send the payment link: after choosing 稍後付款, use 複製連結 or WhatsApp on the order page and press send in WhatsApp yourself; once the client pays, it is marked paid automatically.</span></li>
+        <li>現金、FPS、PayMe 等已收款：開新單時揀「已收款」並選收款方式，Shopify 會同時標記已付款。<span class="en">Cash, FPS, PayMe and other offline payments: choose 已收款 and the method when opening the order; Shopify is marked paid at the same time.</span></li>
+        <li>網站「火化預約」及「獸醫評估」（只屬查詢）：聯絡客人及報價 → 在列表「⚙️ 資料 → 編輯」填收費金額 → 「💳 付款及單據 → 付款連結」產生連結並以 WhatsApp 發送。客人付款後 Shopify 自動開正式訂單並標記已付款。<span class="en">Website cremation bookings and vet assessments (enquiries only): contact the client and quote → enter the fee under ⚙️ 資料 → 編輯 → create a link under 💳 付款及單據 → 付款連結 and send it by WhatsApp. When the client pays, Shopify creates the order and it is marked paid automatically.</span></li>
+        <li>接送訂金未付款跟進：在「接送服務」頁頂「今日要跟進」，按該行 🔔 以預填訊息 WhatsApp 提醒客人（人手按傳送），完成後標記已跟進。<span class="en">Unpaid pick-up deposits: use 今日要跟進 at the top of Pick-up services, press 🔔 on the row to send the prefilled WhatsApp reminder (you press send), then mark it done.</span></li>
+        <li>扣除接送訂金：開新單時在「付款」一欄選擇；或在火化預約／紀念品付款連結按「💳 付款及單據 → 💰 套用接送訂金」。只限同一專案，必須在客人付款前完成（每筆最多扣訂金本身 HK$1,800）。<span class="en">Deduct a pick-up deposit: choose it in the payment step of a new order, or use 💳 付款及單據 → 💰 套用接送訂金 on a cremation booking or keepsake payment link. Same project only, and it must be done before the client pays (up to the HK$1,800 deposit itself).</span></li>
+        <li>更新服務進度：火化預約按「📋 狀態及服務」逐步更新（已排期、已接收、火化中、可取回、已交還）；接送服務同樣更新狀態。<span class="en">Update progress: on cremation bookings use 📋 狀態及服務 step by step (scheduled, received, cremating, ready, returned); update pick-up status the same way.</span></li>
+        <li>加入日曆：「💬 聯絡及排期 → 加入日曆」。<span class="en">Add to calendar: 💬 聯絡及排期 → 加入日曆.</span></li>
+        <li>同一客人分開落單（例如網站預約兩次而各有單號）：用「📋 狀態及服務 → 連結專案」歸入同一專案；後台開單則在「歸入哪個專案」選原有專案。<span class="en">Same client, separate bookings (e.g. two website bookings with two numbers): use 📋 狀態及服務 → 連結專案 to join them to one project; for admin orders, pick the existing project under 歸入哪個專案.</span></li>
+        <li>修改客人資料：服務工作台「查看資料」→「編輯服務資料」（主人、電話、寵物會同步到 Shopify）；其他欄位用「編輯客戶資料（Excel 欄位）」（日後由 Excel 匯入時以 Excel 為準）。<span class="en">Edit client details: workstation 查看資料 → 編輯服務資料 (owner, phone and pet sync to Shopify); other fields under 編輯客戶資料（Excel 欄位） (a later Excel import overwrites with the Excel values).</span></li>
+        <li>發票：服務工作台每行「發票 PDF／Word」，或列表「💳 付款及單據 → 發票」。<span class="en">Invoices: 發票 PDF／Word on each workstation row, or 💳 付款及單據 → 發票 in the lists.</span></li>
+        <li>測試單：列表「⚙️ 資料 → 標記測試」；測試記錄不計入財務、工作台及發票。<span class="en">Test orders: ⚙️ 資料 → 標記測試 in the lists; test records are left out of finance, the workstation and invoices.</span></li>
+        <li>Shopify 同步失敗：在單詳情按「重試同步」（不會重覆開單）。修改單號只限管理員，在單詳情按「修改單號」並填原因。<span class="en">Shopify sync failed: press 重試同步 on the order page (it never opens a duplicate). Only admins can change an invoice number, via 修改單號 on the order page with a reason.</span></li>
+        <li>回覆客人：「回覆助手」產生回覆後，複製並人手貼到 WhatsApp 傳送。<span class="en">Replying to clients: copy the reply from 回覆助手 and paste it into WhatsApp yourself.</span></li>
+        <li>不定期：網站價錢及文字在「網站內容」修改；員工帳號、權限及重設密碼在「員工管理」（管理員）；倉存及出貨在「倉存 · 出貨」。<span class="en">From time to time: website prices and text under 網站內容; staff logins, permissions and password resets under 員工管理 (admins); stock and dispatch under 倉存 · 出貨.</span></li>
+      </ul>
+      <h3>Shopify<span class="en">Shopify</span></h3>
+      <ul class="tight">
+        <li>紀念品出貨：交收或寄出後，在 Shopify 訂單按「出貨」（接送及火化服務無須出貨）。<span class="en">Keepsake fulfilment: after hand-over or posting, press Fulfil on the Shopify order (pick-up and cremation services need no fulfilment).</span></li>
+        <li>列印 Shopify 發票：訂單頁「更多操作 → Order Printer」；範本有更新時須重貼 order-printer-invoice.liquid（Order Printer → Templates）。<span class="en">Print the Shopify invoice: More actions → Order Printer on the order page; when the template changes, paste order-printer-invoice.liquid again under Order Printer → Templates.</span></li>
+        <li>網站上客人自行付款的單，Shopify 發票不會顯示公司單號：列印前在訂單備註加一行「單據編號：（單號）」，或改用後台的發票 PDF／Word。<span class="en">Orders paid by clients on the website do not carry the company invoice number on the Shopify invoice: add a note line 單據編號：(number) before printing, or use the admin invoice PDF/Word instead.</span></li>
+        <li>退款及取消：在 Shopify 訂單頁操作。<span class="en">Refunds and cancellations: do them on the Shopify order page.</span></li>
+        <li>產品、價錢及庫存：在 Shopify 產品頁修改；改價後已發出的付款連結不會自動更新，須在後台重新產生。<span class="en">Products, prices and stock: change them on the Shopify product page; payment links already sent keep the old price, so create a new link in the admin.</span></li>
+        <li>付款連結一經付款便不能再加折扣：扣除接送訂金須在客人付款前完成。<span class="en">A paid payment link cannot take a discount any more: deduct the pick-up deposit before the client pays.</span></li>
+        <li>一次性設定：核對 Shopify「設定 → 通知 → Webhooks」已連接後台；Order Printer 範本為最新版。<span class="en">One-off setup: check Settings → Notifications → Webhooks in Shopify points to the admin, and that the Order Printer template is the latest.</span></li>
+      </ul>
     </section>
 
     <section id="staff">
