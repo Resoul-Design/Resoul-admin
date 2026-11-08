@@ -6,6 +6,9 @@ import { shopifyGraphQL } from "@/lib/shopify";
 import { canonicalProjectNo, projectNoFromNotes } from "@/lib/order-label";
 
 type Attr = { key: string; value: string };
+
+// 只處理此時間之後建立的訂單（用戶決定：舊單不改，只為以後新開的單補上）
+export const SYNC_SINCE = "2026-11-08T03:00:00Z"; // 香港時間 2026-11-08 11:00
 type Info = { invoiceNo: string; orderType: string; projectNo: string; paymentRef: string; owner: string; phone: string; pet: string };
 
 const TYPE_LABEL = { deposit: "預約接送訂金", cremation: "善終／告別套餐", vet: "安樂在家", product: "紀念品／加購", other: "其他／自訂" } as const;
@@ -58,10 +61,11 @@ function merged(attrs: Attr[], info: Info): Attr[] | null {
   return changed ? next : null;
 }
 
-// 檢查最近的 Shopify 訂單（或指定訂單），補上／更正資料欄位；回傳更新數目
+// 檢查最近的 Shopify 訂單（或指定訂單），補上／更正資料欄位；只限 SYNC_SINCE 之後建立的訂單；回傳更新數目
 export async function syncOrderAttributes(opts: { first?: number; orderIds?: string[] } = {}): Promise<{ checked: number; updated: number; errors: string[] }> {
   const errors: string[] = [];
-  const query = opts.orderIds?.length ? opts.orderIds.map((id) => `id:${id.split("/").pop()}`).join(" OR ") : null;
+  const ids = opts.orderIds?.length ? `(${opts.orderIds.map((id) => `id:${id.split("/").pop()}`).join(" OR ")}) AND ` : "";
+  const query = `${ids}created_at:>=${SYNC_SINCE}`;
   const res = await shopifyGraphQL<{ orders: { nodes: { id: string; customAttributes: Attr[] }[] } }>(ORDERS, { first: Math.min(250, opts.first || opts.orderIds?.length || 30), query });
   const orders = res.orders.nodes;
   const info = await loadInfo(orders.map((o) => o.id));
