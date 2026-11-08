@@ -8,6 +8,7 @@ import { requireModule } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import { canonicalProjectNo, projectNoFromNotes } from "@/lib/order-label";
 import { loadSouvenirDrafts } from "@/lib/souvenir-drafts";
+import { draftUsable } from "@/lib/draft-alive";
 import { loadCatalog } from "@/lib/catalog";
 import type { FollowEntity } from "@/lib/follow-up";
 
@@ -96,9 +97,9 @@ export async function createFollowPaymentLink(entity: FollowEntity, ref: string)
   }
 
   const supabase = createAdminClient();
-  const { data: mark, error: markError } = await supabase.from("follow_up_marks").select("payment_link, payment_link_at").eq("entity", "cremation").eq("ref", ref).maybeSingle();
+  const { data: mark, error: markError } = await supabase.from("follow_up_marks").select("payment_link, payment_link_at, payment_draft_id").eq("entity", "cremation").eq("ref", ref).maybeSingle();
   if (markError) return { error: NOT_READY };
-  if (mark?.payment_link && mark.payment_link_at && Date.now() - new Date(mark.payment_link_at).getTime() < LINK_REUSE_MS) {
+  if (mark?.payment_link && mark.payment_link_at && Date.now() - new Date(mark.payment_link_at).getTime() < LINK_REUSE_MS && (!mark.payment_draft_id || (await draftUsable(mark.payment_draft_id)))) {
     return { link: mark.payment_link };
   }
   const { data: b } = await supabase

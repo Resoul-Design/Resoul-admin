@@ -7,6 +7,7 @@ import { logAudit } from "@/lib/audit";
 import { requireModule } from "@/lib/auth";
 import { shopifyGraphQL } from "@/lib/shopify";
 import { projectNoFromNotes } from "@/lib/order-label";
+import { draftUsable } from "@/lib/draft-alive";
 
 const VALID = ["new", "contacted", "scheduled", "completed", "cancelled"];
 
@@ -75,7 +76,7 @@ export async function createDepositPaymentLink(id: string): Promise<{ link?: str
   const supabase = createAdminClient();
   const { data: row, error } = await supabase
     .from("deposit_bookings")
-    .select("id, owner_name, contact, pet_name, notes, status, payment_ref, payment_status, payment_link, payment_link_at")
+    .select("id, owner_name, contact, pet_name, notes, status, payment_ref, payment_status, payment_link, payment_link_at, payment_draft_id")
     .eq("id", id)
     .maybeSingle();
   if (error) return { error: followUpColumnMissing(error.message) ? FOLLOW_UP_MISSING : "讀取記錄失敗，請稍後再試。" };
@@ -83,7 +84,7 @@ export async function createDepositPaymentLink(id: string): Promise<{ link?: str
   if (row.payment_status === "paid" || row.payment_status === "refunded") return { error: "此訂金已付款或已退款，毋須付款連結。" };
   if (row.status === "cancelled" || row.status === "completed") return { error: "此記錄已取消或已完成。" };
   if (!row.payment_ref) return { error: "此記錄沒有付款參考號，未能配對付款，請聯絡管理員。" };
-  if (row.payment_link && row.payment_link_at && Date.now() - new Date(row.payment_link_at).getTime() < LINK_REUSE_MS) {
+  if (row.payment_link && row.payment_link_at && Date.now() - new Date(row.payment_link_at).getTime() < LINK_REUSE_MS && (!row.payment_draft_id || (await draftUsable(row.payment_draft_id)))) {
     return { link: row.payment_link };
   }
 

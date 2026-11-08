@@ -1,5 +1,6 @@
 // 統一跟進：伺服器端讀取（follow_up_marks 及各類資料），只可在伺服器使用
 import { createAdminClient } from "@/lib/supabase/admin";
+import { aliveDrafts } from "@/lib/draft-alive";
 import { canonicalProjectNo, productOrderProjectNo, projectNoFromNotes } from "@/lib/order-label";
 import { loadSouvenirDrafts } from "@/lib/souvenir-drafts";
 import type { ProductOrderRow } from "@/lib/product-orders";
@@ -14,6 +15,7 @@ type MarkRow = {
   contacted_at: string | null;
   closed_at: string | null;
   payment_link: string | null;
+  payment_draft_id?: string | null;
 };
 
 // 讀取跟進記錄；未執行 migration_follow_ups.sql 時 ready=false。
@@ -24,12 +26,15 @@ export async function loadMarks(entity: FollowEntity, refs: string[]): Promise<{
   const wanted = new Set(refs);
   const { data, error } = await createAdminClient()
     .from("follow_up_marks")
-    .select("ref, reminded_at, reminder_count, contacted_at, closed_at, payment_link")
+    .select("ref, reminded_at, reminder_count, contacted_at, closed_at, payment_link, payment_draft_id")
     .eq("entity", entity)
     .limit(10000);
   if (error) return { ready: false, map };
-  for (const r of (data || []) as MarkRow[]) {
-    if (!wanted.has(r.ref)) continue;
+  const rows = ((data || []) as MarkRow[]).filter((r) => wanted.has(r.ref));
+  // 已在 Shopify 刪除（或已付款）的付款連結草稿：不再沿用其連結
+  const alive = await aliveDrafts(rows.filter((r) => r.payment_link && r.payment_draft_id).map((r) => r.payment_draft_id));
+  for (const r of rows) {
+    if (alive && r.payment_link && r.payment_draft_id && !alive.has(r.payment_draft_id)) r.payment_link = null;
     map.set(r.ref, {
       remindedAt: r.reminded_at,
       reminderCount: Number(r.reminder_count || 0),

@@ -1,3 +1,4 @@
+import { aliveDrafts } from "@/lib/draft-alive";
 import { TestingNotice, WHATSAPP_CONFIRM } from "../_testing-notice";
 import { waitingNote } from "@/lib/follow-up";
 import { PageHeader } from "../_page-header";
@@ -214,6 +215,12 @@ export default async function DepositsPage({ searchParams }: { searchParams: Pro
     const base = await supabase.from("deposit_bookings").select(baseColumns).order("created_at", { ascending: false });
     data = base.data as unknown as DepositRow[] | null;
     error = base.error;
+  }
+
+  // 已在 Shopify 刪除（或已付款）的付款連結草稿：不再沿用其連結
+  if (data && !followUpNotReady) {
+    const alive = await aliveDrafts(data.filter((r) => r.payment_link && r.payment_draft_id && r.payment_status !== "paid").map((r) => r.payment_draft_id));
+    if (alive) data = data.map((r) => (r.payment_link && r.payment_draft_id && r.payment_status !== "paid" && !alive.has(r.payment_draft_id) ? { ...r, payment_link: null } : r));
   }
 
   // 測試記錄預設隱藏；?test=1 只顯示測試記錄
