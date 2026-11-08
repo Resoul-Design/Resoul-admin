@@ -6,8 +6,7 @@ export type LogisticsField = { key: string; label: string; type: LogisticsFieldT
 const f = (key: string, label: string, type: LogisticsFieldType = "text", adminOnly = false): LogisticsField => ({ key, label, type, adminOnly });
 
 export const LOGISTICS_GROUPS: { title: string; fields: LogisticsField[] }[] = [
-  { title: "主人及狀態", fields: [f("row_status", "訂單狀態"), f("owner_name", "主人姓名"), f("phone", "聯絡電話"), f("email", "電郵"), f("drive_folder_url", "雲端資料夾", "url")] },
-  { title: "寵物", fields: [f("pet_name", "寵物名稱"), f("animal", "動物類型"), f("breed", "品種"), f("weight_kg", "重量（公斤）", "number")] },
+  { title: "主人及狀態、寵物", fields: [f("row_status", "訂單狀態"), f("owner_name", "主人姓名"), f("phone", "聯絡電話"), f("email", "電郵"), f("drive_folder_url", "雲端資料夾", "url"), f("pet_name", "寵物名稱"), f("animal", "動物類型"), f("breed", "品種"), f("weight_kg", "重量（公斤）", "number")] },
   { title: "接送安排", fields: [f("arrival_date", "到達日期", "date"), f("arrival_time", "到達時間"), f("pickup_type", "接送方式"), f("pickup_from", "接送地點"), f("driver", "司機"), f("pickup_fee", "接送費", "number"), f("pickup_surcharge", "接送附加費", "number"), f("driver_fee_settled_at", "司機費用結算日", "date")] },
   { title: "火化與儀式", fields: [f("package_name", "套餐"), f("package_code", "套餐代碼"), f("date_code", "日期代碼"), f("ceremony_or_order_date", "火化／訂單日期", "date"), f("ceremony_time", "火化時間"), f("shower_date", "告別日期", "date")] },
   { title: "費用與付款", fields: [f("invoice_amount", "發票金額", "number"), f("deposit_received", "已收訂金", "number"), f("other_surcharge", "其他附加費", "number"), f("package_price", "套餐價格", "number"), f("memorial_addon_price", "紀念品加購", "number"), f("back_to_nature_price", "回歸自然費", "number"), f("urn_storage_rental_price", "骨灰盅存放費", "number"), f("urn_storage_expires_on", "骨灰盅存放到期日", "date"), f("discount_code", "優惠碼"), f("discount_price", "折扣金額", "number"), f("referral", "推薦來源"), f("referral_fee", "推薦費", "number"), f("balance_settled", "待付餘額", "number")] },

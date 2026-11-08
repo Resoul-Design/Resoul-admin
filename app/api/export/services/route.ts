@@ -5,6 +5,7 @@ import { LOGISTICS_FIELDS } from "@/lib/logistics-fields";
 import { canonicalProjectNo, projectNoFromNotes } from "@/lib/order-label";
 import { buildXlsx, type Cell, type Sheet } from "@/lib/xlsx";
 import { invoiceLabel } from "@/lib/invoice-label";
+import { extraOrders } from "@/lib/logistics-extra";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -58,6 +59,15 @@ export async function GET(req: Request) {
       headers: ["單號", ...fields.map((f) => f.label), "資料來源", "最後更新"],
       rows: rows.map((r) => [n(r.invoice_no), ...fields.map((f) => (f.type === "number" ? n(r[f.key]) : s(r[f.key]))), r.source === "admin" ? "後台建立" : r.source === "basic_info_logistic" ? "Excel 匯入" : s(r.source), hk(r.updated_at)]),
     });
+    // 附加單（Excel 66B 等，附在原單號）
+    const extras = rows.flatMap((r) => extraOrders(r).map((x) => ({ parent: r, x })));
+    if (extras.length) {
+      sheets.push({
+        name: "附加單",
+        headers: ["附加單號", "原單號", "主人姓名", ...fields.filter((f) => f.key !== "owner_name").map((f) => f.label)],
+        rows: extras.map(({ parent, x }) => [x.ref, n(parent.invoice_no), s(x.fields.owner_name ?? parent.owner_name), ...fields.filter((f) => f.key !== "owner_name").map((f) => (f.type === "number" ? n(x.fields[f.key]) : s(x.fields[f.key])))]),
+      });
+    }
   }
   if (can.deposit) {
     const rows = await all("deposit_bookings", "created_at");

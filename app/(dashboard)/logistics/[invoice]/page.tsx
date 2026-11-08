@@ -5,11 +5,16 @@ import Link from "next/link";
 import { LogisticsForm } from "../_logistics-form";
 import { LOGISTICS_FIELDS } from "@/lib/logistics-fields";
 import { deriveCustomerData } from "@/lib/logistics-derive";
+import { extraOrders, parseExtraRef } from "@/lib/logistics-extra";
+import { ExtraOrders } from "../_extra-orders";
 
 export const dynamic = "force-dynamic";
 export default async function LogisticsDetail({ params }: { params: Promise<{ invoice: string }> }) {
   const staff = await getStaff(); if (!staff) redirect("/login"); if (!hasModule(staff, ["inventory"])) notFound();
   const invoice = decodeURIComponent((await params).invoice);
+  // 附加單（例 66B）→ 原單號頁的附加單位置
+  const extraRef = parseExtraRef(invoice);
+  if (extraRef) redirect(`/logistics/${extraRef.invoice}#extra-${extraRef.ref}`);
   const admin = createAdminClient();
   const [logistics, company, deposits, cremations, products] = await Promise.all([
     admin.from("logistics_orders").select("*").eq("invoice_no", invoice).maybeSingle(),
@@ -33,5 +38,5 @@ export default async function LogisticsDetail({ params }: { params: Promise<{ in
     if (auto != null && String(auto) !== "") { autoKeys.push(f.key); return [f.key, String(auto).slice(0, f.type === "date" ? 10 : 2000)]; }
     return [f.key, ""];
   }));
-  return <div><div className="mb-5 flex items-center gap-3"><Link href="/logistics" className="text-sm text-[var(--gold)] hover:underline">← 客戶資料</Link><h1 className="text-2xl font-semibold">{invoice}</h1></div><LogisticsForm invoice={invoice} initial={formInitial} exists={!!logistics.data} isAdmin={staff.role === "admin"} autoKeys={autoKeys} /></div>;
+  return <div><div className="mb-5 flex items-center gap-3"><Link href="/logistics" className="text-sm text-[var(--gold)] hover:underline">← 客戶資料</Link><h1 className="text-2xl font-semibold">{invoice}</h1></div><LogisticsForm invoice={invoice} initial={formInitial} exists={!!logistics.data} isAdmin={staff.role === "admin"} autoKeys={autoKeys} /><ExtraOrders orders={extraOrders(logistics.data)} isAdmin={staff.role === "admin"} /></div>;
 }

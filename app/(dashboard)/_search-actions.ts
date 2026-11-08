@@ -3,6 +3,7 @@
 import { loadSouvenirDrafts } from "@/lib/souvenir-drafts";
 import { getStaff, hasModule } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { extraOrders } from "@/lib/logistics-extra";
 import { canonicalProjectNo, productOrderProjectNo, projectNoFromNotes } from "@/lib/order-label";
 
 export type SearchItem = { key: string; title: string; sub: string; href: string };
@@ -32,6 +33,17 @@ function makeMatcher(raw: string) {
   return (fields: (string | null | undefined)[], phones: (string | null | undefined)[] = []) =>
     fields.some((f) => !!f && f.toLowerCase().includes(text)) ||
     (!!digits && phones.some((p) => !!p && p.replace(/\D/g, "").includes(digits)));
+}
+
+const CUSTOMER_COLS = "invoice_no, owner_name, phone, email, pet_name, animal, package_name, arrival_date, ceremony_or_order_date, pickup_from, row_status, memorial_remarks";
+type CustomerRow = { invoice_no: number; owner_name: string | null; phone: string | null; email: string | null; pet_name: string | null; animal: string | null; package_name: string | null; arrival_date: string | null; ceremony_or_order_date: string | null; pickup_from: string | null; row_status: string | null; memorial_remarks: string | null; extra_orders?: unknown };
+// 客戶資料（連附加單）；extra_orders 欄未建立時改讀不含該欄
+async function loadCustomers(admin: ReturnType<typeof createAdminClient>): Promise<{ data: CustomerRow[] | null }> {
+  const q = (cols: string) => admin.from("logistics_orders").select(cols).order("invoice_no", { ascending: false }).limit(2000);
+  const withExtra = await q(CUSTOMER_COLS + ", extra_orders");
+  if (!withExtra.error) return { data: withExtra.data as unknown as CustomerRow[] };
+  const plain = await q(CUSTOMER_COLS);
+  return { data: (plain.data as unknown as CustomerRow[]) || null };
 }
 
 function group(label: string, items: SearchItem[]): SearchGroup | null {
@@ -72,11 +84,7 @@ export async function globalSearch(query: string): Promise<SearchGroup[]> {
     can("orders") ? loadSouvenirDrafts() : [],
     // 客戶資料（Excel 欄位，包括由 Excel 匯入的舊客戶）
     can("inventory")
-      ? admin
-          .from("logistics_orders")
-          .select("invoice_no, owner_name, phone, email, pet_name, animal, package_name, arrival_date, ceremony_or_order_date, pickup_from, row_status, memorial_remarks")
-          .order("invoice_no", { ascending: false })
-          .limit(2000)
+      ? loadCustomers(admin)
       : null,
     // 開新單（紀念品／其他，未連結服務記錄）
     can("orders")
@@ -171,6 +179,14 @@ export async function globalSearch(query: string): Promise<SearchGroup[]> {
         sub: join(c.pet_name, c.package_name, c.ceremony_or_order_date || c.arrival_date, c.row_status),
         href: `/logistics/${c.invoice_no}`,
       }));
+    // 附加單（例 66B）
+    for (const c of customers.data) {
+      for (const x of extraOrders(c)) {
+        const f = x.fields;
+        if (!match([x.ref, c.owner_name, String(f.pet_name ?? ""), String(f.memorial_remarks ?? ""), String(f.package_name ?? "")], [c.phone])) continue;
+        items.push({ key: "lgx-" + x.ref, title: join(`單號 ${x.ref}（附加單）`, c.owner_name), sub: join(String(f.pet_name ?? c.pet_name ?? ""), String(f.customer_order_date ?? f.ceremony_or_order_date ?? "").slice(0, 10)), href: `/logistics/${c.invoice_no}#extra-${x.ref}` });
+      }
+    }
     groups.push(group("客戶資料", items));
   }
 
