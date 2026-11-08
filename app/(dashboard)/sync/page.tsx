@@ -1,7 +1,6 @@
 import { PageHeader } from "../_page-header";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { shopifyGraphQL, shopDomain } from "@/lib/shopify";
-import { syncProductOrders } from "../orders/actions";
 import Link from "next/link";
 import { ReconcilePanel } from "./_reconcile-panel";
 import { comparePrices, productsWithoutType } from "@/lib/price-check";
@@ -123,13 +122,7 @@ export default async function SyncStatusPage() {
 
   return (
     <div>
-      <PageHeader title="同步狀態自我檢查">
-        <form action={syncProductOrders}>
-          <button className="rounded-lg bg-[var(--gold)] px-4 py-2 text-sm font-medium text-white hover:opacity-90 whitespace-nowrap">
-            ⟳ 立即同步 Shopify 訂單
-          </button>
-        </form>
-      </PageHeader>
+      <PageHeader title="同步狀態自我檢查" />
 
       <ReconcilePanel />
 

@@ -1,28 +1,11 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
-import { getStaff, hasModule, requireModule } from "@/lib/auth";
+import { getStaff, hasModule } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { logAudit } from "@/lib/audit";
 import { shopifyGraphQL } from "@/lib/shopify";
 import { isProjectNo } from "@/lib/order-label";
-import { syncProductOrdersCore } from "@/lib/product-order-sync";
-
-export async function syncProductOrders() {
-  await requireModule("orders", "sync");
-
-  let synced = 0;
-  try {
-    synced = await syncProductOrdersCore();
-    revalidatePath("/orders");
-    revalidatePath("/crm");
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    redirect(`/orders?sync_error=${encodeURIComponent(message.slice(0, 180))}`);
-  }
-  redirect(`/orders?synced=${synced}`);
-}
 
 // 紀念品訂單連結客人原有的專案編號（須已存在於接送、火化或其他紀念品記錄）
 const ORDER_PROJECT_QUERY = `query OrderProject($id: ID!) { order(id: $id) { note customAttributes { key value } } }`;

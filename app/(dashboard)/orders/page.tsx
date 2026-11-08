@@ -8,7 +8,6 @@ import { shopDomain } from "@/lib/shopify";
 import { productOrderProjectNo } from "@/lib/order-label";
 import { assignMissingProjectNos } from "@/lib/product-order-projects";
 import { getStaff } from "@/lib/auth";
-import { syncProductOrders } from "./actions";
 import { OrdersTable, type OrderRow } from "./_table";
 import { TestRecordsBar } from "../_test-controls";
 
@@ -114,20 +113,12 @@ export default async function OrdersPage({ searchParams }: {
 
   return (
     <div>
-      <PageHeader title="紀念品訂單">
-          <form action={syncProductOrders}>
-            <button className="rounded-lg border border-[var(--line)] px-4 py-2 text-sm hover:bg-[var(--cream)]">
-              同步 Shopify 訂單
-            </button>
-          </form>
-      </PageHeader>
+      <PageHeader title="紀念品訂單" />
 
       <TestingNotice />
 
       <TestRecordsBar entity="order" count={testCount} showing={showTests} basePath="/orders" canDelete={false} />
 
-      {params.synced && <div className="mb-4 rounded-lg border border-green-300 bg-green-50 px-4 py-3 text-sm text-green-800">已同步 {params.synced} 張產品訂單到 Supabase。</div>}
-      {params.sync_error && <div className="mb-4 rounded-lg border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700">同步失敗：{params.sync_error}</div>}
       {error && <div className="rounded-lg border border-red-300 bg-[var(--card)] p-6 text-sm text-red-600">讀取 Supabase 失敗：{error.message}<div className="mt-2 text-[var(--soft)]">請先執行 db/migration_product_orders.sql。</div></div>}
       {!error && allRows.length === 0 && <div className="rounded-lg border border-[var(--line)] bg-[var(--card)] p-10 text-center text-[var(--soft)]">暫無產品訂單。請按「同步 Shopify 訂單」匯入舊記錄。</div>}
 

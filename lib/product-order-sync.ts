@@ -1,5 +1,5 @@
 // 由 Shopify 拉取所有訂單，紀念品訂單寫入 product_orders；補專案編號及標記 Shopify 測試訂單。回傳同步數目。
-// 「紀念品訂單 → 同步」及頁頂「全部同步」共用。
+// 頁頂「全部同步」使用。
 import { createAdminClient } from "@/lib/supabase/admin";
 import { shopifyGraphQL } from "@/lib/shopify";
 import { assignMissingProjectNos } from "@/lib/product-order-projects";

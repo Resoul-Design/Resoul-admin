@@ -129,7 +129,7 @@ export async function reconcile(opts: { includeTest?: boolean } = {}): Promise<R
   ]).then((rs) => new Set(rs.flatMap((r) => (r.data || []).map((x) => gid(x.shopify_order_id)))));
   for (const o of orders) {
     if (o.test || known.has(o.id) || testKnown.has(o.id) || testBook.has(o.id)) continue;
-    add({ category: "Shopify 訂單未入後台", invoiceNo: "—", text: `${o.name}｜${o.createdAt.slice(0, 10)}｜${o.displayFinancialStatus}｜HK$${o.totalPriceSet.shopMoney.amount}：請按頁頂「立即同步 Shopify 訂單」` });
+    add({ category: "Shopify 訂單未入後台", invoiceNo: "—", text: `${o.name}｜${o.createdAt.slice(0, 10)}｜${o.displayFinancialStatus}｜HK$${o.totalPriceSet.shopMoney.amount}：請按頁頂「⟳ 全部同步」` });
   }
   const counts: Record<string, number> = { "Shopify 訂單": orders.length, "付款連結": drafts.length, 接送: dep.length, "火化／獸醫": cre.length, 紀念品: po.length, 開新單: co.length };
   return { checkedAt: new Date().toISOString(), counts, issues };
