@@ -7,7 +7,6 @@ import { getStaff, hasModule } from "@/lib/auth";
 import { loadCatalog } from "@/lib/catalog";
 import { redirect } from "next/navigation";
 import { shopDomain } from "@/lib/shopify";
-import { loadBookingDrafts } from "@/lib/booking-drafts";
 import { canonicalProjectNo, projectNoFromNotes } from "@/lib/order-label";
 import { type BookingData } from "./_edit";
 import { BookingsTable, type BookingRow } from "./_table";
@@ -182,14 +181,12 @@ export async function BookingsPage({ mode, query = "", onlyFollow = false, showT
   const isTestRow = (b: unknown) => !!(b as { is_test?: boolean | null }).is_test;
   const testCount = modeRows.filter(isTestRow).length;
   const bookings = modeRows.filter((b) => isTestRow(b) === showTests);
-  const draftResultP = loadBookingDrafts(mode === "cremation" ? bookings : []);
 
   // 查看測試記錄時不顯示跟進
   const follow = await bookingFollowUps(showTests ? [] : bookings, mode === "vet" ? "vet" : "cremation");
   // 獸醫評估費用固定，跟「網站內容 → 上門安樂死收費」的劃一基本收費
   const vetFee = mode === "vet" ? (await loadSiteContent()).content["prices.vet"].base : undefined;
 
-  const draftResult = await draftResultP;
   const tableRows: BookingRow[] = bookings.map((b) => {
     // 專案編號僅限跨服務沿用的 RSL 編號；Shopify 訂單號屬付款發票。
     const notesProject = projectNoFromNotes(b.notes);
@@ -207,7 +204,6 @@ export async function BookingsPage({ mode, query = "", onlyFollow = false, showT
       isTest: isTestRow(b),
       created: b.created_at?.slice(0, 16).replace("T", " ") || "",
       invoiceNo,
-      shopifyDraft: draftResult.drafts.get(b.id) || null,
       companyNo: (b as { invoice_no?: number | null }).invoice_no ?? null,
       paymentRef: (b as { payment_ref?: string | null }).payment_ref || "",
       // 時間欄可能是 14:00:00（只顯示 14:00）或時段文字（原樣顯示）
@@ -259,7 +255,6 @@ export async function BookingsPage({ mode, query = "", onlyFollow = false, showT
       <PageHeader title={mode === "vet" ? "獸醫評估" : "火化預約"} />
 
       <TestingNotice />
-      {draftResult.unavailable && <p className="mb-4 text-sm text-amber-800">暫時未能讀取 Shopify 草稿編號，請稍後重新整理。</p>}
 
       <TestRecordsBar entity={mode} count={testCount} showing={showTests} basePath={mode === "vet" ? "/vet-assessments" : "/bookings"} canDelete={staff.role === "admin"} />
 

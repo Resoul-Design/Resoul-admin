@@ -14,14 +14,12 @@ import { TestFlagPanel } from "../_test-controls";
 import { DepositCreditPanel } from "../_deposit-credit";
 import { ServiceProgress } from "../_service-progress";
 import type { ProgressData } from "@/lib/booking-progress";
-import type { BookingDraft } from "@/lib/booking-drafts";
 
 export type BookingRow = {
   id: string;
   isTest: boolean;
   created: string;
   invoiceNo: string;
-  shopifyDraft: BookingDraft | null;
   companyNo?: number | null; // 公司單號（對外）
   paymentRef?: string;
   serviceTime?: string;
@@ -55,9 +53,6 @@ export type BookingRow = {
 };
 
 const PAGE = 25;
-function DraftLink({ draft }: { draft: BookingDraft | null }) {
-  return draft ? <a href={draft.url} target="_blank" rel="noopener noreferrer" className="mt-1 block break-words text-xs text-[var(--gold)] underline underline-offset-2">Shopify 草稿編號：{draft.name} ↗</a> : null;
-}
 const STATUS_FILTER = [
   { key: "all", label: "全部狀態" },
   { key: "new", label: "新收到" },
@@ -251,7 +246,6 @@ export function BookingsTable({
                     ) : (
                       <span className="text-[var(--faint)]">—</span>
                     )}
-                    <DraftLink draft={r.shopifyDraft} />
                   </td>
                   <td className="px-4 py-3 whitespace-nowrap">
                     <div>{r.owner || "—"}</div>
@@ -283,7 +277,7 @@ export function BookingsTable({
           {shown.map((r) => (
             <div key={r.id} className={"rounded-2xl border p-4 " + (r.followUp ? "border-amber-300 bg-amber-50/70" : "border-[var(--line)] bg-[var(--card)]")}>
               <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0"><div className="text-xs text-[var(--soft)]">專案編號</div><div className="break-words font-medium text-[var(--gold)]">{r.invoiceNo || "（未有編號）"}</div><DraftLink draft={r.shopifyDraft} /></div>
+                <div className="min-w-0"><div className="text-xs text-[var(--soft)]">專案編號</div><div className="break-words font-medium text-[var(--gold)]">{r.invoiceNo || "（未有編號）"}</div></div>
                 <span className={"px-2 py-0.5 rounded-full text-xs " + r.statusClass}>{r.statusLabel}</span>
               </div>
               {/* 卡片格式與「接送服務」一致：基本資料 → 日期／付款／金額灰底區 → 建立時間 → 操作 */}
