@@ -47,7 +47,7 @@ export async function globalSearch(query: string): Promise<SearchGroup[]> {
   const match = makeMatcher(q);
   const admin = createAdminClient();
 
-  const [deposits, bookings, orders, drafts] = await Promise.all([
+  const [deposits, bookings, orders, drafts, customers, companyOrders] = await Promise.all([
     can("deposits")
       ? admin
           .from("deposit_bookings")
@@ -70,6 +70,23 @@ export async function globalSearch(query: string): Promise<SearchGroup[]> {
           .limit(1000)
       : null,
     can("orders") ? loadSouvenirDrafts() : [],
+    // 客戶資料（Excel 欄位，包括由 Excel 匯入的舊客戶）
+    can("inventory")
+      ? admin
+          .from("logistics_orders")
+          .select("invoice_no, owner_name, phone, email, pet_name, animal, package_name, arrival_date, ceremony_or_order_date, pickup_from, row_status, memorial_remarks")
+          .order("invoice_no", { ascending: false })
+          .limit(2000)
+      : null,
+    // 開新單（紀念品／其他，未連結服務記錄）
+    can("orders")
+      ? admin
+          .from("company_orders")
+          .select("id, invoice_no, order_type, customer_name, phone, email, pet_name, project_no, status, created_at, details")
+          .is("linked_id", null)
+          .order("created_at", { ascending: false })
+          .limit(1000)
+      : null,
   ]);
 
   const groups: (SearchGroup | null)[] = [];
@@ -130,6 +147,31 @@ export async function globalSearch(query: string): Promise<SearchGroup[]> {
         href: listHref("/orders", o.invoice_no ? String(o.invoice_no) : o.order_name),
       })));
     groups.push(group("紀念品訂單", items));
+  }
+
+  if (companyOrders?.data) {
+    const typeLabel: Record<string, string> = { product: "紀念品／加購", other: "其他／自訂" };
+    const items = companyOrders.data
+      .filter((o) => match([o.invoice_no ? String(o.invoice_no) : "", o.customer_name, o.email, o.pet_name, o.project_no, ...(((o.details as { lines?: { label: string }[] } | null)?.lines || []).map((l) => l.label))], [o.phone]))
+      .map((o) => ({
+        key: "co-" + o.id,
+        title: join(`單號 ${o.invoice_no}`, o.customer_name),
+        sub: join(typeLabel[o.order_type] || o.order_type, o.pet_name, String(o.created_at || "").slice(0, 10), o.status === "paid" ? "已付款" : o.status === "cancelled" ? "已取消" : "待付款"),
+        href: `/new-order/${o.id}`,
+      }));
+    groups.push(group("開新單（紀念品／其他）", items));
+  }
+
+  if (customers?.data) {
+    const items = customers.data
+      .filter((c) => match([String(c.invoice_no), c.owner_name, c.email, c.pet_name, c.animal, c.package_name, c.pickup_from, c.memorial_remarks], [c.phone]))
+      .map((c) => ({
+        key: "lg-" + c.invoice_no,
+        title: join(`單號 ${c.invoice_no}`, c.owner_name),
+        sub: join(c.pet_name, c.package_name, c.ceremony_or_order_date || c.arrival_date, c.row_status),
+        href: `/logistics/${c.invoice_no}`,
+      }));
+    groups.push(group("客戶資料", items));
   }
 
   return groups.filter((g): g is SearchGroup => !!g);

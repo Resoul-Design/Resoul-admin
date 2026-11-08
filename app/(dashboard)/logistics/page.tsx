@@ -5,6 +5,11 @@ import { LogisticsTable, type LogisticsRow } from "./_table";
 
 export const dynamic = "force-dynamic";
 
+// 時間顯示為香港時間（例如 2026-11-08 19:56）
+function hkTime(v: string) {
+  const d = new Date(v);
+  return !v || Number.isNaN(d.getTime()) ? v : new Date(d.getTime() + 8 * 3600 * 1000).toISOString().slice(0, 16).replace("T", " ");
+}
 function text(row: Record<string, unknown>, ...keys: string[]) {
   for (const key of keys) {
     const value = row[key];
@@ -57,7 +62,7 @@ export default async function LogisticsPage() {
     deposit: text(row, "deposit", "deposit_amount"),
     balance: text(row, "balance", "balance_amount", "remaining"),
     status: text(row, "status", "logistics_status") || "—",
-    updated: text(row, "updated_at", "synced_at", "created_at"),
+    updated: hkTime(text(row, "updated_at", "synced_at", "created_at")),
     raw: row,
   }));
   const errors = [logistics, company, deposits, cremations, products].map((result) => result.error?.message).filter(Boolean);
