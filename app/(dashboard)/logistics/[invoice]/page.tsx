@@ -73,7 +73,21 @@ export default async function LogisticsDetail({ params }: { params: Promise<{ in
     if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(value)) { const d = new Date(value); if (!Number.isNaN(d.getTime())) return new Date(d.getTime() + 8 * 3600 * 1000).toISOString().slice(0, 16).replace("T", " "); }
     if (key === "urn_pickup_status") return ({ Completed: "已完成", Pending: "待處理", Cancelled: "已取消" } as Record<string, string>)[String(value)] || String(value);
     if (typeof value === "boolean") return value ? "是" : "否";
-    if (typeof value === "object") return JSON.stringify(value, null, 2);
+    // 商品：每項一行「名稱（款式）× 數量　HK$單價」，附產品代碼及自訂內容
+    if (key === "line_items" && Array.isArray(value)) {
+      return (value as { title?: string; variant_title?: string | null; quantity?: number; unit_price?: number | null; sku?: string | null; attributes?: { key: string; value: string }[] }[])
+        .map((it) => [
+          `${it.title || "—"}${it.variant_title ? `（${it.variant_title}）` : ""} × ${it.quantity ?? 1}${it.unit_price != null ? `　HK$${Number(it.unit_price).toLocaleString("en-US")}` : ""}`,
+          it.sku ? `　產品代碼：${it.sku}` : "",
+          ...(it.attributes || []).filter((x) => x.value).map((x) => `　${x.key}：${x.value}`),
+        ].filter(Boolean).join("\n"))
+        .join("\n");
+    }
+    // 其他資料：以「項目：內容」逐行顯示，不顯示程式格式
+    if (typeof value === "object" && value) {
+      const line = (v: unknown): string => (v == null ? "—" : typeof v === "object" ? Object.entries(v as Record<string, unknown>).filter(([, x]) => x != null && x !== "").map(([k, x]) => `${labels[k] || k}：${typeof x === "object" ? JSON.stringify(x) : String(x)}`).join("　") : String(v));
+      return Array.isArray(value) ? value.map(line).join("\n") || "—" : Object.entries(value as Record<string, unknown>).filter(([, x]) => x != null && x !== "").map(([k, x]) => `${labels[k] || k}：${line(x)}`).join("\n") || "—";
+    }
     return String(value);
   };
   // 編輯服務記錄（保存後同步 Shopify）：接送訂金、火化／安樂在家、未連結服務記錄的開新單（紀念品、其他）
