@@ -7,7 +7,7 @@ type Money = { shopMoney: { amount: string } };
 type SOrder = { id: string; name: string; createdAt: string; displayFinancialStatus: string; cancelledAt: string | null; test: boolean; totalPriceSet: Money; customAttributes: { key: string; value: string | null }[] };
 type SDraft = { id: string; name: string; status: string; order: { id: string; name: string } | null; totalPriceSet: Money };
 
-export type FixKind = "booking-paid" | "company-paid" | "product-refresh";
+export type FixKind = "booking-paid" | "booking-cancel" | "company-paid" | "product-refresh";
 export type Issue = {
   category: string;
   invoiceNo: string;
@@ -34,20 +34,21 @@ async function pages<T>(query: string, key: "orders" | "draftOrders"): Promise<T
   return out;
 }
 
-export async function reconcile(): Promise<ReconcileResult> {
+export async function reconcile(opts: { includeTest?: boolean } = {}): Promise<ReconcileResult> {
   const db = createAdminClient();
+  const live = opts.includeTest ? () => true : (test: unknown) => !test;
   const [orders, drafts, dep, cre, po, co, marks] = await Promise.all([
     pages<SOrder>(`query($after: String) { orders(first: 100, after: $after, sortKey: CREATED_AT, reverse: true) { pageInfo { hasNextPage endCursor } nodes { id name createdAt displayFinancialStatus cancelledAt test totalPriceSet { shopMoney { amount } } customAttributes { key value } } } }`, "orders"),
     pages<SDraft>(`query($after: String) { draftOrders(first: 100, after: $after, sortKey: UPDATED_AT, reverse: true) { pageInfo { hasNextPage endCursor } nodes { id name status order { id name } totalPriceSet { shopMoney { amount } } } } }`, "draftOrders"),
-    db.from("deposit_bookings").select("id, invoice_no, owner_name, payment_status, payment_amount, shopify_order_id, shopify_order_name, payment_draft_id, status").eq("is_test", false).then((r) => r.data || []),
-    db.from("cremation_bookings").select("id, invoice_no, owner_name, payment_status, payment_amount, deposit_credit, shopify_order_id, shopify_order_name, status, source").eq("is_test", false).then((r) => r.data || []),
-    db.from("product_orders").select("shopify_order_id, order_name, invoice_no, financial_status, total_amount, cancelled_at").eq("is_test", false).then((r) => r.data || []),
+    db.from("deposit_bookings").select("id, invoice_no, owner_name, payment_status, payment_amount, shopify_order_id, shopify_order_name, payment_draft_id, status, is_test").then((r) => (r.data || []).filter((x) => live(x.is_test))),
+    db.from("cremation_bookings").select("id, invoice_no, owner_name, payment_status, payment_amount, deposit_credit, shopify_order_id, shopify_order_name, status, source, is_test").then((r) => (r.data || []).filter((x) => live(x.is_test))),
+    db.from("product_orders").select("shopify_order_id, order_name, invoice_no, financial_status, total_amount, cancelled_at, is_test").then((r) => (r.data || []).filter((x) => live(x.is_test))),
     db.from("company_orders").select("id, invoice_no, order_type, status, amount, shopify_draft_id, shopify_order_id, linked_id, details").then((r) => r.data || []),
     db.from("follow_up_marks").select("entity, ref, payment_draft_id").not("payment_draft_id", "is", null).then((r) => r.data || []),
   ]);
   const byOrder = new Map(orders.map((o) => [o.id, o]));
   const byDraft = new Map(drafts.map((d) => [d.id, d]));
-  const testOrder = new Set(orders.filter((o) => o.test).map((o) => o.id));
+  const testOrder = new Set(opts.includeTest ? [] : orders.filter((o) => o.test).map((o) => o.id));
   const issues: Issue[] = [];
   const add = (i: Issue) => issues.push(i);
 
@@ -55,16 +56,16 @@ export async function reconcile(): Promise<ReconcileResult> {
   for (const [label, table, rows] of [["接送", "deposit_bookings", dep], ["火化／獸醫", "cremation_bookings", cre]] as const) {
     for (const r of rows as Record<string, unknown>[]) {
       const no = String(r.invoice_no ?? "—");
-      const who = `${label}｜${String(r.owner_name || "")}${r.shopify_order_name ? `｜${r.shopify_order_name}` : ""}`;
+      const who = `${label}${r.is_test ? "（測試）" : ""}｜${String(r.owner_name || "")}${r.shopify_order_name ? `｜${r.shopify_order_name}` : ""}`;
       const id = gid(r.shopify_order_id);
       if (id) {
         const o = byOrder.get(id);
         if (!o) { add({ category: "Shopify 找不到訂單", invoiceNo: no, text: who }); continue; }
-        if (o.test) continue;
-        if (r.payment_status === "paid" && !paidS(o)) add({ category: "付款狀態不一致", invoiceNo: no, text: `${who}：後台已付款，Shopify ${o.displayFinancialStatus}` });
+        if (o.test && !opts.includeTest) continue;
+        if (r.payment_status === "paid" && !paidS(o) && !o.cancelledAt && !/REFUND|VOID/.test(o.displayFinancialStatus)) add({ category: "付款狀態不一致", invoiceNo: no, text: `${who}：後台已付款，Shopify ${o.displayFinancialStatus}` });
         if (r.payment_status !== "paid" && paidS(o)) add({ category: "付款狀態不一致", invoiceNo: no, text: `${who}：Shopify 已付款，後台 ${r.payment_status}`, fix: { kind: "booking-paid", table, id: String(r.id), orderId: o.id } });
-        if (o.cancelledAt && r.status !== "cancelled") add({ category: "Shopify 已取消，後台未取消", invoiceNo: no, text: who });
-        if (o.displayFinancialStatus.includes("REFUND")) add({ category: "Shopify 有退款", invoiceNo: no, text: `${who}：${o.displayFinancialStatus}` });
+        const refunded = /REFUND|VOID/.test(o.displayFinancialStatus);
+        if ((o.cancelledAt && r.status !== "cancelled") || (refunded && r.payment_status !== "refunded")) add({ category: "Shopify 已取消／退款，後台未更新", invoiceNo: no, text: `${who}：Shopify ${o.cancelledAt ? "已取消" : ""}${refunded ? `（${o.displayFinancialStatus}）` : ""}`, fix: { kind: "booking-cancel", table, id: String(r.id), orderId: o.id } });
         const expect = num(r.payment_amount) - (table === "cremation_bookings" ? num(r.deposit_credit) : 0);
         const got = num(o.totalPriceSet.shopMoney.amount);
         if (r.payment_status === "paid" && r.payment_amount != null && Math.abs(expect - got) > 0.5) add({ category: "金額不一致", invoiceNo: no, text: `${who}：後台應收 HK$${expect}，Shopify HK$${got}` });
@@ -103,7 +104,7 @@ export async function reconcile(): Promise<ReconcileResult> {
     const o = byOrder.get(String(p.shopify_order_id));
     const no = String(p.invoice_no ?? "—");
     if (!o) { add({ category: "Shopify 找不到訂單", invoiceNo: no, text: `紀念品｜${p.order_name}` }); continue; }
-    if (o.test) continue;
+    if (o.test && !opts.includeTest) continue;
     const diff = String(p.financial_status || "") !== o.displayFinancialStatus || !!p.cancelled_at !== !!o.cancelledAt || Math.abs(num(p.total_amount) - num(o.totalPriceSet.shopMoney.amount)) > 0.5;
     if (diff) add({ category: "紀念品訂單資料過時", invoiceNo: no, text: `${p.order_name}：後台 ${p.financial_status} HK$${p.total_amount}${p.cancelled_at ? "（已取消）" : ""}，Shopify ${o.displayFinancialStatus} HK$${o.totalPriceSet.shopMoney.amount}${o.cancelledAt ? "（已取消）" : ""}`, fix: { kind: "product-refresh", id: o.id, orderId: o.id } });
   }

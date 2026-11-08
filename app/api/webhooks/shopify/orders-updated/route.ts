@@ -61,11 +61,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true, skipped: "incomplete_payload" });
   }
 
-  // 產品訂單：同步最新狀態（包含取消／退款）
-  if (!paymentRef) {
-    if (isCremationWebhookOrder(order)) {
-      return NextResponse.json({ ok: true, matched: false });
-    }
+  // 產品訂單：同步最新狀態（包含取消／退款）；火化訂單即使沒有付款參考，取消／退款時亦按 Shopify 訂單 ID 配對預約
+  if (!paymentRef && !isCremationWebhookOrder(order)) {
     const supabase = createAdminClient();
     const { error } = await supabase
       .from("product_orders")
@@ -90,17 +87,24 @@ export async function POST(request: Request) {
   if (isCancelled) patch.status = "cancelled";
   if (isRefunded) patch.payment_status = "refunded";
 
+  // 接送訂金及火化／獸醫：以付款參考或 Shopify 訂單 ID 配對（兩者其一即可）
   const supabase = createAdminClient();
-  const { data, error } = await supabase
-    .from("cremation_bookings")
-    .update(patch)
-    .eq("payment_ref", paymentRef)
-    .select("id");
-
-  if (error) {
-    console.error("[Resoul] orders/updated cremation sync failed", error);
-    return NextResponse.json({ error: "Supabase update failed" }, { status: 500 });
+  const gidId = order.admin_graphql_api_id || (order.id ? `gid://shopify/Order/${order.id}` : "");
+  const ids = [gidId, order.id ? String(order.id) : ""].filter(Boolean);
+  const matchedIds: string[] = [];
+  for (const table of ["cremation_bookings", "deposit_bookings"] as const) {
+    const q = (v: string) => `"${v.replace(/"/g, "")}"`;
+    const filter = [...(paymentRef ? [`payment_ref.eq.${q(paymentRef)}`] : []), ...ids.map((x) => `shopify_order_id.eq.${q(x)}`)].join(",");
+    if (!filter) continue;
+    const { data, error } = await supabase.from(table).update(patch).or(filter).select("id");
+    if (error) {
+      console.error("[Resoul] orders/updated booking sync failed", table, error);
+      return NextResponse.json({ error: "Supabase update failed" }, { status: 500 });
+    }
+    matchedIds.push(...(data || []).map((r) => r.id));
   }
+  // 開新單記錄跟隨取消
+  if (isCancelled && matchedIds.length) await supabase.from("company_orders").update({ status: "cancelled", updated_at: new Date().toISOString() }).in("linked_id", matchedIds);
   revalidateTag("shopify-orders");
-  return NextResponse.json({ ok: true, matched: (data || []).length > 0, patch });
+  return NextResponse.json({ ok: true, matched: matchedIds.length > 0, patch });
 }
