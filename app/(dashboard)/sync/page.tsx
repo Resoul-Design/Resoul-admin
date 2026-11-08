@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { shopifyGraphQL, shopDomain } from "@/lib/shopify";
 import { syncProductOrders } from "../orders/actions";
 import Link from "next/link";
+import { ReconcilePanel } from "./_reconcile-panel";
 import { comparePrices, productsWithoutType } from "@/lib/price-check";
 import { loadSiteContent } from "@/lib/site-content-server";
 
@@ -129,6 +130,8 @@ export default async function SyncStatusPage() {
           </button>
         </form>
       </PageHeader>
+
+      <ReconcilePanel />
 
       <div className={"mb-6 rounded-2xl border p-4 " + (overall === "ok" ? "border-green-300 bg-green-50" : overall === "warn" ? "border-amber-300 bg-amber-50" : "border-red-300 bg-red-50")}>
         <div className="flex items-center gap-2">
