@@ -4,6 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { LOGISTICS_FIELDS } from "@/lib/logistics-fields";
 import { canonicalProjectNo, projectNoFromNotes } from "@/lib/order-label";
 import { buildXlsx, type Cell, type Sheet } from "@/lib/xlsx";
+import { invoiceLabel } from "@/lib/invoice-label";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -63,7 +64,7 @@ export async function GET(req: Request) {
     sheets.push({
       name: "接送訂金",
       headers: ["單號", "專案編號", "建立時間", "主人", "電話", "寵物", "寵物種類", "服務日期", "時段", "接送地址", "狀態", "付款狀態", "金額（HKD）", "付款時間", "訂金已用於", "抵扣金額", "付款參考", "Shopify 訂單號（內部參考）", "來源", "備註"],
-      rows: rows.map((r) => [n(r.invoice_no), s(r.project_no), hk(r.created_at), s(r.owner_name), s(r.contact), s(r.pet_name), s(r.pet_type), s(r.service_date), s(r.service_time), s(r.pickup_address), st(r.status), st(r.payment_status), n(r.payment_amount), hk(r.paid_at), creditUse(r.credit_target), n(r.credit_amount), s(r.payment_ref), s(r.shopify_order_name), s(r.source), s(r.notes)]),
+      rows: rows.map((r) => [invoiceLabel(r.invoice_no as number | null, "deposit"), s(r.project_no), hk(r.created_at), s(r.owner_name), s(r.contact), s(r.pet_name), s(r.pet_type), s(r.service_date), s(r.service_time), s(r.pickup_address), st(r.status), st(r.payment_status), n(r.payment_amount), hk(r.paid_at), creditUse(r.credit_target), n(r.credit_amount), s(r.payment_ref), s(r.shopify_order_name), s(r.source), s(r.notes)]),
     });
   }
   if (can.cremation || can.vet) {

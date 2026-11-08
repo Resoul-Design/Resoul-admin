@@ -8,6 +8,50 @@ import type { Issue } from "@/lib/reconcile";
 // 背景（自動對帳）執行時 revalidatePath 可能不可用：忽略錯誤（頁面本身為即時讀取）
 function rv(path: string) { try { revalidatePath(path); } catch {} }
 
+type LineNode = { title: string; variantTitle: string | null; quantity: number; currentQuantity?: number; originalUnitPriceSet: { shopMoney: { amount: string } } | null };
+const DRAFT_LINES = `query DraftLines($id: ID!) { draftOrder(id: $id) { name lineItems(first: 100) { nodes { title variantTitle quantity originalUnitPriceSet { shopMoney { amount } } } } } }`;
+const ORDER_LINES = `query OrderLines($id: ID!) { order(id: $id) { name lineItems(first: 100) { nodes { title variantTitle quantity currentQuantity originalUnitPriceSet { shopMoney { amount } } } } } }`;
+
+// 按 Shopify 訂單或付款連結草稿更新後台的項目及金額（未扣訂金前的收費）
+async function refreshLines(fix: NonNullable<Issue["fix"]>, who: string, audit: AuditFn, today: string): Promise<{ error?: string; done?: string }> {
+  const admin = createAdminClient();
+  let name = "";
+  let nodes: LineNode[] = [];
+  if (fix.draftId) {
+    const r = await shopifyGraphQL<{ draftOrder: { name: string; lineItems: { nodes: LineNode[] } } | null }>(DRAFT_LINES, { id: fix.draftId });
+    if (!r.draftOrder) return { error: "Shopify 付款連結已刪除。" };
+    name = r.draftOrder.name; nodes = r.draftOrder.lineItems.nodes;
+  } else if (fix.orderId) {
+    const r = await shopifyGraphQL<{ order: { name: string; lineItems: { nodes: LineNode[] } } | null }>(ORDER_LINES, { id: fix.orderId });
+    if (!r.order) return { error: "Shopify 找不到此訂單。" };
+    name = r.order.name; nodes = r.order.lineItems.nodes;
+  } else return { error: "缺少 Shopify 訂單。" };
+  const lines = nodes
+    .map((l) => ({ label: `${l.title}${l.variantTitle && l.variantTitle !== "Default Title" ? `（${l.variantTitle}）` : ""}`, price: Number(l.originalUnitPriceSet?.shopMoney.amount || 0), quantity: l.currentQuantity ?? l.quantity }))
+    .filter((l) => l.quantity > 0);
+  const gross = lines.reduce((n, l) => n + l.price * l.quantity, 0);
+  const summary = lines.map((l) => `${l.label}×${l.quantity}`).join("、");
+  // 開單記錄（項目明細及金額）
+  const companyQuery = fix.companyId ? admin.from("company_orders").select("id, details").eq("id", fix.companyId) : fix.table ? admin.from("company_orders").select("id, details").eq("linked_id", fix.id) : null;
+  if (companyQuery) {
+    const { data: rows } = await companyQuery;
+    for (const c of rows || []) {
+      await admin.from("company_orders").update({ amount: gross, details: { ...((c.details as Record<string, unknown>) || {}), lines }, updated_at: new Date().toISOString() }).eq("id", c.id);
+    }
+  }
+  // 服務記錄（收費金額；接送訂金抵扣另計）
+  if (fix.table) {
+    const { data: row } = await admin.from(fix.table).select("notes, payment_amount").eq("id", fix.id).maybeSingle();
+    if (row && Math.abs(Number(row.payment_amount || 0) - gross) > 0.005) {
+      const { error } = await admin.from(fix.table).update({ payment_amount: gross, notes: appendNote(row.notes, `🔄 跟隨 Shopify ${name} 更新項目 ${today}：${summary}（HK$${gross.toLocaleString("en-US")}，${who}）`) }).eq("id", fix.id);
+      if (error) return { error: "未能更新後台記錄。" };
+    }
+  }
+  await audit("reconcile_fix", fix.table || "company_orders", fix.id, `按 Shopify ${name} 更新項目：${summary}（HK$${gross}）`);
+  for (const p of ["/deposits", "/bookings", "/vet-assessments", "/orders", "/services"]) rv(p);
+  return { done: `已按 Shopify ${name} 更新項目（HK$${gross.toLocaleString("en-US")}）。` };
+}
+
 export type AuditFn = (action: string, entity: string, entityId?: string | null, detail?: string | null) => Promise<void>;
 type ShopOrder = { id: string; name: string; processedAt: string | null; createdAt: string; displayFinancialStatus: string; displayFulfillmentStatus: string | null; cancelledAt: string | null; currencyCode: string; totalPriceSet: { shopMoney: { amount: string } } };
 const ORDER = `query ReconOrder($id: ID!) { order(id: $id) { id name processedAt createdAt displayFinancialStatus displayFulfillmentStatus cancelledAt currencyCode totalPriceSet { shopMoney { amount } } } }`;
@@ -23,6 +67,7 @@ export async function applyFix(fix: NonNullable<Issue["fix"]>, who: string, audi
       rv("/services");
       return { done: "已標記已付款。" };
     }
+    if (fix.kind === "refresh-lines") return refreshLines(fix, who, audit, today);
     if (!fix.orderId) return { error: "缺少 Shopify 訂單。" };
     const { order: o } = await shopifyGraphQL<{ order: ShopOrder | null }>(ORDER, { id: fix.orderId });
     if (!o) return { error: "Shopify 找不到此訂單。" };

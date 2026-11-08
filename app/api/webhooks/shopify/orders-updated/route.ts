@@ -9,6 +9,7 @@ import {
   type ShopifyWebhookOrder,
 } from "@/lib/product-orders";
 import { verifyShopifyWebhook } from "@/lib/shopify-webhook";
+import { applyFix } from "@/lib/reconcile-fix";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -77,10 +78,30 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true, matched: false, productOrder: true });
   }
 
-  // 火化訂單：只在取消／退款時更新，其餘變動不動（保留員工手動狀態）
+  // 接送訂金／火化：未取消或退款時，只跟隨 Shopify 的項目及金額變動（例如在 Shopify 加紀念品），狀態保留員工手動設定
   if (!isCancelled && !isRefunded) {
+    const gidOrder = order.admin_graphql_api_id || (order.id ? `gid://shopify/Order/${order.id}` : "");
+    const items = (order.line_items || []) as { price?: string | number; quantity?: number; current_quantity?: number }[];
+    const gross = items.reduce((n, l) => n + Number(l.price || 0) * Number(l.current_quantity ?? l.quantity ?? 0), 0);
+    let refreshed = 0;
+    if (gidOrder && items.length) {
+      const supabase = createAdminClient();
+      const q = (v: string) => `"${v.replace(/"/g, "")}"`;
+      const ids = [gidOrder, order.id ? String(order.id) : ""].filter(Boolean);
+      for (const table of ["cremation_bookings", "deposit_bookings"] as const) {
+        const filter = [...(paymentRef ? [`payment_ref.eq.${q(paymentRef)}`] : []), ...ids.map((x) => `shopify_order_id.eq.${q(x)}`)].join(",");
+        const { data } = await supabase.from(table).select("id, payment_amount, payment_status").or(filter);
+        for (const r of data || []) {
+          if (r.payment_status !== "paid" || Math.abs(Number(r.payment_amount || 0) - gross) < 0.005) continue;
+          const res = await applyFix({ kind: "refresh-lines", table, id: r.id, orderId: gidOrder }, "Shopify 通知", async (action, entity, entityId, detail) => {
+            await supabase.from("audit_log").insert({ actor_id: null, actor_email: "Shopify 通知", action, entity, entity_id: entityId ?? null, detail: detail ?? null });
+          });
+          if (!res.error) refreshed++;
+        }
+      }
+    }
     revalidateTag("shopify-orders");
-    return NextResponse.json({ ok: true, matched: true, changed: false });
+    return NextResponse.json({ ok: true, matched: true, changed: refreshed > 0 });
   }
 
   const patch: Record<string, unknown> = {};

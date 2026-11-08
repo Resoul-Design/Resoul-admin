@@ -5,6 +5,7 @@ import { hasModule, type Staff } from "@/lib/auth";
 import { canonicalProjectNo, productOrderProjectNo, projectNoFromNotes } from "@/lib/order-label";
 import type { ProductOrderRow } from "@/lib/product-orders";
 import { shopifyGraphQL } from "@/lib/shopify";
+import { invoiceLabel } from "@/lib/invoice-label";
 
 export type InvoiceItem = { sku: string; title: string; unit: number | null; qty: number };
 export type InvoiceDoc = {
@@ -41,7 +42,7 @@ function depositDoc(r: Row): InvoiceDoc | null {
   const amount = num(r.payment_amount);
   return {
     ref: `deposit:${str(r.id)}`,
-    no: r.invoice_no ? String(r.invoice_no) : str(r.shopify_order_name),
+    no: r.invoice_no ? invoiceLabel(Number(r.invoice_no), "deposit") : str(r.shopify_order_name),
     companyNo: !!r.invoice_no,
     // 網站預約即時付款：用預約時間（舊記錄的 paid_at 為補記日期）；後台建立的付款連結：用付款時間
     date: str(str(r.source).startsWith("web:") ? r.created_at : r.paid_at || r.created_at),
@@ -99,7 +100,7 @@ function companyDoc(r: Row): InvoiceDoc | null {
   const discount = Math.min(subtotal, num(d.depositCredit?.amount));
   return {
     ref: `company:${str(r.id)}`,
-    no: String(r.invoice_no),
+    no: invoiceLabel(Number(r.invoice_no), str(r.order_type)),
     companyNo: true,
     date: str(r.updated_at || r.created_at),
     kind: COMPANY_KIND[str(r.order_type)] || "其他 Other",

@@ -5,14 +5,15 @@ import { shopifyGraphQL } from "@/lib/shopify";
 
 type Money = { shopMoney: { amount: string } };
 type SOrder = { id: string; name: string; createdAt: string; displayFinancialStatus: string; cancelledAt: string | null; test: boolean; totalPriceSet: Money; customAttributes: { key: string; value: string | null }[] };
-type SDraft = { id: string; name: string; status: string; order: { id: string; name: string } | null; totalPriceSet: Money };
+type SDraft = { id: string; name: string; status: string; order: { id: string; name: string } | null; totalPriceSet: Money; subtotalPriceSet: Money };
 
-export type FixKind = "booking-paid" | "booking-cancel" | "company-paid" | "product-refresh";
+export type FixKind = "booking-paid" | "booking-cancel" | "company-paid" | "product-refresh" | "refresh-lines";
 export type Issue = {
   category: string;
   invoiceNo: string;
   text: string;
-  fix?: { kind: FixKind; table?: "deposit_bookings" | "cremation_bookings"; id: string; orderId?: string };
+  // refresh-lines：按 Shopify 訂單（orderId）或付款連結草稿（draftId）更新項目及金額；id＝服務記錄（有 table）或開單記錄；companyId＝開單記錄
+  fix?: { kind: FixKind; table?: "deposit_bookings" | "cremation_bookings"; id: string; orderId?: string; draftId?: string; companyId?: string };
   link?: string;
 };
 export type ReconcileResult = { checkedAt: string; counts: Record<string, number>; issues: Issue[] };
@@ -39,11 +40,11 @@ export async function reconcile(opts: { includeTest?: boolean } = {}): Promise<R
   const live = opts.includeTest ? () => true : (test: unknown) => !test;
   const [orders, drafts, dep, cre, po, co, marks] = await Promise.all([
     pages<SOrder>(`query($after: String) { orders(first: 100, after: $after, sortKey: CREATED_AT, reverse: true) { pageInfo { hasNextPage endCursor } nodes { id name createdAt displayFinancialStatus cancelledAt test totalPriceSet { shopMoney { amount } } customAttributes { key value } } } }`, "orders"),
-    pages<SDraft>(`query($after: String) { draftOrders(first: 100, after: $after, sortKey: UPDATED_AT, reverse: true) { pageInfo { hasNextPage endCursor } nodes { id name status order { id name } totalPriceSet { shopMoney { amount } } } } }`, "draftOrders"),
+    pages<SDraft>(`query($after: String) { draftOrders(first: 100, after: $after, sortKey: UPDATED_AT, reverse: true) { pageInfo { hasNextPage endCursor } nodes { id name status order { id name } totalPriceSet { shopMoney { amount } } subtotalPriceSet { shopMoney { amount } } } } }`, "draftOrders"),
     db.from("deposit_bookings").select("id, invoice_no, owner_name, payment_status, payment_amount, shopify_order_id, shopify_order_name, payment_draft_id, status, is_test").then((r) => (r.data || []).filter((x) => live(x.is_test))),
     db.from("cremation_bookings").select("id, invoice_no, owner_name, payment_status, payment_amount, deposit_credit, shopify_order_id, shopify_order_name, status, source, is_test").then((r) => (r.data || []).filter((x) => live(x.is_test))),
     db.from("product_orders").select("shopify_order_id, order_name, invoice_no, financial_status, total_amount, cancelled_at, is_test").then((r) => (r.data || []).filter((x) => live(x.is_test))),
-    db.from("company_orders").select("id, invoice_no, order_type, status, amount, shopify_draft_id, shopify_order_id, linked_id, details").then((r) => r.data || []),
+    db.from("company_orders").select("id, invoice_no, order_type, status, amount, shopify_draft_id, shopify_order_id, linked_id, linked_table, details").then((r) => r.data || []),
     db.from("follow_up_marks").select("entity, ref, payment_draft_id").not("payment_draft_id", "is", null).then((r) => r.data || []),
   ]);
   const byOrder = new Map(orders.map((o) => [o.id, o]));
@@ -68,7 +69,7 @@ export async function reconcile(opts: { includeTest?: boolean } = {}): Promise<R
         if ((o.cancelledAt && r.status !== "cancelled") || (refunded && r.payment_status !== "refunded")) add({ category: "Shopify 已取消／退款，後台未更新", invoiceNo: no, text: `${who}：Shopify ${o.cancelledAt ? "已取消" : ""}${refunded ? `（${o.displayFinancialStatus}）` : ""}`, fix: { kind: "booking-cancel", table, id: String(r.id), orderId: o.id } });
         const expect = num(r.payment_amount) - (table === "cremation_bookings" ? num(r.deposit_credit) : 0);
         const got = num(o.totalPriceSet.shopMoney.amount);
-        if (r.payment_status === "paid" && r.payment_amount != null && Math.abs(expect - got) > 0.5) add({ category: "金額不一致", invoiceNo: no, text: `${who}：後台應收 HK$${expect}，Shopify HK$${got}` });
+        if (r.payment_status === "paid" && r.payment_amount != null && Math.abs(expect - got) > 0.5 && !o.cancelledAt) add({ category: "項目或金額不一致", invoiceNo: no, text: `${who}：後台應收 HK$${expect}，Shopify HK$${got}`, fix: { kind: "refresh-lines", table, id: String(r.id), orderId: o.id } });
       } else if (r.payment_status === "paid") {
         add({ category: "後台已付款但沒有 Shopify 訂單", invoiceNo: no, text: who });
       }
@@ -93,10 +94,14 @@ export async function reconcile(opts: { includeTest?: boolean } = {}): Promise<R
     if (!c.shopify_draft_id && c.status !== "cancelled") add({ category: "開新單未同步 Shopify", invoiceNo: no, text: `${TYPE[String(c.order_type)] || c.order_type}：請在單詳情按「重試同步」`, link: `/new-order/${c.id}` });
     else if (d && d.status === "COMPLETED" && c.status !== "paid" && c.status !== "cancelled") add({ category: "開新單記錄未標記已付款", invoiceNo: no, text: `${TYPE[String(c.order_type)] || c.order_type}：Shopify 已付款（${d.order?.name}）`, fix: { kind: "company-paid", id: String(c.id), orderId: d.order?.id } });
     else if (d && d.status === "OPEN" && c.status === "paid") add({ category: "開新單狀態不一致", invoiceNo: no, text: `${TYPE[String(c.order_type)] || c.order_type}：後台已付款，Shopify 付款連結未付款`, link: `/new-order/${c.id}` });
-    if (d && !c.linked_id) {
+    // 未付款的付款連結：在 Shopify 加減項目後，後台跟隨（比較折扣前的項目合計）
+    if (d && d.status !== "COMPLETED" && c.status !== "cancelled") {
+      const got = num(d.subtotalPriceSet?.shopMoney.amount ?? d.totalPriceSet.shopMoney.amount);
+      if (Math.abs(num(c.amount) - got) > 0.5) add({ category: "項目或金額不一致", invoiceNo: no, text: `開新單 ${TYPE[String(c.order_type)] || c.order_type}：後台 HK$${num(c.amount)}，Shopify 付款連結 HK$${got}`, fix: { kind: "refresh-lines", id: String(c.linked_id || c.id), table: c.linked_table ? (String(c.linked_table) as "deposit_bookings" | "cremation_bookings") : undefined, draftId: d.id, companyId: String(c.id) } });
+    } else if (d && !c.linked_id) {
       const expect = num(c.amount) - num((c.details as { depositCredit?: { amount?: number } | null } | null)?.depositCredit?.amount);
       const got = num(d.totalPriceSet.shopMoney.amount);
-      if (Math.abs(expect - got) > 0.5) add({ category: "金額不一致", invoiceNo: no, text: `開新單 ${TYPE[String(c.order_type)] || c.order_type}：後台 HK$${expect}，Shopify HK$${got}`, link: `/new-order/${c.id}` });
+      if (Math.abs(expect - got) > 0.5) add({ category: "項目或金額不一致", invoiceNo: no, text: `開新單 ${TYPE[String(c.order_type)] || c.order_type}：後台 HK$${expect}，Shopify HK$${got}`, link: `/new-order/${c.id}` });
     }
   }
   // 4) 紀念品訂單

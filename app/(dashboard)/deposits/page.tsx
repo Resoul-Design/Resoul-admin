@@ -352,7 +352,7 @@ export default async function DepositsPage({ searchParams }: { searchParams: Pro
                       <td className="px-4 py-3 text-[var(--soft)] whitespace-nowrap">{fmtCreated(r.created_at)}</td>
                       <td className="px-4 py-3">
                         {project ? (
-                          <div className="min-w-0">{r.invoice_no ? <><span className="font-medium text-[var(--gold)]">單號 {r.invoice_no}</span>{project !== String(r.invoice_no) && <div className="break-all text-xs text-[var(--ink)]">專案 {project}</div>}</> : <span className="font-medium text-[var(--gold)]">{project}</span>}{r.payment_ref && <div className="break-all text-xs text-[var(--soft)]">付款參考 {r.payment_ref}</div>}<LinkedBadge linked={linkedFor(r)} project={depositProjectNo(r)} /></div>
+                          <div className="min-w-0">{r.invoice_no ? <><span className="font-medium text-[var(--gold)]">單號 {r.invoice_no}-DEPOSIT</span>{project !== String(r.invoice_no) && <div className="break-all text-xs text-[var(--ink)]">專案 {project}</div>}</> : <span className="font-medium text-[var(--gold)]">{project}</span>}{r.payment_ref && <div className="break-all text-xs text-[var(--soft)]">付款參考 {r.payment_ref}</div>}<LinkedBadge linked={linkedFor(r)} project={depositProjectNo(r)} /></div>
                         ) : (
                           <span className="text-[var(--faint)]">—</span>
                         )}
@@ -417,7 +417,7 @@ export default async function DepositsPage({ searchParams }: { searchParams: Pro
                     <dd className="min-w-0">{r.pet_name || "—"}{r.pet_type ? `（${r.pet_type}）` : ""}</dd>
                     {r.invoice_no && <>
                       <dt className="text-[var(--soft)]">單號</dt>
-                      <dd className="min-w-0 font-medium text-[var(--gold)]">{r.invoice_no}</dd>
+                      <dd className="min-w-0 font-medium text-[var(--gold)]">{r.invoice_no}-DEPOSIT</dd>
                     </>}
                     {r.payment_ref && <>
                       <dt className="text-[var(--soft)]">付款參考</dt>

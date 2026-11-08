@@ -5,7 +5,7 @@ import Link from "next/link";
 import type { Issue, ReconcileResult } from "@/lib/reconcile";
 import { fixIssue, runReconcile } from "./_reconcile-actions";
 
-const FIX_LABEL: Record<string, string> = { "booking-cancel": "按 Shopify 標記取消／退款", "booking-paid": "按 Shopify 標記已付款", "company-paid": "標記已付款", "product-refresh": "按 Shopify 更新" };
+const FIX_LABEL: Record<string, string> = { "refresh-lines": "按 Shopify 更新項目", "booking-cancel": "按 Shopify 標記取消／退款", "booking-paid": "按 Shopify 標記已付款", "company-paid": "標記已付款", "product-refresh": "按 Shopify 更新" };
 
 // 後台與 Shopify 對帳：按掣即時比較，安全的情況可一鍵修正（只改後台）
 export function ReconcilePanel() {

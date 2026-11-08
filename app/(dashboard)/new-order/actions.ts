@@ -15,6 +15,7 @@ import { findTimeSlot } from "@/lib/deposit-followup";
 import { isProjectNo, projectNoFromNotes, canonicalProjectNo } from "@/lib/order-label";
 import { phoneKey } from "@/lib/product-orders";
 import { appendNote } from "@/lib/payment-check";
+import { invoiceLabel } from "@/lib/invoice-label";
 import { depositCreditValue } from "@/lib/deposit-amount";
 import { newCompanyProjectNo } from "@/lib/project-no";
 import { loadSiteContent } from "@/lib/site-content-server";
@@ -333,11 +334,11 @@ export async function createOrder(input: NewOrderInput): Promise<{ id?: string; 
   const refAttrs = [{ key: "Project No", value: projectNo }, ...(booking ? [{ key: "payment_ref", value: paymentRef }] : [])];
   const basePlan: DraftPlan = {
     email,
-    note: [publicNote, otherDescription && input.type === "other" ? otherDescription : "", petName ? `寵物：${petName}` : "", `單據編號：${invoiceNo}`].filter(Boolean).join("\n"),
+    note: [publicNote, otherDescription && input.type === "other" ? otherDescription : "", petName ? `寵物：${petName}` : "", `單據編號：${invoiceLabel(invoiceNo, input.type)}`].filter(Boolean).join("\n"),
     // 標籤只放類型；舊專案（RSL- 或自訂編號）另加專案編號。單號不加標籤（已在自訂欄位 Invoice No 及備註）
     tags: [...def2.tags, ...(projectNo !== String(invoiceNo) ? [projectNo] : [])],
     attributes: [
-      { key: "Invoice No", value: String(invoiceNo) },
+      { key: "Invoice No", value: invoiceLabel(invoiceNo, input.type) },
       { key: "Order Type", value: def2.label },
       ...refAttrs,
       { key: "Owner", value: name },

@@ -6,6 +6,7 @@ import { shopDomain, shopifyGraphQL } from "@/lib/shopify";
 import { ORDER_STATUS_LABEL, ORDER_TYPE_MAP, type OrderType } from "@/lib/order-types";
 import { PageHeader, headerLinkClass } from "../../_page-header";
 import { ChangeInvoiceNo, CopyLink, RetrySync, WhatsAppLink } from "./_panels";
+import { invoiceLabel } from "@/lib/invoice-label";
 
 export const dynamic = "force-dynamic";
 
@@ -75,7 +76,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
 
   return (
     <div className="mx-auto max-w-4xl">
-      <PageHeader title={<span className="flex flex-wrap items-center gap-3">單號 {o.invoice_no}<span className="rounded-full bg-[var(--cream)] px-3 py-1 text-sm font-normal">{def.icon} {def.label}</span></span>}>
+      <PageHeader title={<span className="flex flex-wrap items-center gap-3">單號 {invoiceLabel(o.invoice_no, o.order_type)}<span className="rounded-full bg-[var(--cream)] px-3 py-1 text-sm font-normal">{def.icon} {def.label}</span></span>}>
         <Link href={`/new-order?from=${o.id}`} className={headerLinkClass}>複製為新單</Link>
         <Link href="/new-order" className={headerLinkClass}>＋ 開新單</Link>
       </PageHeader>
@@ -90,7 +91,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
       )}
 
       <div className="grid gap-3 sm:grid-cols-3">
-        <Card label="單號（對外）" value={String(o.invoice_no)} strong />
+        <Card label="單號（對外）" value={invoiceLabel(o.invoice_no, o.order_type)} strong />
         <Card label="專案編號" value={o.project_no} href={`/projects/group/${encodeURIComponent(o.project_no)}`} />
         <Card label="付款參考" value={o.payment_ref} mono />
       </div>

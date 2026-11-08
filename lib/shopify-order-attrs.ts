@@ -4,6 +4,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { shopifyGraphQL } from "@/lib/shopify";
 import { canonicalProjectNo, projectNoFromNotes } from "@/lib/order-label";
+import { invoiceLabel } from "@/lib/invoice-label";
 
 type Attr = { key: string; value: string };
 
@@ -32,8 +33,8 @@ async function loadInfo(orderIds: string[]): Promise<Map<string, Info>> {
   ]);
   const set = (id: unknown, info: Info) => { const g = gid(id); if (g && info.invoiceNo) out.set(g, { ...(out.get(g) || {}), ...Object.fromEntries(Object.entries(info).filter(([, v]) => v)) } as Info); };
   for (const r of po.data || []) set(r.shopify_order_id, { invoiceNo: str(r.invoice_no), orderType: TYPE_LABEL.product, projectNo: str(r.project_no), paymentRef: "", owner: str(r.customer_name), phone: str(r.phone), pet: "" });
-  for (const r of co.data || []) set(r.shopify_order_id, { invoiceNo: str(r.invoice_no), orderType: TYPE_LABEL[r.order_type as keyof typeof TYPE_LABEL] || "", projectNo: str(r.project_no), paymentRef: r.linked_id ? str(r.payment_ref) : "", owner: str(r.customer_name), phone: str(r.phone), pet: str(r.pet_name) });
-  for (const r of dep.data || []) set(r.shopify_order_id, { invoiceNo: str(r.invoice_no), orderType: TYPE_LABEL.deposit, projectNo: str(r.project_no), paymentRef: str(r.payment_ref), owner: str(r.owner_name), phone: str(r.contact), pet: str(r.pet_name) });
+  for (const r of co.data || []) set(r.shopify_order_id, { invoiceNo: invoiceLabel(str(r.invoice_no), r.order_type), orderType: TYPE_LABEL[r.order_type as keyof typeof TYPE_LABEL] || "", projectNo: str(r.project_no), paymentRef: r.linked_id ? str(r.payment_ref) : "", owner: str(r.customer_name), phone: str(r.phone), pet: str(r.pet_name) });
+  for (const r of dep.data || []) set(r.shopify_order_id, { invoiceNo: invoiceLabel(str(r.invoice_no), "deposit"), orderType: TYPE_LABEL.deposit, projectNo: str(r.project_no), paymentRef: str(r.payment_ref), owner: str(r.owner_name), phone: str(r.contact), pet: str(r.pet_name) });
   for (const r of cre.data || []) {
     const project = canonicalProjectNo(str(r.case_no), projectNoFromNotes(str(r.notes)));
     set(r.shopify_order_id, { invoiceNo: str(r.invoice_no), orderType: str(r.source).includes("euthanasia") ? TYPE_LABEL.vet : TYPE_LABEL.cremation, projectNo: project === "—" ? "" : project, paymentRef: /^PAY-/i.test(str(r.payment_ref)) ? str(r.payment_ref) : "", owner: str(r.owner_name), phone: str(r.contact), pet: str(r.pet_name) });
