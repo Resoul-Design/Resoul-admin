@@ -4,6 +4,7 @@ import { after } from "next/server";
 import { syncOrderAttributes } from "@/lib/shopify-order-attrs";
 import { getStaff, hasModule } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { shopifyGraphQL } from "@/lib/shopify";
 
 const services = [
   { label: "接送服務", description: "管理接送預約、付款跟進、日曆及 WhatsApp 聯絡。", href: "/deposits", icon: "🚐", key: "deposits" },
@@ -49,11 +50,28 @@ export default async function ServicesPage({ searchParams }: { searchParams: Pro
   type InvoiceRow = { id: string; invoice_no: number | null; order_type: string; customer_name: string | null; phone: string | null; amount: number; status: string; created_at: string; ref: string; test: boolean; extra?: string; shopify?: string };
   // Shopify 後台訂單頁（可用 Order Printer 列印 Shopify 發票）；未付款則開付款連結草稿
   const shopDomain = (process.env.SHOPIFY_STORE_DOMAIN || "").replace(/^https?:\/\//, "").replace(/\/+$/, "");
+  // 未付款的付款連結草稿：先向 Shopify 確認仍然存在（已刪除的草稿不顯示連結）；讀取失敗時照常顯示
+  const draftIds = [...new Set([
+    ...(deposits.data || []).filter((r) => !r.shopify_order_id && r.payment_draft_id).map((r) => String(r.payment_draft_id)),
+    ...(cremations.data || []).filter((r) => !r.shopify_order_id && bookingDraft.has(String(r.id))).map((r) => bookingDraft.get(String(r.id)) as string),
+    ...(company.data || []).filter((r) => !r.shopify_order_id && r.shopify_draft_id).map((r) => String(r.shopify_draft_id)),
+  ].filter((id) => id.startsWith("gid://shopify/DraftOrder/")))];
+  let aliveDrafts: Set<string> | null = new Set();
+  try {
+    for (let i = 0; i < draftIds.length; i += 100) {
+      const res = await shopifyGraphQL<{ nodes: ({ id: string } | null)[] }>(`query($ids: [ID!]!) { nodes(ids: $ids) { ... on DraftOrder { id } } }`, { ids: draftIds.slice(i, i + 100) });
+      for (const n of res.nodes) if (n?.id) aliveDrafts.add(n.id);
+    }
+  } catch {
+    aliveDrafts = null;
+  }
   const shopifyHref = (orderId?: string | null, draftId?: string | null) => {
     const order = String(orderId || "").split("/").pop();
     const draft = String(draftId || "").split("/").pop();
     if (!shopDomain) return "";
-    return order && /^\d+$/.test(order) ? `https://${shopDomain}/admin/orders/${order}` : draft && /^\d+$/.test(draft) ? `https://${shopDomain}/admin/draft_orders/${draft}` : "";
+    if (order && /^\d+$/.test(order)) return `https://${shopDomain}/admin/orders/${order}`;
+    if (!draft || !/^\d+$/.test(draft) || (aliveDrafts && !aliveDrafts.has(String(draftId)))) return "";
+    return `https://${shopDomain}/admin/draft_orders/${draft}`;
   };
   const productOrderIds = new Set((products.data || []).map((r) => r.shopify_order_id));
   const productStatus = (r: { financial_status: string | null; cancelled_at: string | null }) =>

@@ -39,7 +39,16 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
       if (row.payment_status === "paid" && status !== "paid") status = "paid";
       if (row.status === "cancelled") status = "cancelled";
     }
-  } else if (o.shopify_draft_id && status === "awaiting_payment") {
+  }
+  // 付款連結草稿是否仍在 Shopify（已刪除則不顯示付款連結及 Shopify 草稿連結）
+  let draftGone = false;
+  if (o.shopify_draft_id && !o.shopify_order_id) {
+    try {
+      const r = await shopifyGraphQL<{ draftOrder: { id: string } | null }>(`query($id: ID!) { draftOrder(id: $id) { id } }`, { id: o.shopify_draft_id });
+      draftGone = !r.draftOrder;
+    } catch {}
+  }
+  if (!o.linked_table && o.shopify_draft_id && status === "awaiting_payment" && !draftGone) {
     try {
       const res = await shopifyGraphQL<{ draftOrder: { status: string; order: { id: string; name: string; displayFinancialStatus: string | null } | null } | null }>(
         `query($id: ID!) { draftOrder(id: $id) { status order { id name displayFinancialStatus } } }`,
@@ -61,7 +70,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
   const host = shopDomain().replace(/^https?:\/\//, "").replace(/\/+$/, "");
   const digits = String(o.phone || "").replace(/\D/g, "");
   const waNumber = digits.length === 8 ? `852${digits}` : digits;
-  const waText = `${o.customer_name}你好，我係 Resoul。你的單號是 ${o.invoice_no}${o.pet_name ? `（${o.pet_name}）` : ""}，金額 ${hk(Number(o.amount || 0))}。${o.shopify_invoice_url && status !== "paid" ? `付款連結：${o.shopify_invoice_url}` : ""}`;
+  const waText = `${o.customer_name}你好，我係 Resoul。你的單號是 ${o.invoice_no}${o.pet_name ? `（${o.pet_name}）` : ""}，金額 ${hk(Number(o.amount || 0))}。${(draftGone ? "" : o.shopify_invoice_url) && status !== "paid" ? `付款連結：${(draftGone ? "" : o.shopify_invoice_url)}` : ""}`;
   const unsynced = !o.shopify_draft_id || !!o.sync_error;
 
   return (
@@ -103,8 +112,9 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
         </dl>
 
         <div className="mt-4 flex flex-wrap gap-2 border-t border-[var(--line)] pt-4">
-          {o.shopify_invoice_url && status !== "paid" && <CopyLink url={o.shopify_invoice_url} />}
-          {o.shopify_invoice_url && status !== "paid" && <a href={o.shopify_invoice_url} target="_blank" rel="noopener noreferrer" className={headerLinkClass}>開啟付款頁 ↗</a>}
+          {draftGone && status !== "paid" && <span className="text-sm text-amber-700">Shopify 付款連結已被刪除</span>}
+          {o.shopify_invoice_url && status !== "paid" && !draftGone && <CopyLink url={o.shopify_invoice_url} />}
+          {o.shopify_invoice_url && status !== "paid" && !draftGone && <a href={o.shopify_invoice_url} target="_blank" rel="noopener noreferrer" className={headerLinkClass}>開啟付款頁 ↗</a>}
           {waNumber && <WhatsAppLink href={`https://wa.me/${waNumber}?text=${encodeURIComponent(waText)}`} className={headerLinkClass + " text-green-700"} />}
           <Link href={`${LIST_PATH[type]}?q=${encodeURIComponent(o.project_no)}`} className={headerLinkClass}>到「{def.label}」列表</Link>
         </div>
@@ -114,7 +124,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
         <summary className="cursor-pointer text-[var(--soft)]">內部參考（Shopify）</summary>
         <dl className="mt-3 grid gap-x-4 gap-y-1 sm:grid-cols-[8rem_1fr]">
           <dt className="text-[var(--soft)]">草稿訂單</dt>
-          <dd>{o.shopify_draft_id ? <a className="text-[var(--gold)] hover:underline" href={`https://${host}/admin/draft_orders/${o.shopify_draft_id.split("/").pop()}`} target="_blank" rel="noopener noreferrer">開啟 Shopify 草稿 ↗</a> : "—"}</dd>
+          <dd>{o.shopify_draft_id && draftGone ? "已在 Shopify 刪除" : o.shopify_draft_id ? <a className="text-[var(--gold)] hover:underline" href={`https://${host}/admin/draft_orders/${o.shopify_draft_id.split("/").pop()}`} target="_blank" rel="noopener noreferrer">開啟 Shopify 草稿 ↗</a> : "—"}</dd>
           <dt className="text-[var(--soft)]">Shopify 訂單</dt>
           <dd>{o.shopify_order_id ? <a className="text-[var(--gold)] hover:underline" href={`https://${host}/admin/orders/${String(o.shopify_order_id).split("/").pop()}`} target="_blank" rel="noopener noreferrer">{shopifyOrderName || "開啟 Shopify 訂單"} ↗</a> : shopifyOrderName || "—"}</dd>
         </dl>
