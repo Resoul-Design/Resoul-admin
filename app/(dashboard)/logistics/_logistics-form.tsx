@@ -8,7 +8,8 @@ import { updateCustomerData } from "./actions";
 const input = "mt-1 w-full rounded-lg border border-[var(--line)] bg-white px-3 py-2 text-sm";
 
 // 客戶資料（Excel 欄位）：所有單號共用同一表格；未有客戶資料時保存即建立
-export function LogisticsForm({ invoice, initial, exists, isAdmin }: { invoice: string; initial: Record<string, string>; exists: boolean; isAdmin: boolean }) {
+export function LogisticsForm({ invoice, initial, exists, isAdmin, autoKeys = [] }: { invoice: string; initial: Record<string, string>; exists: boolean; isAdmin: boolean; autoKeys?: string[] }) {
+  const auto = new Set(autoKeys);
   const router = useRouter();
   const [values, setValues] = useState<Record<string, string>>(initial);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
@@ -32,6 +33,7 @@ export function LogisticsForm({ invoice, initial, exists, isAdmin }: { invoice: 
       </button>
       {open && (
         <>
+          {autoKeys.length > 0 && <p className="mt-2 text-xs text-[var(--soft)]"><span className="mr-1 inline-block h-3 w-3 rounded border border-amber-300 bg-amber-50 align-middle" />淡黃色欄位按單據資料自動填入（{autoKeys.length} 項），請核對後按「儲存修改」保存。</p>}
           {LOGISTICS_GROUPS.map((group) => {
             const fields = group.fields.filter((f) => !f.adminOnly || isAdmin);
             return (
@@ -42,7 +44,7 @@ export function LogisticsForm({ invoice, initial, exists, isAdmin }: { invoice: 
                     <label key={f.key} className={"text-sm" + (f.type === "textarea" ? " sm:col-span-2 lg:col-span-4" : "")}>
                       {f.label}
                       {f.type === "textarea" ? (
-                        <textarea value={values[f.key] || ""} onChange={(e) => setValues((v) => ({ ...v, [f.key]: e.target.value }))} rows={2} maxLength={2000} className={input} />
+                        <textarea value={values[f.key] || ""} onChange={(e) => setValues((v) => ({ ...v, [f.key]: e.target.value }))} rows={2} maxLength={2000} className={input + (auto.has(f.key) && values[f.key] === initial[f.key] ? " !bg-amber-50" : "")} />
                       ) : (
                         <input
                           type={f.type === "date" ? "date" : f.type === "url" ? "url" : "text"}
@@ -50,7 +52,7 @@ export function LogisticsForm({ invoice, initial, exists, isAdmin }: { invoice: 
                           value={values[f.key] || ""}
                           onChange={(e) => setValues((v) => ({ ...v, [f.key]: e.target.value }))}
                           maxLength={300}
-                          className={input}
+                          className={input + (auto.has(f.key) && values[f.key] === initial[f.key] ? " !bg-amber-50" : "")}
                         />
                       )}
                     </label>

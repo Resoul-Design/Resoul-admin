@@ -4,6 +4,7 @@ import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { LogisticsForm } from "../_logistics-form";
 import { LOGISTICS_FIELDS } from "@/lib/logistics-fields";
+import { deriveCustomerData } from "@/lib/logistics-derive";
 
 export const dynamic = "force-dynamic";
 export default async function LogisticsDetail({ params }: { params: Promise<{ invoice: string }> }) {
@@ -21,18 +22,16 @@ export default async function LogisticsDetail({ params }: { params: Promise<{ in
   const co = company.data?.[0], dep = deposits.data?.[0], cre = cremations.data?.[0], pro = products.data?.[0];
   const data = logistics.data || (co ? { ...co, owner_name: co.customer_name, phone: co.phone, email: co.email } : null) || (dep ? { ...dep, phone: dep.contact } : null) || (cre ? { ...cre, phone: cre.contact } : null) || (pro ? { ...pro, owner_name: pro.customer_name } : null);
   if (!data) notFound();
-  // 客戶資料表格預設值：有 Excel 記錄用記錄，否則由服務記錄帶入（保存後建立）
+  // 客戶資料表格：已保存的值優先；空白欄位按同一單號的單據自動填入（淡黃色標示，按「儲存修改」後保存）
   const lg = logistics.data as Record<string, unknown> | null;
-  const svc = (dep || cre || null) as Record<string, unknown> | null;
-  const fallback: Record<string, unknown> = {
-    owner_name: svc?.owner_name ?? co?.customer_name ?? pro?.customer_name, phone: svc?.contact ?? co?.phone ?? pro?.phone,
-    email: co?.email ?? pro?.email, pet_name: svc?.pet_name ?? co?.pet_name, animal: svc?.pet_type,
-    arrival_date: svc?.service_date, arrival_time: svc?.service_time, pickup_from: svc?.pickup_address, package_name: svc?.plan,
-    invoice_amount: svc?.payment_amount ?? co?.amount ?? pro?.total_amount,
-  };
+  const derived = deriveCustomerData({ deposits: deposits.data || [], cremations: cremations.data || [], company: company.data || [], products: products.data || [] });
+  const autoKeys: string[] = [];
   const formInitial: Record<string, string> = Object.fromEntries(LOGISTICS_FIELDS.map((f) => {
-    const v = lg ? lg[f.key] : fallback[f.key];
-    return [f.key, v == null ? "" : String(v).slice(0, f.type === "date" ? 10 : 2000)];
+    const saved = lg ? lg[f.key] : null;
+    if (saved != null && String(saved) !== "") return [f.key, String(saved).slice(0, f.type === "date" ? 10 : 2000)];
+    const auto = derived[f.key];
+    if (auto != null && String(auto) !== "") { autoKeys.push(f.key); return [f.key, String(auto).slice(0, f.type === "date" ? 10 : 2000)]; }
+    return [f.key, ""];
   }));
-  return <div><div className="mb-5 flex items-center gap-3"><Link href="/logistics" className="text-sm text-[var(--gold)] hover:underline">← 客戶資料</Link><h1 className="text-2xl font-semibold">{invoice}</h1></div><LogisticsForm invoice={invoice} initial={formInitial} exists={!!logistics.data} isAdmin={staff.role === "admin"} /></div>;
+  return <div><div className="mb-5 flex items-center gap-3"><Link href="/logistics" className="text-sm text-[var(--gold)] hover:underline">← 客戶資料</Link><h1 className="text-2xl font-semibold">{invoice}</h1></div><LogisticsForm invoice={invoice} initial={formInitial} exists={!!logistics.data} isAdmin={staff.role === "admin"} autoKeys={autoKeys} /></div>;
 }
