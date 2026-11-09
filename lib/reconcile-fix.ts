@@ -1,9 +1,10 @@
-// 對帳修正（只改後台，按 Shopify 實際資料；不會修改 Shopify）。員工按掣及系統自動對帳共用。
+// 對帳修正（按 Shopify 實際資料改後台；唯一例外：接送訂金折扣會按後台抵扣記錄重新套用到 Shopify）。員工按掣及系統自動對帳共用。
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { shopifyGraphQL } from "@/lib/shopify";
 import { appendNote } from "@/lib/payment-check";
 import type { Issue } from "@/lib/reconcile";
+import { reapplyDepositCredit } from "@/lib/deposit-credit-repair";
 
 // 背景（自動對帳）執行時 revalidatePath 可能不可用：忽略錯誤（頁面本身為即時讀取）
 function rv(path: string) { try { revalidatePath(path); } catch {} }
@@ -68,6 +69,15 @@ export async function applyFix(fix: NonNullable<Issue["fix"]>, who: string, audi
       return { done: "已標記已付款。" };
     }
     if (fix.kind === "refresh-lines") return refreshLines(fix, who, audit, today);
+    // 接送訂金折扣：按後台抵扣記錄重新套用到 Shopify 付款連結（唯一會寫入 Shopify 的修正）
+    if (fix.kind === "credit-reapply") {
+      const r = await reapplyDepositCredit(fix.id, who);
+      if (r.done) {
+        await audit("reconcile_fix", "deposit_bookings", fix.id, r.done);
+        for (const p of ["/deposits", "/bookings", "/orders", "/services"]) rv(p);
+      }
+      return r;
+    }
     if (!fix.orderId) return { error: "缺少 Shopify 訂單。" };
     const { order: o } = await shopifyGraphQL<{ order: ShopOrder | null }>(ORDER, { id: fix.orderId });
     if (!o) return { error: "Shopify 找不到此訂單。" };

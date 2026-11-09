@@ -203,7 +203,8 @@ export async function applyDepositCredit(t: CreditTarget, depositId: string): Pr
   const recorded = await recordOnDepositOrder(dep.shopify_order_id, `${hk(credit)} 用於${targetRef}`);
   await logAudit("apply_deposit_credit", "deposit_bookings", depositId, `${label}｜${target.projectNo}｜抵扣 ${hk(credit)}`);
   revalidate();
-  return recorded || !dep.shopify_order_id ? {} : { warning: "已套用抵扣，但未能在 Shopify 接送訂單加入記錄（後台已記錄）。" };
+  const reload = target.draftId ? "如 Shopify 已開啟此付款連結頁面，請先重新整理再修改，否則舊頁面儲存會覆蓋折扣。" : "";
+  return recorded || !dep.shopify_order_id ? (reload ? { warning: `已套用抵扣。${reload}` } : {}) : { warning: `已套用抵扣，但未能在 Shopify 接送訂單加入記錄（後台已記錄）。${reload}` };
 }
 
 export async function removeDepositCredit(t: CreditTarget): Promise<Result> {
