@@ -32,6 +32,8 @@ html {
 
 html,
 body {
+  /* 手機：頁面不可左右拉動（闊表格在各自的捲動框內左右拉） */
+  overflow-x: clip;
   background: var(--bg);
   color: var(--ink);
   font-family: var(--sans);
@@ -94,4 +96,13 @@ h3 {
 .no-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
+}
+
+/* 手機：輸入框字體至少 16px，避免 iPhone 撳入輸入框時自動放大，令頁面可左右移動 */
+@media (max-width: 767px) {
+  input:not([type="checkbox"]):not([type="radio"]),
+  select,
+  textarea {
+    font-size: 16px;
+  }
 }

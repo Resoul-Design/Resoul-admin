@@ -26,7 +26,7 @@ export function SyncAllButton() {
         {pending ? "同步中…" : <>⟳<span className="hidden sm:inline"> 全部同步</span></>}
       </button>
       {msg && (
-        <div role="status" className={"absolute right-0 top-full z-50 mt-2 w-72 rounded-xl border px-3 py-2 text-sm shadow-lg " + (msg.ok ? "border-green-200 bg-green-50 text-green-800" : "border-amber-200 bg-amber-50 text-amber-800")}>
+        <div role="status" className={"fixed inset-x-4 top-16 z-50 mx-auto max-w-sm rounded-xl border px-3 py-2 text-center text-sm shadow-lg sm:absolute sm:inset-x-auto sm:right-0 sm:top-full sm:mt-2 sm:w-72 sm:max-w-none sm:text-left " + (msg.ok ? "border-green-200 bg-green-50 text-green-800" : "border-amber-200 bg-amber-50 text-amber-800")}>
           {msg.text}
         </div>
       )}
