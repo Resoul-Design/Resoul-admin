@@ -33,6 +33,7 @@ export type ProductLine = {
   shopify_ref: string | null;
   invoice_url: string | null;
   suggested?: boolean;
+  missing?: boolean; // 已同步，但 Shopify 付款連結已沒有此項目（例如在 Shopify 刪除）
 };
 
 const LINE_COLUMNS = "id, invoice_no, extra_ref, pet_name, product_name, variant_title, variant_id, product_code, vendor, quantity, unit_price, amount, status, status_note, customer_order_date, completed_on, delivered_to_vendor_on, vendor_returned_on, cost, remarks, source, source_ref, sync_status, sync_error, shopify_ref, invoice_url, target_company_id";
@@ -70,29 +71,52 @@ export async function loadInvoiceProductLines(invoice: number): Promise<{ ready:
   const rows = (saved.data || []) as unknown as (Omit<ProductLine, "key"> & { target_company_id: string | null })[];
   const lines: ProductLine[] = rows.map((r) => ({ ...r, key: String(r.id), quantity: Number(r.quantity), unit_price: r.unit_price == null ? null : Number(r.unit_price), amount: r.amount == null ? null : Number(r.amount), cost: r.cost == null ? null : Number(r.cost) }));
 
-  // 已入表格的來源
-  const usedRefs = new Set(rows.map((r) => r.source_ref).filter(Boolean) as string[]);
-  const usedCompanies = new Set(rows.map((r) => r.target_company_id).filter(Boolean) as string[]);
+  // 已入表格的項目：按「產品名稱｜款式」逐件扣減，單據內仍未對應的項目才列為建議
+  const keyOf = (name: unknown, variant: unknown) => `${String(name || "").trim().toLowerCase()}|${String(variant || "").trim().toLowerCase()}`;
+  const unmatched = new Map<string, number>();
+  for (const r of rows) unmatched.set(keyOf(r.product_name, r.variant_title), (unmatched.get(keyOf(r.product_name, r.variant_title)) || 0) + Number(r.quantity || 1));
+  const take = (name: unknown, variant: unknown, qty: number) => {
+    const k = keyOf(name, variant), have = unmatched.get(k) || 0;
+    if (have <= 0) return qty;
+    unmatched.set(k, Math.max(0, have - qty));
+    return Math.max(0, qty - have);
+  };
   const companyRows = company.data || [];
-  const companyOfOrder = new Map(companyRows.filter((c) => c.shopify_order_id).map((c) => [String(c.shopify_order_id), String(c.id)]));
+  // 已同步的行：對照付款連結的最新項目（開單記錄的項目由對帳／全部同步跟隨 Shopify 更新）
+  const companyLeft = new Map<string, Map<string, number>>();
+  for (const c of companyRows) {
+    const m = new Map<string, number>();
+    for (const l of ((c.details as { lines?: CompanyLine[] } | null)?.lines || []) as CompanyLine[]) { const { name, variant } = splitLabel(l.label); m.set(keyOf(name, variant), (m.get(keyOf(name, variant)) || 0) + Number(l.quantity || 1)); }
+    companyLeft.set(String(c.id), m);
+  }
+  for (const l of lines) {
+    if (l.sync_status !== "synced") continue;
+    const target = rows.find((r) => r.id === l.id)?.target_company_id;
+    const m = target ? companyLeft.get(String(target)) : undefined;
+    if (!m) continue;
+    const k = keyOf(l.product_name, l.variant_title), have = m.get(k) || 0;
+    if (have >= l.quantity) m.set(k, have - l.quantity);
+    else l.missing = true;
+  }
 
   const suggestions: ProductLine[] = [];
   for (const o of orders.data || []) {
-    if (o.cancelled_at || usedRefs.has(o.shopify_order_id)) continue;
-    const companyId = companyOfOrder.get(o.shopify_order_id);
-    if (companyId && (usedRefs.has(`company:${companyId}`) || usedCompanies.has(companyId))) continue;
+    if (o.cancelled_at) continue;
     ((o.line_items || []) as ProductLineItem[]).forEach((it, i) => {
+      const variant = it.variant_title && it.variant_title !== "Default Title" ? it.variant_title : null;
+      const left = take(it.title, variant, Number(it.quantity || 1));
+      if (left <= 0) return;
       suggestions.push({
         ...blank(invoice, `s-${o.shopify_order_id}-${i}`), suggested: true, source: "shopify", source_ref: o.shopify_order_id,
         product_name: it.title || "", variant_title: it.variant_title && it.variant_title !== "Default Title" ? it.variant_title : null, product_code: it.sku || null,
-        quantity: Number(it.quantity || 1), unit_price: it.unit_price == null ? null : Number(it.unit_price), amount: it.unit_price == null ? null : Number(it.unit_price) * Number(it.quantity || 1),
+        quantity: left, unit_price: it.unit_price == null ? null : Number(it.unit_price), amount: it.unit_price == null ? null : Number(it.unit_price) * left,
         status: orderMemorialStatus(o) || "ordered", customer_order_date: String(o.shopify_created_at || "").slice(0, 10) || null,
       });
     });
   }
   const orderIds = new Set((orders.data || []).map((o) => o.shopify_order_id));
   for (const c of companyRows) {
-    if (c.status === "cancelled" || usedRefs.has(`company:${c.id}`) || usedCompanies.has(String(c.id))) continue;
+    if (c.status === "cancelled") continue;
     if (c.shopify_order_id && orderIds.has(c.shopify_order_id)) continue; // 已由 Shopify 訂單列出
     const all = ((c.details as { lines?: CompanyLine[] } | null)?.lines || []) as CompanyLine[];
     // 紀念品／其他：全部項目；火化及獸醫：第一項是服務本身，附加費不算產品
@@ -100,9 +124,11 @@ export async function loadInvoiceProductLines(invoice: number): Promise<{ ready:
     items.forEach((l, i) => {
       const { name, variant } = splitLabel(l.label);
       const price = l.price == null ? null : Number(l.price);
+      const left = take(name, variant, Number(l.quantity || 1));
+      if (left <= 0) return;
       suggestions.push({
         ...blank(invoice, `s-c${c.id}-${i}`), suggested: true, source: "company_order", source_ref: `company:${c.id}`,
-        product_name: name, variant_title: variant, quantity: Number(l.quantity || 1), unit_price: price, amount: price == null ? null : price * Number(l.quantity || 1),
+        product_name: name, variant_title: variant, quantity: left, unit_price: price, amount: price == null ? null : price * left,
         customer_order_date: String(c.created_at || "").slice(0, 10) || null,
       });
     });

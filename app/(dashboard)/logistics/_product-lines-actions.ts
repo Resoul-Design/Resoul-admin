@@ -6,6 +6,7 @@ import { getStaff, hasModule } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isMemorialStatus, slowestStatus } from "@/lib/memorial-status";
+import { removeProductLinesFromShopify } from "../new-order/actions";
 
 export type SaveLine = {
   id: string | null;
@@ -60,7 +61,6 @@ export async function saveProductLines(invoiceNo: number, rows: SaveLine[], dele
 
   // 已同步 Shopify 的行不可刪除（刪除不會改到 Shopify）
   const removable = (deleteIds || []).filter((id) => byId.has(id));
-  if (removable.some((id) => ["synced", "syncing"].includes(String(byId.get(id)?.sync_status)))) return { error: "已同步 Shopify 的項目不可在此刪除，請在 Shopify 修改。" };
 
   const inserts: Record<string, unknown>[] = [];
   const updates: { id: string; patch: Record<string, unknown> }[] = [];
@@ -102,7 +102,12 @@ export async function saveProductLines(invoiceNo: number, rows: SaveLine[], dele
     }
   }
 
+  let shopifyNote = "";
   if (removable.length) {
+    // 在 Shopify 付款連結的項目：先在 Shopify 刪除，失敗則整次不保存
+    const removed = await removeProductLinesFromShopify(invoiceNo, removable);
+    if (removed.error) return { error: removed.error };
+    shopifyNote = removed.done || "";
     const { error } = await admin.from("memorial_product_lines").delete().in("id", removable);
     if (error) return { error: `未能刪除：${error.message}` };
   }
@@ -126,5 +131,5 @@ export async function saveProductLines(invoiceNo: number, rows: SaveLine[], dele
 
   await logAudit("save_product_lines", "memorial_product_lines", String(invoiceNo), `單號 ${invoiceNo}｜${rows.length} 行${removable.length ? `｜刪除 ${removable.length} 行` : ""}`);
   for (const p of [`/logistics/${invoiceNo}`, "/logistics", "/orders", "/services", "/projects", "/crm"]) revalidatePath(p);
-  return { done: "已保存。" };
+  return { done: ["已保存。", shopifyNote].filter(Boolean).join(" ") };
 }

@@ -16,7 +16,7 @@ type Row = {
   delivered_to_vendor_on: string; vendor_returned_on: string; cost: string; remarks: string;
   source: string; source_ref: string | null; to_sync: boolean; suggested: boolean; locked: boolean;
   sync_status: ProductLine["sync_status"]; sync_error: string | null; shopify_ref: string | null; invoice_url: string | null;
-  status_note: string | null; extra_ref: string | null;
+  status_note: string | null; extra_ref: string | null; missing: boolean;
 };
 
 const cell = "w-full rounded-md border border-[var(--line)] bg-white px-2 py-1.5 text-sm disabled:bg-[var(--head)] disabled:text-[var(--soft)]";
@@ -29,14 +29,14 @@ function toRow(l: ProductLine): Row {
     quantity: str(l.quantity), unit_price: str(l.unit_price), amount: str(l.amount), status: l.status, customer_order_date: str(l.customer_order_date).slice(0, 10), completed_on: str(l.completed_on).slice(0, 10),
     delivered_to_vendor_on: str(l.delivered_to_vendor_on).slice(0, 10), vendor_returned_on: str(l.vendor_returned_on).slice(0, 10), cost: str(l.cost), remarks: str(l.remarks),
     source: l.source, source_ref: l.source_ref, to_sync: ["pending", "failed"].includes(l.sync_status), suggested: !!l.suggested, locked: ["synced", "syncing"].includes(l.sync_status),
-    sync_status: l.sync_status, sync_error: l.sync_error, shopify_ref: l.shopify_ref, invoice_url: l.invoice_url, status_note: l.status_note, extra_ref: l.extra_ref,
+    sync_status: l.sync_status, sync_error: l.sync_error, shopify_ref: l.shopify_ref, invoice_url: l.invoice_url, status_note: l.status_note, extra_ref: l.extra_ref, missing: !!l.missing,
   };
 }
 const fingerprint = (rows: Row[], removed: string[]) => JSON.stringify([rows, removed]);
 const newRow = (patch: Partial<Row>): Row => ({
   key: `n-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, id: null, product_name: "", variant_title: "", variant_id: null, product_code: "", vendor: "", quantity: "1", unit_price: "", amount: "",
   status: "ordered", customer_order_date: new Date(Date.now() + 8 * 3600 * 1000).toISOString().slice(0, 10), completed_on: "", delivered_to_vendor_on: "", vendor_returned_on: "", cost: "", remarks: "",
-  source: "manual", source_ref: null, to_sync: true, suggested: false, locked: false, sync_status: "none", sync_error: null, shopify_ref: null, invoice_url: null, status_note: null, extra_ref: null, ...patch,
+  source: "manual", source_ref: null, to_sync: true, suggested: false, locked: false, sync_status: "none", sync_error: null, shopify_ref: null, invoice_url: null, status_note: null, extra_ref: null, missing: false, ...patch,
 });
 
 // 紀念品產品表格：同一單號可有多行；按「儲存」保存，按「同步 Shopify」把新增項目加入 Shopify
@@ -86,7 +86,8 @@ export function ProductLines({ invoice, lines, catalog, catalogError, showCost, 
     setQty("1"); setPrice("");
   }
   function remove(r: Row) {
-    if (r.id && !window.confirm(`確定刪除「${r.product_name || "此行"}」？按「儲存」後生效。`)) return;
+    const inShopify = r.locked || r.source === "company_order";
+    if (r.id && !window.confirm(`確定刪除「${r.product_name || "此行"}」？${inShopify ? "按「儲存」時會同時在 Shopify 付款連結刪除此項目（已付款的單不能刪除）。" : "按「儲存」後生效。"}`)) return;
     if (r.id) setRemoved((x) => [...x, r.id as string]);
     setRows((list) => list.filter((x) => x.key !== r.key));
   }
@@ -99,7 +100,7 @@ export function ProductLines({ invoice, lines, catalog, catalogError, showCost, 
     start(async () => {
       const res = await saveProductLines(invoice, payload(), removed, showCost);
       if (res.error) return setMsg({ ok: false, text: res.error });
-      setMsg({ ok: true, text: "已保存。" });
+      setMsg({ ok: true, text: res.done || "已保存。" });
       router.refresh();
     });
   }
@@ -145,7 +146,7 @@ export function ProductLines({ invoice, lines, catalog, catalogError, showCost, 
               </thead>
               <tbody>
                 {rows.map((r) => (
-                  <tr key={r.key} className={"border-t border-[var(--line)] align-top " + (r.suggested ? "bg-amber-50" : "")}>
+                  <tr key={r.key} className={"border-t border-[var(--line)] align-top " + (r.suggested ? "bg-amber-50" : r.missing ? "bg-red-50" : "")}>
                     <td className="min-w-[180px] p-1"><input value={r.product_name} disabled={r.locked} onChange={(e) => set(r.key, { product_name: e.target.value })} maxLength={300} className={cell} aria-label="產品名稱" />{r.extra_ref && <span className="text-xs text-[var(--soft)]">附加單 {r.extra_ref}</span>}</td>
                     <td className="min-w-[110px] p-1"><input value={r.variant_title} disabled={r.locked} onChange={(e) => set(r.key, { variant_title: e.target.value })} maxLength={200} className={cell} aria-label="款式" /></td>
                     <td className="w-24 p-1"><input value={r.product_code} onChange={(e) => set(r.key, { product_code: e.target.value })} maxLength={120} className={cell} aria-label="產品代碼" /></td>
@@ -165,7 +166,9 @@ export function ProductLines({ invoice, lines, catalog, catalogError, showCost, 
                     {showCost && <td className="w-20 p-1"><input value={r.cost} onChange={(e) => set(r.key, { cost: e.target.value.replace(/[^\d.]/g, "") })} inputMode="decimal" className={cell} aria-label="成本" /></td>}
                     <td className="min-w-[160px] p-1"><input value={r.remarks} onChange={(e) => set(r.key, { remarks: e.target.value })} maxLength={2000} className={cell} aria-label="備註" /></td>
                     <td className="w-36 p-1 text-xs">
-                      {r.sync_status === "synced" ? (
+                      {r.missing ? (
+                        <span className="text-red-700">Shopify {r.shopify_ref || ""} 已沒有此項目，可按「移除」刪走此行</span>
+                      ) : r.sync_status === "synced" ? (
                         <span className="text-green-800">已同步{r.shopify_ref ? ` ${r.shopify_ref}` : ""}{r.invoice_url && <> · <a href={r.invoice_url} target="_blank" rel="noopener noreferrer" className="text-[var(--gold)] hover:underline">付款頁 ↗</a></>}</span>
                       ) : r.sync_status === "syncing" ? (
                         <span className="text-[var(--soft)]">同步中…</span>
@@ -178,7 +181,7 @@ export function ProductLines({ invoice, lines, catalog, catalogError, showCost, 
                         </>
                       )}
                     </td>
-                    <td className="w-10 p-1 text-right">{!r.locked && <button type="button" onClick={() => remove(r)} className="px-1 py-1.5 text-xs text-red-700 hover:underline">移除</button>}</td>
+                    <td className="w-10 p-1 text-right">{r.suggested ? <span className="px-1 text-xs text-[var(--soft)]" title="先按「儲存」，之後可移除（會同時刪除 Shopify 項目）">—</span> : r.sync_status !== "syncing" && <button type="button" onClick={() => remove(r)} className="px-1 py-1.5 text-xs text-red-700 hover:underline">移除</button>}</td>
                   </tr>
                 ))}
                 {rows.length === 0 && <tr><td colSpan={showCost ? 14 : 13} className="p-6 text-center text-[var(--soft)]">未有產品。可揀選 Shopify 產品或按「＋ 加一行」。</td></tr>}
@@ -196,7 +199,7 @@ export function ProductLines({ invoice, lines, catalog, catalogError, showCost, 
               {msg.text}{msg.ref ? `（Shopify ${msg.ref}）` : ""}{msg.url && <> <a href={msg.url} target="_blank" rel="noopener noreferrer" className="text-[var(--gold)] hover:underline">開啟付款頁 ↗</a></>}
             </p>
           )}
-          <p className="mt-3 text-xs text-[var(--soft)]">同步規則：未付款的單，新項目加入現有 Shopify 付款連結。已付款的單不能直接加項目，系統會用同一單號另開一條付款連結，客人只付新增項目。已同步的項目如要改名稱、數量或價錢，請在 Shopify 修改。</p>
+          <p className="mt-3 text-xs text-[var(--soft)]">同步規則：未付款的單，新項目加入現有 Shopify 付款連結。已付款的單不能直接加項目，系統會用同一單號另開一條付款連結，客人只付新增項目。已同步的項目如要改名稱、數量或價錢，請在 Shopify 修改；移除項目會同時在 Shopify 付款連結刪除（已付款的單不能刪除）。</p>
         </div>
       )}
     </section>

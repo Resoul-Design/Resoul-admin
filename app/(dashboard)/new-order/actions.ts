@@ -22,6 +22,7 @@ import { loadSiteContent } from "@/lib/site-content-server";
 import { ORDER_TYPE_MAP, RECEIVED_METHODS, type OrderType, type PaymentIntent } from "@/lib/order-types";
 import { applyFix } from "@/lib/reconcile-fix";
 import { loadInvoiceProductLines } from "@/lib/memorial-lines";
+import { reapplyDepositCredit } from "@/lib/deposit-credit-repair";
 
 export type NewOrderLine = { variantId: string; quantity: number };
 export type NewOrderInput = {
@@ -540,12 +541,12 @@ export async function changeInvoiceNo(oldNo: number, newNoText: string, reason: 
 // 每行帶 _resoul_line 欄位：重試時不會重覆加入；失敗保留「同步失敗」可重試。
 const LINE_KEY = "_resoul_line";
 const DRAFT_FOR_ADD = `query DraftForAdd($id: ID!) { draftOrder(id: $id) { id name status invoiceUrl order { id } appliedDiscount { title description value valueType }
-  lineItems(first: 100) { nodes { title quantity custom requiresShipping taxable variant { id } originalUnitPriceWithCurrency { amount currencyCode } priceOverride { amount currencyCode } appliedDiscount { title description value valueType } customAttributes { key value } } } } }`;
+  lineItems(first: 100) { nodes { title variantTitle quantity custom requiresShipping taxable variant { id } originalUnitPriceWithCurrency { amount currencyCode } priceOverride { amount currencyCode } appliedDiscount { title description value valueType } customAttributes { key value } } } } }`;
 const DRAFT_ADD = `mutation DraftAddLines($id: ID!, $input: DraftOrderInput!) { draftOrderUpdate(id: $id, input: $input) { draftOrder { id name invoiceUrl } userErrors { field message } } }`;
 type DraftDiscount = { title: string | null; description: string | null; value: number; valueType: string } | null;
 type DraftForAdd = {
   id: string; name: string; status: string; invoiceUrl: string | null; order: { id: string } | null; appliedDiscount: DraftDiscount;
-  lineItems: { nodes: { title: string; quantity: number; custom: boolean; requiresShipping: boolean; taxable: boolean; variant: { id: string } | null; originalUnitPriceWithCurrency: { amount: string; currencyCode: string } | null; priceOverride: { amount: string; currencyCode: string } | null; appliedDiscount: DraftDiscount; customAttributes: { key: string; value: string | null }[] }[] };
+  lineItems: { nodes: { title: string; variantTitle: string | null; quantity: number; custom: boolean; requiresShipping: boolean; taxable: boolean; variant: { id: string } | null; originalUnitPriceWithCurrency: { amount: string; currencyCode: string } | null; priceOverride: { amount: string; currencyCode: string } | null; appliedDiscount: DraftDiscount; customAttributes: { key: string; value: string | null }[] }[] };
 };
 type SyncLine = { id: string; product_name: string; variant_title: string | null; variant_id: string | null; quantity: number; unit_price: number | null };
 export type ProductSyncResult = { error?: string; done?: string; shopifyRef?: string; invoiceUrl?: string };
@@ -730,4 +731,71 @@ async function invoiceCustomer(invoiceNo: number): Promise<{ name: string; phone
     pet: first(company.data?.pet_name, cremation.data?.pet_name, deposit.data?.pet_name, logistics.data?.pet_name),
     projectNo: first(company.data?.project_no, cremation.data?.case_no, deposit.data?.project_no, product.data?.project_no),
   };
+}
+
+// ---- 產品表格移除項目：同時在 Shopify 付款連結刪除（未付款才可；已付款要在 Shopify 退款或編輯訂單）----
+type RemoveRow = { id: string; product_name: string; variant_title: string | null; quantity: number; sync_status: string; shopify_draft_id: string | null; source: string; source_ref: string | null; target_company_id: string | null };
+export async function removeProductLinesFromShopify(invoiceNo: number, ids: string[]): Promise<{ error?: string; done?: string }> {
+  const staff = await getStaff();
+  if (!staff || !hasModule(staff, ["inventory", "orders", "bookings", "vet_assessments", "deposits"])) return { error: "沒有權限。" };
+  if (!Number.isInteger(invoiceNo) || !Array.isArray(ids) || !ids.length) return {};
+  const admin = createAdminClient();
+  const { data } = await admin.from("memorial_product_lines").select("id, product_name, variant_title, quantity, sync_status, shopify_draft_id, source, source_ref, target_company_id").eq("invoice_no", invoiceNo).in("id", ids);
+  const rows = (data || []) as RemoveRow[];
+  if (rows.some((r) => r.source === "shopify")) return { error: "已付款的 Shopify 訂單項目不能在此刪除，請在 Shopify 退款或編輯訂單。" };
+  // 每行對應的付款連結草稿：已同步的行記錄草稿；開單時的項目按開單記錄
+  const companyIds = [...new Set(rows.map((r) => (r.source_ref?.startsWith("company:") ? r.source_ref.slice(8) : r.target_company_id)).filter(Boolean) as string[])];
+  const { data: cos } = companyIds.length ? await admin.from("company_orders").select("id, shopify_draft_id, shopify_order_id, linked_table, linked_id, status").in("id", companyIds) : { data: [] as { id: string; shopify_draft_id: string | null; shopify_order_id: string | null; linked_table: string | null; linked_id: string | null; status: string }[] };
+  const companyById = new Map((cos || []).map((c) => [String(c.id), c]));
+  const byDraft = new Map<string, { rows: RemoveRow[]; company: (typeof cos extends (infer T)[] | null ? T : never) | undefined }>();
+  for (const r of rows) {
+    const inShopify = ["synced", "syncing"].includes(r.sync_status) || r.source === "company_order";
+    if (!inShopify) continue;
+    const company = companyById.get(String(r.source_ref?.startsWith("company:") ? r.source_ref.slice(8) : r.target_company_id));
+    if (company?.shopify_order_id || company?.status === "paid") return { error: `「${r.product_name}」所屬的單已付款，不能在此刪除，請在 Shopify 退款或編輯訂單。` };
+    const draftId = r.shopify_draft_id || company?.shopify_draft_id;
+    if (!draftId) continue;
+    const cur = byDraft.get(draftId) || { rows: [], company };
+    cur.rows.push(r);
+    byDraft.set(draftId, cur);
+  }
+  const who = staff.name || staff.email;
+  const names: string[] = [];
+  for (const [draftId, group] of byDraft) {
+    const { draftOrder: d } = await shopifyGraphQL<{ draftOrder: DraftForAdd | null }>(DRAFT_FOR_ADD, { id: draftId });
+    if (!d) continue; // 草稿已刪除：只刪後台
+    if (d.order || d.status === "COMPLETED") return { error: `Shopify ${d.name} 已付款，不能在此刪除項目，請在 Shopify 退款或編輯訂單。` };
+    const items = existingDraftItems(d) as ({ title?: string; quantity: number; customAttributes: { key: string; value: string }[] } & Record<string, unknown>)[];
+    const nodes = d.lineItems.nodes;
+    const keep = items.map((it, i) => ({ it, node: nodes[i], qty: it.quantity }));
+    for (const r of group.rows) {
+      // 先按系統標記找；開單時的項目沒有標記，按產品名稱及款式找
+      let hit = keep.find((k) => k.qty > 0 && k.node.customAttributes.some((a) => a.key === LINE_KEY && a.value === r.id));
+      if (!hit) {
+        const variant = String(r.variant_title || "").trim();
+        hit = keep.find((k) => k.qty > 0 && !k.node.customAttributes.some((a) => a.key === LINE_KEY) && k.node.title.trim() === r.product_name.trim() && String(k.node.variantTitle || "").replace(/^Default Title$/, "").trim() === variant);
+      }
+      // Shopify 已沒有此項目（例如已在 Shopify 刪除）：只刪後台
+      if (!hit) continue;
+      hit.qty = Math.max(0, hit.qty - Number(r.quantity || 1));
+      names.push(r.product_name);
+    }
+    if (keep.every((k) => k.qty === k.it.quantity)) continue;
+    const remaining = keep.filter((k) => k.qty > 0).map((k) => ({ ...k.it, quantity: k.qty }));
+    if (!remaining.length) return { error: `刪除後 Shopify ${d.name} 會沒有任何項目。如要取消整張單，請用服務工作台的「取消」。` };
+    const res = await shopifyGraphQL<{ draftOrderUpdate: { draftOrder: { id: string } | null; userErrors: { message: string }[] } }>(DRAFT_ADD, {
+      id: d.id,
+      input: { lineItems: remaining, ...(d.appliedDiscount ? { appliedDiscount: discountInput(d.appliedDiscount) } : {}) },
+    });
+    if (res.draftOrderUpdate.userErrors.length || !res.draftOrderUpdate.draftOrder) return { error: `Shopify 未能刪除項目：${res.draftOrderUpdate.userErrors.map((e) => e.message).join("；") || "未知錯誤"}。後台未有刪除，請重試。` };
+    // 後台項目及金額跟隨 Shopify；接送訂金折扣按新小計調整
+    const c = group.company;
+    const bookingId = c?.linked_table === "cremation_bookings" ? c.linked_id : null;
+    await applyFix({ kind: "refresh-lines", id: bookingId || c?.id || "", ...(bookingId ? { table: "cremation_bookings" as const } : {}), ...(c?.id ? { companyId: c.id } : {}), draftId: d.id }, who, logAudit);
+    const targets = [`draft:${d.id}`, ...(c?.id ? [`company:${c.id}`] : []), ...(bookingId ? [`cremation:${bookingId}`] : [])];
+    const { data: deps } = await admin.from("deposit_bookings").select("id").in("credit_target", targets);
+    for (const dep of deps || []) await reapplyDepositCredit(dep.id, who);
+    await logAudit("remove_product_lines", "memorial_product_lines", String(invoiceNo), `單號 ${invoiceNo}｜由 Shopify ${d.name} 刪除：${group.rows.map((r) => `${r.product_name}×${r.quantity}`).join("、")}`);
+  }
+  return names.length ? { done: `已同時在 Shopify 刪除：${names.join("、")}。` } : {};
 }
