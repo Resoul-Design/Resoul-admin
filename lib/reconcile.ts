@@ -7,7 +7,7 @@ import { PLAN_CODES } from "@/lib/company";
 
 type Money = { shopMoney: { amount: string } };
 type SOrder = { id: string; name: string; createdAt: string; displayFinancialStatus: string; cancelledAt: string | null; test: boolean; totalPriceSet: Money; customAttributes: { key: string; value: string | null }[] };
-type SDraft = { id: string; name: string; status: string; order: { id: string; name: string } | null; totalPriceSet: Money; subtotalPriceSet: Money; appliedDiscount: { value: number; valueType: string } | null };
+type SDraft = { id: string; name: string; status: string; order: { id: string; name: string } | null; totalPriceSet: Money; subtotalPriceSet: Money; lineItemsSubtotalPrice: Money; appliedDiscount: { value: number; valueType: string } | null };
 
 export type FixKind = "booking-paid" | "booking-cancel" | "company-paid" | "product-refresh" | "refresh-lines" | "credit-reapply";
 export type Issue = {
@@ -42,7 +42,7 @@ export async function reconcile(opts: { includeTest?: boolean } = {}): Promise<R
   const live = opts.includeTest ? () => true : (test: unknown) => !test;
   const [orders, drafts, dep, cre, po, co, marks] = await Promise.all([
     pages<SOrder>(`query($after: String) { orders(first: 100, after: $after, sortKey: CREATED_AT, reverse: true) { pageInfo { hasNextPage endCursor } nodes { id name createdAt displayFinancialStatus cancelledAt test totalPriceSet { shopMoney { amount } } customAttributes { key value } } } }`, "orders"),
-    pages<SDraft>(`query($after: String) { draftOrders(first: 100, after: $after, sortKey: UPDATED_AT, reverse: true) { pageInfo { hasNextPage endCursor } nodes { id name status order { id name } totalPriceSet { shopMoney { amount } } subtotalPriceSet { shopMoney { amount } } appliedDiscount { value valueType } } } }`, "draftOrders"),
+    pages<SDraft>(`query($after: String) { draftOrders(first: 100, after: $after, sortKey: UPDATED_AT, reverse: true) { pageInfo { hasNextPage endCursor } nodes { id name status order { id name } totalPriceSet { shopMoney { amount } } subtotalPriceSet { shopMoney { amount } } lineItemsSubtotalPrice { shopMoney { amount } } appliedDiscount { value valueType } } } }`, "draftOrders"),
     db.from("deposit_bookings").select("id, invoice_no, owner_name, payment_status, payment_amount, shopify_order_id, shopify_order_name, payment_draft_id, status, is_test, credit_target, credit_amount").then((r) => (r.data || []).filter((x) => live(x.is_test))),
     db.from("cremation_bookings").select("id, invoice_no, owner_name, payment_status, payment_amount, deposit_credit, shopify_order_id, shopify_order_name, status, source, is_test").then((r) => (r.data || []).filter((x) => live(x.is_test))),
     db.from("product_orders").select("shopify_order_id, order_name, invoice_no, financial_status, total_amount, cancelled_at, is_test").then((r) => (r.data || []).filter((x) => live(x.is_test))),
@@ -113,10 +113,12 @@ export async function reconcile(opts: { includeTest?: boolean } = {}): Promise<R
     if (!c.linked_id && c.status !== "cancelled" && ["product", "other"].includes(String(c.order_type)) && lines.some((l) => Object.keys(PLAN_CODES).some((k) => String(l.label).includes(k)))) add({ category: "紀念品單含火化方案", invoiceNo: no, text: `${TYPE[String(c.order_type)] || c.order_type}：請在單詳情按「轉為火化預約」`, link: `/new-order/${c.id}` });
     // 未付款的付款連結：在 Shopify 加減項目後，後台跟隨（比較折扣前的項目合計）
     if (d && d.status !== "COMPLETED" && c.status !== "cancelled") {
-      const got = num(d.subtotalPriceSet?.shopMoney.amount ?? d.totalPriceSet.shopMoney.amount);
+      const got = num(d.lineItemsSubtotalPrice?.shopMoney.amount ?? d.totalPriceSet.shopMoney.amount);
       if (Math.abs(num(c.amount) - got) > 0.5) add({ category: "項目或金額不一致", invoiceNo: no, text: `開新單 ${TYPE[String(c.order_type)] || c.order_type}：後台 HK$${num(c.amount)}，Shopify 付款連結 HK$${got}`, fix: { kind: "refresh-lines", id: String(c.linked_id || c.id), table: c.linked_table ? (String(c.linked_table) as "deposit_bookings" | "cremation_bookings") : undefined, draftId: d.id, companyId: String(c.id) } });
     } else if (d && !c.linked_id) {
-      const expect = num(c.amount) - num((c.details as { depositCredit?: { amount?: number } | null } | null)?.depositCredit?.amount);
+      // 扣除接送訂金：開單時套用（details）或之後在列表套用（訂金記錄）
+      const credit = num((c.details as { depositCredit?: { amount?: number } | null } | null)?.depositCredit?.amount) || num((dep as Record<string, unknown>[]).find((x) => x.credit_target === `company:${c.id}` || x.credit_target === `draft:${c.shopify_draft_id}`)?.credit_amount);
+      const expect = num(c.amount) - credit;
       const got = num(d.totalPriceSet.shopMoney.amount);
       if (Math.abs(expect - got) > 0.5) add({ category: "項目或金額不一致", invoiceNo: no, text: `開新單 ${TYPE[String(c.order_type)] || c.order_type}：後台 HK$${expect}，Shopify HK$${got}`, link: `/new-order/${c.id}` });
     }

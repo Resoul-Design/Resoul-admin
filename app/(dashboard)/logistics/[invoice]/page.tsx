@@ -38,7 +38,7 @@ export default async function LogisticsDetail({ params }: { params: Promise<{ in
     const saved = lg ? lg[f.key] : null;
     if (saved != null && String(saved) !== "") return [f.key, String(saved).slice(0, f.type === "date" ? 10 : 2000)];
     const auto = derived[f.key];
-    if (auto != null && String(auto) !== "") { autoKeys.push(f.key); return [f.key, String(auto).slice(0, f.type === "date" ? 10 : 2000)]; }
+    if (auto != null && String(auto) !== "") { if (!f.hidden) autoKeys.push(f.key); return [f.key, String(auto).slice(0, f.type === "date" ? 10 : 2000)]; }
     return [f.key, ""];
   }));
   const invoiceNo = Number(invoice);

@@ -9,9 +9,9 @@ import { depositCreditValue } from "@/lib/deposit-amount";
 const ATTR_KEY = "Deposit credit";
 const TAG = "Deposit Credit";
 const NOTE_PREFIX = "💰 接送訂金抵扣";
-const DRAFT = `query CreditRepairDraft($id: ID!) { draftOrder(id: $id) { id name status order { id } note2 tags customAttributes { key value } appliedDiscount { value valueType } subtotalPriceSet { shopMoney { amount } } } }`;
+const DRAFT = `query CreditRepairDraft($id: ID!) { draftOrder(id: $id) { id name status order { id } note2 tags customAttributes { key value } appliedDiscount { value valueType } lineItemsSubtotalPrice { shopMoney { amount } } } }`;
 const UPDATE = `mutation CreditRepair($id: ID!, $input: DraftOrderInput!) { draftOrderUpdate(id: $id, input: $input) { draftOrder { id } userErrors { message } } }`;
-type Draft = { id: string; name: string; status: string; order: { id: string } | null; note2: string | null; tags: string[]; customAttributes: { key: string; value: string | null }[]; appliedDiscount: { value: number; valueType: string } | null; subtotalPriceSet: { shopMoney: { amount: string } } };
+type Draft = { id: string; name: string; status: string; order: { id: string } | null; note2: string | null; tags: string[]; customAttributes: { key: string; value: string | null }[]; appliedDiscount: { value: number; valueType: string } | null; lineItemsSubtotalPrice: { shopMoney: { amount: string } } };
 
 const hk = (n: number) => `HK$${n.toLocaleString("en-US", { maximumFractionDigits: 2 })}`;
 const today = () => new Date(Date.now() + 8 * 3600 * 1000).toISOString().slice(0, 10);
@@ -31,8 +31,9 @@ export async function creditDraftId(target: string): Promise<string | null> {
 }
 
 // 應有的抵扣額及 Shopify 現有折扣是否一致
-export function creditMismatch(depositAmount: unknown, recorded: unknown, d: { appliedDiscount: { value: number; valueType: string } | null; subtotalPriceSet: { shopMoney: { amount: string } } }) {
-  const expected = Math.min(depositCreditValue(depositAmount), Number(d.subtotalPriceSet.shopMoney.amount));
+// 抵扣額上限＝折扣前的項目小計（subtotalPriceSet 已扣除折扣，不能用）
+export function creditMismatch(depositAmount: unknown, recorded: unknown, d: { appliedDiscount: { value: number; valueType: string } | null; lineItemsSubtotalPrice: { shopMoney: { amount: string } } }) {
+  const expected = Math.min(depositCreditValue(depositAmount), Number(d.lineItemsSubtotalPrice.shopMoney.amount));
   const shopify = d.appliedDiscount && d.appliedDiscount.valueType === "FIXED_AMOUNT" ? Number(d.appliedDiscount.value) : 0;
   return { expected, shopify, mismatch: expected > 0 && (Math.abs(shopify - expected) > 0.005 || Math.abs(Number(recorded || 0) - expected) > 0.005) };
 }
