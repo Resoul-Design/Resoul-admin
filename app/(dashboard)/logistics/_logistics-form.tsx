@@ -10,12 +10,18 @@ const input = "mt-1 w-full rounded-lg border border-[var(--line)] bg-white px-3 
 // 客戶資料（Excel 欄位）：所有單號共用同一表格；未有客戶資料時保存即建立。
 // 分 6 組（主人及寵物、接送、火化、費用、骨灰盅、紀念品），預設收起，按組名展開；
 // 收起的組別仍保留已修改的內容，最後按「儲存修改」一次過保存全部。
-export function LogisticsForm({ invoice, initial, exists, isAdmin, autoKeys = [] }: { invoice: string; initial: Record<string, string>; exists: boolean; isAdmin: boolean; autoKeys?: string[] }) {
+// 金額欄：已保存的數與單據即時計算不同時提示（例如開單後再加產品）
+const COMPARE = new Set(["invoice_amount", "package_price", "memorial_addon_price", "other_surcharge", "deposit_received", "balance_settled"]);
+const differs = (a: string, b: string) => { const x = Number(String(a).replace(/[$,\s]/g, "")), y = Number(String(b).replace(/[$,\s]/g, "")); return Number.isFinite(x) && Number.isFinite(y) ? Math.abs(x - y) > 0.005 : a.trim() !== b.trim(); };
+
+export function LogisticsForm({ invoice, initial, exists, isAdmin, autoKeys = [], derived = {} }: { invoice: string; initial: Record<string, string>; exists: boolean; isAdmin: boolean; autoKeys?: string[]; derived?: Record<string, string> }) {
   const auto = new Set(autoKeys);
   const router = useRouter();
   const [values, setValues] = useState<Record<string, string>>(initial);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [pending, start] = useTransition();
+  const stale = (k: string) => COMPARE.has(k) && !auto.has(k) && !!derived[k] && !!(values[k] || "").trim() && differs(values[k] || "", derived[k]);
+  const staleCount = Object.keys(derived).filter(stale).length;
   const groups = LOGISTICS_GROUPS.map((g) => ({ ...g, fields: g.fields.filter((f) => (!f.adminOnly || isAdmin) && !f.hidden) }));
   const [closed, setClosed] = useState<Set<string>>(() => new Set(groups.map((g) => g.title)));
   const [saved, setSaved] = useState<Record<string, string>>(initial);
@@ -49,6 +55,7 @@ export function LogisticsForm({ invoice, initial, exists, isAdmin, autoKeys = []
           </a>
         ))}
       </nav>
+      {staleCount > 0 && <p className="mb-3 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">有 {staleCount} 個金額與單據最新計算不同（例如開單後加減了產品），請在「費用與付款」核對，按「用單據金額」更新後儲存。</p>}
       {autoKeys.length > 0 && <p className="mb-3 text-xs text-[var(--soft)]"><span className="mr-1 inline-block h-3 w-3 rounded border border-amber-300 bg-amber-50 align-middle" />淡黃色欄位按單據資料自動填入（{autoKeys.length} 項），請核對後按「儲存修改」保存。</p>}
       <div className="space-y-3">
         {groups.map((group, i) => {
@@ -61,6 +68,7 @@ export function LogisticsForm({ invoice, initial, exists, isAdmin, autoKeys = []
                 <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[var(--gold)] text-xs font-semibold text-white">{i + 1}</span>
                 <span className="font-semibold">{group.title}</span>
                 <span className="text-xs text-[var(--soft)]">已填 {filled}／{group.fields.length}</span>
+                {group.fields.some((f) => stale(f.key)) && <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-800">金額待核對</span>}
                 {edited > 0 && <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-800">已修改 {edited} 項</span>}
                 <span className="ml-auto text-[var(--soft)]">{open ? "▾" : "▸"}</span>
               </button>
@@ -80,6 +88,12 @@ export function LogisticsForm({ invoice, initial, exists, isAdmin, autoKeys = []
                           maxLength={300}
                           className={input + (auto.has(f.key) && values[f.key] === initial[f.key] ? " !bg-amber-50" : "")}
                         />
+                      )}
+                      {stale(f.key) && (
+                        <span className="mt-1 block text-xs text-amber-800">
+                          單據計算：{derived[f.key]}
+                          <button type="button" onClick={() => setValues((v) => ({ ...v, [f.key]: derived[f.key] }))} className="ml-2 text-[var(--gold)] underline">用單據金額</button>
+                        </span>
                       )}
                     </label>
                   ))}

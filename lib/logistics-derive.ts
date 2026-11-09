@@ -63,7 +63,9 @@ export function deriveCustomerData(src: { deposits: Row[]; cremations: Row[]; co
   const packagePrice = lines.length ? lineSum(isPlanLabel) : cremGross;
   const surcharge = lineSum((l) => l.startsWith("附加費"));
   const companyAddons = lineSum((l) => !isPlanLabel(l) && !l.startsWith("附加費"));
-  const otherCompany = companies.filter((c) => !c.linked_id);
+  // 未連結服務記錄的開單（紀念品／其他）；已付款並已同步為 Shopify 訂單的，由紀念品訂單計算，避免重複
+  const productOrderIds = new Set(products.map((p) => str(p.shopify_order_id)).filter(Boolean));
+  const otherCompany = companies.filter((c) => !c.linked_id && str(c.order_type) !== "deposit" && !(c.shopify_order_id && productOrderIds.has(str(c.shopify_order_id))));
   const productTotal = products.reduce((n, p) => n + num(p.total_amount), 0) + otherCompany.reduce((n, c) => n + num(c.amount), 0);
   const vetGross = num(vet?.payment_amount);
   const invoiceAmount = cremGross + vetGross + productTotal;

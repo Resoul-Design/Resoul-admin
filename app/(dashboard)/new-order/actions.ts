@@ -403,7 +403,7 @@ export async function createOrder(input: NewOrderInput): Promise<{ id?: string; 
 
   const { error: logisticsError } = await admin.from("logistics_orders").upsert({
     invoice_no: invoiceNo, source: "admin", owner_name: name, phone, email: email || null, pet_name: petName || null, animal: petType || null,
-    package_name: planName || def2.label, arrival_date: serviceDate || null, arrival_time: slot || null, pickup_from: address || null, invoice_amount: amount,
+    package_name: planName || def2.label, arrival_date: serviceDate || null, arrival_time: slot || null, pickup_from: address || null,
   }, { onConflict: "invoice_no", ignoreDuplicates: true });
   if (logisticsError) console.error("[new_order_logistics]", logisticsError.message);
 
