@@ -6,6 +6,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { logAudit } from "@/lib/audit";
 import { shopifyGraphQL } from "@/lib/shopify";
 import { isProjectNo } from "@/lib/order-label";
+import { isMemorialStatus, memorialLabel } from "@/lib/memorial-status";
 
 // 紀念品訂單連結客人原有的專案編號（須已存在於接送、火化或其他紀念品記錄）
 const ORDER_PROJECT_QUERY = `query OrderProject($id: ID!) { order(id: $id) { note customAttributes { key value } } }`;
@@ -37,6 +38,22 @@ async function syncOrderProjectToShopify(orderId: string, projectNo: string): Pr
     console.error("[link_order_project_shopify]", e instanceof Error ? e.message : "unknown");
     return false;
   }
+}
+
+// 紀念品訂單的產品狀態：已訂購／待交付／已完成。同一訂單帶入表格的產品列一併更新。
+export async function setOrderMemorialStatus(orderId: string, status: string): Promise<{ error?: string }> {
+  const staff = await getStaff();
+  if (!staff) return { error: "登入狀態已失效，請重新登入。" };
+  if (!hasModule(staff, ["orders"])) return { error: "沒有「紀念品訂單」權限。" };
+  if (!isMemorialStatus(status)) return { error: "狀態無效。" };
+  const admin = createAdminClient();
+  const { data, error } = await admin.from("product_orders").update({ memorial_status: status }).eq("shopify_order_id", orderId).select("invoice_no");
+  if (error) return { error: /memorial_status/.test(error.message) ? "未啟用產品狀態：請先於 Supabase 執行 db/migration_20261109_memorial_lines_cancel.sql。" : `未能更新：${error.message}` };
+  if (!data?.length) return { error: "找不到此訂單。" };
+  await admin.from("memorial_product_lines").update({ status, updated_at: new Date().toISOString() }).eq("source_ref", orderId);
+  await logAudit("set_memorial_status", "product_orders", orderId, `單號 ${data[0].invoice_no ?? "—"}｜${memorialLabel(status)}`);
+  for (const p of ["/orders", "/services", "/logistics", "/projects", "/crm", `/logistics/${data[0].invoice_no}`]) revalidatePath(p);
+  return {};
 }
 
 export async function linkOrderProject(orderId: string, rawProjectNo: string): Promise<{ error?: string; warning?: string }> {

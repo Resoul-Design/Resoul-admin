@@ -1,3 +1,4 @@
+import { orderMemorialLabel } from "@/lib/memorial-status";
 import { loadSouvenirDrafts } from "@/lib/souvenir-drafts";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
@@ -74,12 +75,6 @@ function projectNo(b: Booking): string {
   return canonicalProjectNo(b.case_no, projectNoFromNotes(b.notes));
 }
 
-const FUL: Record<string, string> = {
-  FULFILLED: "已出貨",
-  UNFULFILLED: "未出貨",
-  PARTIALLY_FULFILLED: "部分出貨",
-  RESTOCKED: "已退貨入庫",
-};
 
 // 日期及時間：預約日期＋時段；未有預約日期時用建立時間（香港時間）
 const hkDateTime = (iso: string) => {
@@ -210,7 +205,7 @@ export default async function CustomerPage({
     project: productOrderProjectNo(o),
     order: o.invoice_no ? String(o.invoice_no) : "—",
     content: (o.line_items || []).map((item) => `${item.title}×${item.quantity}`).join("、") || "—",
-    status: o.cancelled_at ? "已取消" : o.financial_status === "DRAFT" ? "草稿" : FUL[o.fulfillment_status || ""] || "未出貨",
+    status: o.cancelled_at ? "已取消" : o.financial_status === "DRAFT" ? "草稿" : orderMemorialLabel(o),
     payment: FIN[o.financial_status || ""] || o.financial_status || "—",
     amount: money(Number(o.total_amount)),
   }));

@@ -6,6 +6,7 @@ import { canonicalProjectNo, projectNoFromNotes } from "@/lib/order-label";
 import { buildXlsx, type Cell, type Sheet } from "@/lib/xlsx";
 import { invoiceLabel } from "@/lib/invoice-label";
 import { extraOrders } from "@/lib/logistics-extra";
+import { memorialLabel, orderMemorialLabel } from "@/lib/memorial-status";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -59,6 +60,21 @@ export async function GET(req: Request) {
       headers: ["單號", ...fields.map((f) => f.label), "資料來源", "最後更新"],
       rows: rows.map((r) => [n(r.invoice_no), ...fields.map((f) => (f.type === "number" ? n(r[f.key]) : s(r[f.key]))), r.source === "admin" ? "後台建立" : r.source === "basic_info_logistic" ? "Excel 匯入" : s(r.source), hk(r.updated_at)]),
     });
+    // 紀念品產品列（同一單號多行；表格未建立時略過）
+    const lineRows: Record<string, unknown>[] = [];
+    for (let from = 0; from < 20000; from += 1000) {
+      const { data, error } = await admin.from("memorial_product_lines").select("*").order("invoice_no", { ascending: false }).order("sort_order").range(from, from + 999);
+      if (error || !data?.length) break;
+      lineRows.push(...(data as Record<string, unknown>[]));
+      if (data.length < 1000) break;
+    }
+    if (lineRows.length) {
+      sheets.push({
+        name: "紀念品產品列",
+        headers: ["單號", "附加單號", "寵物", "產品名稱", "款式", "產品代碼", "供應商", "數量", "單價", "金額", "狀態", "下單日期", "完成日期", "交供應商", "供應商交回", ...(staff.role === "admin" ? ["成本"] : []), "備註", "Shopify"],
+        rows: lineRows.map((r) => [n(r.invoice_no), s(r.extra_ref), s(r.pet_name), s(r.product_name), s(r.variant_title), s(r.product_code), s(r.vendor), n(r.quantity), n(r.unit_price), n(r.amount), memorialLabel(String(r.status || "")), s(r.customer_order_date), s(r.completed_on), s(r.delivered_to_vendor_on), s(r.vendor_returned_on), ...(staff.role === "admin" ? [n(r.cost)] : []), s(r.remarks), s(r.shopify_ref)]),
+      });
+    }
     // 附加單（Excel 66B 等，附在原單號）
     const extras = rows.flatMap((r) => extraOrders(r).map((x) => ({ parent: r, x })));
     if (extras.length) {
@@ -94,12 +110,12 @@ export async function GET(req: Request) {
     const rows = await all("product_orders", "shopify_created_at");
     sheets.push({
       name: "紀念品訂單",
-      headers: ["單號", "專案編號", "Shopify 訂單號（內部參考）", "日期", "客人", "電話", "電郵", "商品", "金額（HKD）", "付款狀態", "出貨狀態", "取消時間"],
+      headers: ["單號", "專案編號", "Shopify 訂單號（內部參考）", "日期", "客人", "電話", "電郵", "商品", "金額（HKD）", "付款狀態", "產品狀態", "取消時間"],
       rows: rows.map((r) => {
         const items = (Array.isArray(r.line_items) ? r.line_items : []) as { title?: string; variant_title?: string | null; quantity?: number; unit_price?: number | null }[];
         return [n(r.invoice_no), s(r.project_no), s(r.order_name), hk(r.shopify_created_at), s(r.customer_name), s(r.phone), s(r.email),
           items.map((it) => `${it.title || ""}${it.variant_title ? `（${it.variant_title}）` : ""} × ${it.quantity ?? 1}${it.unit_price != null ? `　HK$${Number(it.unit_price).toLocaleString("en-US")}` : ""}`).join("\n"),
-          n(r.total_amount), st(r.financial_status), st(r.fulfillment_status), hk(r.cancelled_at)];
+          n(r.total_amount), st(r.financial_status), orderMemorialLabel(r as { memorial_status?: string | null; fulfillment_status?: string | null }), hk(r.cancelled_at)];
       }),
     });
     const co = await all("company_orders", "created_at");

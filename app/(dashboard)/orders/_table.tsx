@@ -7,10 +7,13 @@ import type { FollowEntry } from "@/lib/follow-up-server";
 import { WHATSAPP_CONFIRM } from "../_testing-notice";
 import { csvCell } from "@/lib/csv";
 import { Fragment, useMemo, useState } from "react";
+import { matchesInvoice } from "@/lib/invoice-search";
 import { RowActions, type RowAction } from "../_row-actions";
 import { TestFlagPanel } from "../_test-controls";
 import { LinkProjectPanel } from "./_link-project";
 import { DepositCreditPanel } from "../_deposit-credit";
+import { MEMORIAL_STATUSES, memorialClass } from "@/lib/memorial-status";
+import { MemorialStatusSelect } from "./_memorial-status";
 
 export type OrderRow = {
   id: string;
@@ -24,7 +27,8 @@ export type OrderRow = {
   items: string;
   fin: string;
   finLabel: string;
-  fulLabel: string;
+  fulLabel: string; // 產品狀態（已訂購／待交付／已完成，草稿顯示「草稿」）
+  memorial?: string; // 可修改的產品狀態值；草稿及已取消的單沒有
   amount: number;
   currency: string;
   cancelled: boolean;
@@ -72,11 +76,7 @@ function finClass(fin: string) {
   if (fin === "REFUNDED" || fin === "PARTIALLY_REFUNDED" || fin === "VOIDED") return "bg-gray-200 text-gray-700";
   return "bg-amber-100 text-amber-800";
 }
-function fulClass(label: string) {
-  if (label === "已出貨") return "bg-green-100 text-green-800";
-  if (label === "未出貨") return "bg-amber-100 text-amber-800";
-  return "bg-blue-100 text-blue-800";
-}
+const fulClass = memorialClass;
 
 const STATUS_OPTS = [
   { key: "all", label: "全部" },
@@ -91,15 +91,18 @@ export function OrdersTable({ rows, initialQuery = "", staffName = "同事", fol
   const [q, setQ] = useState(initialQuery);
   const [onlyFollow, setOnlyFollow] = useState(initialOnlyFollow);
   const [status, setStatus] = useState("all");
+  const [productStatus, setProductStatus] = useState("all");
   const [page, setPage] = useState(1);
 
   const filtered = useMemo(() => {
     const kw = q.trim().toLowerCase();
     return rows.filter((r) => {
       if (status === "cancelled" ? !r.cancelled : status !== "all" && (r.cancelled || r.fin !== status)) return false;
+      if (productStatus !== "all" && r.fulLabel !== productStatus) return false;
       if (onlyFollow && !r.followUp) return false;
       if (!kw) return true;
       return (
+        matchesInvoice(kw, r.invoiceNo) ||
         r.invoiceNo.includes(kw) ||
         r.orderName.toLowerCase().includes(kw) ||
         r.projectNo.toLowerCase().includes(kw) ||
@@ -108,7 +111,7 @@ export function OrdersTable({ rows, initialQuery = "", staffName = "同事", fol
         r.items.toLowerCase().includes(kw)
       );
     }).sort((a, b) => onlyFollow ? FOLLOW_UP_ORDER.indexOf(a.followUp!.kind) - FOLLOW_UP_ORDER.indexOf(b.followUp!.kind) : 0);
-  }, [rows, q, status, onlyFollow]);
+  }, [rows, q, status, productStatus, onlyFollow]);
   const followCount = rows.filter((r) => r.followUp).length;
 
   const pages = Math.max(1, Math.ceil(filtered.length / PAGE));
@@ -116,7 +119,7 @@ export function OrdersTable({ rows, initialQuery = "", staffName = "同事", fol
   const shown = filtered.slice((cur - 1) * PAGE, cur * PAGE);
 
   function exportCsv() {
-    const header = ["單號", "專案編號", "日期", "客戶", "電話", "內容", "付款", "出貨", "金額", "幣別", "已取消"];
+    const header = ["單號", "專案編號", "日期", "客戶", "電話", "內容", "付款", "產品狀態", "金額", "幣別", "已取消"];
     const lines = filtered.map((r) =>
       [r.invoiceNo, r.projectNo, r.date, r.customer, r.phone, r.items, r.finLabel, r.fulLabel, r.amount, r.currency, r.cancelled ? "是" : ""]
         .map(csvCell)
@@ -140,7 +143,7 @@ export function OrdersTable({ rows, initialQuery = "", staffName = "同事", fol
         <input
           value={q}
           onChange={(e) => onSearch(e.target.value)}
-          placeholder="搜尋訂單 / 專案編號 / 客戶 / 電話 / 產品…"
+          placeholder="搜尋單號 / 專案編號 / 客戶 / 電話 / 產品…"
           className="min-w-[200px] flex-1 rounded-lg border border-[var(--line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--gold)]"
         />
         <select
@@ -150,12 +153,16 @@ export function OrdersTable({ rows, initialQuery = "", staffName = "同事", fol
         >
           {STATUS_OPTS.map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}
         </select>
+        <select value={productStatus} onChange={(e) => { setProductStatus(e.target.value); setPage(1); }} aria-label="產品狀態篩選" className="rounded-lg border border-[var(--line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--gold)]">
+          <option value="all">全部產品狀態</option>
+          {MEMORIAL_STATUSES.map((s) => <option key={s.key} value={s.label}>{s.label}</option>)}
+        </select>
         <button onClick={exportCsv} className="rounded-lg border border-[var(--line)] px-3 py-2 text-sm hover:bg-[var(--cream)]">匯出 CSV</button>
       </div>
 
       <FollowUpBar ready={followReady} count={followCount} only={onlyFollow} onToggle={() => { setOnlyFollow((v) => !v); setPage(1); }} />
 
-      <div className="mb-2 text-xs text-[var(--soft)]">共 {filtered.length} 張{q || status !== "all" ? "（已篩選）" : ""}</div>
+      <div className="mb-2 text-xs text-[var(--soft)]">共 {filtered.length} 張{q || status !== "all" || productStatus !== "all" ? "（已篩選）" : ""}</div>
 
       {/* 桌面表格：欄位格式與「接送服務」一致，操作放在第二行金額至出貨下方 */}
       <div className="hidden overflow-x-auto rounded-2xl border border-[var(--line)] bg-[var(--card)] lg:block">
@@ -169,7 +176,7 @@ export function OrdersTable({ rows, initialQuery = "", staffName = "同事", fol
               <th className="px-4 py-3 font-medium">內容</th>
               <th className="px-4 py-3 text-right font-medium">金額</th>
               <th className="px-4 py-3 font-medium">付款</th>
-              <th className="px-4 py-3 font-medium">出貨</th>
+              <th className="px-4 py-3 font-medium">產品狀態</th>
             </tr>
           </thead>
           <tbody>{shown.map((r) => (
@@ -194,7 +201,7 @@ export function OrdersTable({ rows, initialQuery = "", staffName = "同事", fol
                       ? <span className="inline-block rounded-full bg-red-100 px-2 py-0.5 text-xs text-red-700">已取消</span>
                       : <span className={"inline-block rounded-full px-2 py-0.5 text-xs " + finClass(r.fin)}>{r.finLabel}</span>}
                   </div>
-                  <div className="px-4 whitespace-nowrap"><span className={"inline-block rounded-full px-2 py-0.5 text-xs " + fulClass(r.fulLabel)}>{r.fulLabel}</span></div>
+                  <div className="px-4 whitespace-nowrap">{r.memorial ? <MemorialStatusSelect key={r.memorial} orderId={r.id} value={r.memorial} /> : <span className={"inline-block rounded-full px-2 py-0.5 text-xs " + fulClass(r.fulLabel)}>{r.fulLabel}</span>}</div>
                 </div>
                 <div className="mt-1.5 flex items-center justify-end gap-3 px-4">{r.followWaiting && <span className="text-xs text-[var(--soft)]">{r.followWaiting}</span>}<RowActions heading={r.customer || "—"} sub={r.orderName} alertLabel={r.followUp ? followAction(r.followUp.item.entity, r.followUp.kind) : undefined} actions={rowActions(r, staffName)} /></div>
               </td>
@@ -209,7 +216,7 @@ export function OrdersTable({ rows, initialQuery = "", staffName = "同事", fol
         <div key={r.id} className={"rounded-2xl border p-4 " + (r.followUp ? "border-amber-300 bg-amber-50/70 " : "border-[var(--line)] bg-[var(--card)] ") + (r.cancelled ? "opacity-60" : "")}>
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0"><div className="text-xs text-[var(--soft)]">單號</div><div className="break-words font-medium text-[var(--gold)]">{r.invoiceNo || "—"}</div></div>
-            <span className={"whitespace-nowrap rounded-full px-2 py-0.5 text-xs " + fulClass(r.fulLabel)}>{r.fulLabel}</span>
+            {r.memorial ? <MemorialStatusSelect key={r.memorial} orderId={r.id} value={r.memorial} /> : <span className={"whitespace-nowrap rounded-full px-2 py-0.5 text-xs " + fulClass(r.fulLabel)}>{r.fulLabel}</span>}
           </div>
           <dl className="mt-3 grid grid-cols-[6.5rem_minmax(0,1fr)] [&>dt]:whitespace-nowrap gap-x-3 gap-y-1.5 text-sm">
             <dt className="text-[var(--soft)]">客戶 · 電話</dt>

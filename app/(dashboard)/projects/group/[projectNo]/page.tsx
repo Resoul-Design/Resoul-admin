@@ -1,3 +1,4 @@
+import { orderMemorialLabel } from "@/lib/memorial-status";
 import { loadSouvenirDrafts } from "@/lib/souvenir-drafts";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -150,7 +151,7 @@ export default async function ProjectGroupPage({ params }: { params: Promise<{ p
       invoiceNo: order.invoice_no ? String(order.invoice_no) : "",
       person: order.customer_name || "—",
       date: order.shopify_created_at?.slice(0, 10) || "—",
-      status: order.cancelled_at ? "cancelled" : (order.fulfillment_status || "").toUpperCase(),
+      status: order.cancelled_at ? "cancelled" : orderMemorialLabel(order),
       payment: financial,
       amount: cancelled ? 0 : Number(order.total_amount || 0),
       href: `/projects/order/${order.shopify_order_id.split("/").pop()}`,

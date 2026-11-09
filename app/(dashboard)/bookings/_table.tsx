@@ -14,6 +14,7 @@ import { TestFlagPanel } from "../_test-controls";
 import { DepositCreditPanel } from "../_deposit-credit";
 import { ServiceProgress } from "../_service-progress";
 import type { ProgressData } from "@/lib/booking-progress";
+import { matchesInvoice } from "@/lib/invoice-search";
 
 export type BookingRow = {
   id: string;
@@ -157,7 +158,7 @@ export function BookingsTable({
       if (status !== "all" && r.statusKey !== status) return false;
       if (sourceMode && r.sourceKey !== sourceMode) return false;
       if (!sourceMode && source !== "all" && r.sourceKey !== source) return false;
-      if (kw && !r.search.includes(kw)) return false;
+      if (kw && !r.search.includes(kw) && !matchesInvoice(kw, r.companyNo)) return false;
       if (onlyFollow && !r.followUp) return false;
       return true;
     }).sort((a, b) => onlyFollow ? FOLLOW_UP_ORDER.indexOf(a.followUp!.kind) - FOLLOW_UP_ORDER.indexOf(b.followUp!.kind) : 0);

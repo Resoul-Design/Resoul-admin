@@ -10,16 +10,13 @@ import { assignMissingProjectNos } from "@/lib/product-order-projects";
 import { getStaff } from "@/lib/auth";
 import { OrdersTable, type OrderRow } from "./_table";
 import { TestRecordsBar } from "../_test-controls";
+import { orderMemorialLabel, orderMemorialStatus } from "@/lib/memorial-status";
 
 export const dynamic = "force-dynamic";
 
 const FIN: Record<string, string> = {
   PAID: "已付款", PENDING: "待付款", PARTIALLY_PAID: "部分付款",
   REFUNDED: "已退款", PARTIALLY_REFUNDED: "部分退款", VOIDED: "已作廢",
-};
-const FUL: Record<string, string> = {
-  FULFILLED: "已出貨", UNFULFILLED: "未出貨",
-  PARTIALLY_FULFILLED: "部分出貨", RESTOCKED: "已退貨入庫",
 };
 
 // 未付款的紀念品草稿（付款後會變成正式訂單並由同步列出），排在最前
@@ -93,7 +90,8 @@ export default async function OrdersPage({ searchParams }: {
       items: (o.line_items || []).map((it) => `${it.title}×${it.quantity}`).join("、") || "—",
       fin: o.financial_status || "",
       finLabel: FIN[o.financial_status || ""] || o.financial_status || "—",
-      fulLabel: FUL[o.fulfillment_status || ""] || o.fulfillment_status || "—",
+      fulLabel: orderMemorialLabel(o) || "—",
+      memorial: o.cancelled_at ? "" : orderMemorialStatus(o) || o.fulfillment_status || "ordered",
       amount: Number(o.total_amount),
       currency: o.currency,
       cancelled: !!o.cancelled_at,

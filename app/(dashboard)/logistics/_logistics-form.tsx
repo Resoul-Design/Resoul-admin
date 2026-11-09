@@ -16,7 +16,7 @@ export function LogisticsForm({ invoice, initial, exists, isAdmin, autoKeys = []
   const [values, setValues] = useState<Record<string, string>>(initial);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [pending, start] = useTransition();
-  const groups = LOGISTICS_GROUPS.map((g) => ({ ...g, fields: g.fields.filter((f) => !f.adminOnly || isAdmin) }));
+  const groups = LOGISTICS_GROUPS.map((g) => ({ ...g, fields: g.fields.filter((f) => (!f.adminOnly || isAdmin) && !f.hidden) }));
   const [closed, setClosed] = useState<Set<string>>(() => new Set(groups.map((g) => g.title)));
   const [saved, setSaved] = useState<Record<string, string>>(initial);
   const changed = (k: string) => (values[k] || "") !== (saved[k] || "");

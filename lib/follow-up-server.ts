@@ -1,6 +1,7 @@
 // 統一跟進：伺服器端讀取（follow_up_marks 及各類資料），只可在伺服器使用
 import { createAdminClient } from "@/lib/supabase/admin";
 import { aliveDrafts } from "@/lib/draft-alive";
+import { orderMemorialStatus } from "@/lib/memorial-status";
 import { canonicalProjectNo, productOrderProjectNo, projectNoFromNotes } from "@/lib/order-label";
 import { loadSouvenirDrafts } from "@/lib/souvenir-drafts";
 import type { ProductOrderRow } from "@/lib/product-orders";
@@ -131,7 +132,7 @@ export async function productFollowUps(orders: ProductOrderRow[]) {
     if (note) waiting.set(ref, note);
   };
   for (const o of orders) {
-    const fulfilled = (o.fulfillment_status || "").toUpperCase() === "FULFILLED";
+    const fulfilled = orderMemorialStatus(o) === "completed";
     const item: FollowItem = {
       entity: "product",
       ref: o.shopify_order_id,

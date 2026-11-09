@@ -18,6 +18,7 @@ export type ProductOrderRow = {
   phone_key: string | null;
   financial_status: string | null;
   fulfillment_status: string | null;
+  memorial_status?: string | null; // 產品狀態（db/migration_20261109_memorial_lines_cancel.sql）
   total_amount: number;
   currency: string;
   line_items: ProductLineItem[];

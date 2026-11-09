@@ -20,6 +20,8 @@ import { depositCreditValue } from "@/lib/deposit-amount";
 import { newCompanyProjectNo } from "@/lib/project-no";
 import { loadSiteContent } from "@/lib/site-content-server";
 import { ORDER_TYPE_MAP, RECEIVED_METHODS, type OrderType, type PaymentIntent } from "@/lib/order-types";
+import { applyFix } from "@/lib/reconcile-fix";
+import { loadInvoiceProductLines } from "@/lib/memorial-lines";
 
 export type NewOrderLine = { variantId: string; quantity: number };
 export type NewOrderInput = {
@@ -532,3 +534,200 @@ export async function changeInvoiceNo(oldNo: number, newNoText: string, reason: 
   return {};
 }
 
+// ---- 開單後加產品：把紀念品表格的新項目同步到 Shopify ----
+// 未付款：加入同一單號現有的付款連結草稿（保留原有項目及訂金折扣）。
+// 已付款或未有付款連結：Shopify 不能直接加項目，用同一單號另開付款連結。
+// 每行帶 _resoul_line 欄位：重試時不會重覆加入；失敗保留「同步失敗」可重試。
+const LINE_KEY = "_resoul_line";
+const DRAFT_FOR_ADD = `query DraftForAdd($id: ID!) { draftOrder(id: $id) { id name status invoiceUrl order { id } appliedDiscount { title description value valueType }
+  lineItems(first: 100) { nodes { title quantity custom requiresShipping taxable variant { id } originalUnitPriceWithCurrency { amount currencyCode } priceOverride { amount currencyCode } appliedDiscount { title description value valueType } customAttributes { key value } } } } }`;
+const DRAFT_ADD = `mutation DraftAddLines($id: ID!, $input: DraftOrderInput!) { draftOrderUpdate(id: $id, input: $input) { draftOrder { id name invoiceUrl } userErrors { field message } } }`;
+type DraftDiscount = { title: string | null; description: string | null; value: number; valueType: string } | null;
+type DraftForAdd = {
+  id: string; name: string; status: string; invoiceUrl: string | null; order: { id: string } | null; appliedDiscount: DraftDiscount;
+  lineItems: { nodes: { title: string; quantity: number; custom: boolean; requiresShipping: boolean; taxable: boolean; variant: { id: string } | null; originalUnitPriceWithCurrency: { amount: string; currencyCode: string } | null; priceOverride: { amount: string; currencyCode: string } | null; appliedDiscount: DraftDiscount; customAttributes: { key: string; value: string | null }[] }[] };
+};
+type SyncLine = { id: string; product_name: string; variant_title: string | null; variant_id: string | null; quantity: number; unit_price: number | null };
+export type ProductSyncResult = { error?: string; done?: string; shopifyRef?: string; invoiceUrl?: string };
+
+const moneyInput = (n: number) => ({ amount: n.toFixed(2), currencyCode: "HKD" });
+const discountInput = (d: DraftDiscount) => (d ? { title: d.title, description: d.description, value: d.value, valueType: d.valueType } : null);
+
+// 表格一行 → Shopify 草稿項目。揀選的產品改了價錢時用 priceOverride；自訂項目用自訂價錢。
+async function linesToDraftItems(lines: SyncLine[], extraAttrs: { key: string; value: string }[]) {
+  const ids = [...new Set(lines.map((l) => l.variant_id).filter(Boolean) as string[])];
+  const variants = ids.length ? await loadVariants(ids) : new Map<string, NonNullable<VariantNode>>();
+  return lines.map((l) => {
+    const customAttributes = [...extraAttrs, { key: LINE_KEY, value: l.id }];
+    const price = Number(l.unit_price || 0);
+    const v = l.variant_id ? variants.get(l.variant_id) : null;
+    if (v && v.product.status === "ACTIVE") {
+      return { variantId: v.id, quantity: l.quantity, customAttributes, ...(Math.abs(Number(v.price || 0) - price) > 0.005 ? { priceOverride: moneyInput(price) } : {}) };
+    }
+    const title = l.variant_title ? `${l.product_name}（${l.variant_title}）` : l.product_name;
+    return { title, quantity: l.quantity, originalUnitPriceWithCurrency: moneyInput(price), requiresShipping: false, taxable: false, customAttributes };
+  });
+}
+
+// 把草稿現有項目還原為輸入格式（draftOrderUpdate 的 lineItems 會整批取代）
+function existingDraftItems(d: DraftForAdd) {
+  return d.lineItems.nodes.map((n) => {
+    const customAttributes = n.customAttributes.map((a) => ({ key: a.key, value: a.value || "" }));
+    const discount = n.appliedDiscount ? { appliedDiscount: discountInput(n.appliedDiscount) } : {};
+    if (n.variant && !n.custom) return { variantId: n.variant.id, quantity: n.quantity, customAttributes, ...discount, ...(n.priceOverride ? { priceOverride: n.priceOverride } : {}) };
+    return { title: n.title, quantity: n.quantity, originalUnitPriceWithCurrency: n.originalUnitPriceWithCurrency, requiresShipping: n.requiresShipping, taxable: n.taxable, customAttributes, ...discount };
+  });
+}
+
+export async function syncInvoiceProducts(invoiceNo: number): Promise<ProductSyncResult> {
+  const staff = await getStaff();
+  if (!staff || !hasModule(staff, ["inventory", "orders", "bookings", "vet_assessments", "deposits"])) return { error: "沒有權限。" };
+  if (!Number.isInteger(invoiceNo) || invoiceNo < 1) return { error: "單號無效。" };
+  const admin = createAdminClient();
+  const who = staff.name || staff.email;
+  const rv = () => { for (const p of [`/logistics/${invoiceNo}`, "/logistics", "/services", "/orders", "/bookings", "/vet-assessments", "/new-order"]) revalidatePath(p); };
+
+  if ((await loadInvoiceProductLines(invoiceNo)).cancelled) return { error: "此單已取消，不能再同步新產品到 Shopify。" };
+
+  // 取走待同步的行（同一時間只有一個同步；卡住超過 3 分鐘的可重試）
+  const stale = new Date(Date.now() - 3 * 60 * 1000).toISOString();
+  const claim = await admin.from("memorial_product_lines")
+    .update({ sync_status: "syncing", sync_error: null, updated_at: new Date().toISOString() })
+    .eq("invoice_no", invoiceNo)
+    .or(`sync_status.in.(pending,failed),and(sync_status.eq.syncing,updated_at.lt."${stale}")`)
+    .select("id, product_name, variant_title, variant_id, quantity, unit_price");
+  if (claim.error) return { error: "未啟用紀念品產品表格：請先於 Supabase 執行 db/migration_20261109_memorial_lines_cancel.sql。" };
+  let lines = (claim.data || []).map((l) => ({ ...l, quantity: Number(l.quantity), unit_price: l.unit_price == null ? null : Number(l.unit_price) })) as SyncLine[];
+  if (!lines.length) return { error: "沒有待同步的項目（可能已有同事正在同步）。" };
+
+  const failAll = async (message: string, ids = lines.map((l) => l.id)): Promise<ProductSyncResult> => {
+    await admin.from("memorial_product_lines").update({ sync_status: "failed", sync_error: message.slice(0, 500), updated_at: new Date().toISOString() }).in("id", ids);
+    await logAudit("sync_product_lines", "memorial_product_lines", String(invoiceNo), `單號 ${invoiceNo}｜失敗：${message}`);
+    rv();
+    return { error: `${message}（未有寫入 Shopify 的項目已標記「同步失敗」，可再按同步重試。）` };
+  };
+  const markSynced = async (ids: string[], d: { name: string; id: string; invoiceUrl: string | null }, companyId: string | null) => {
+    await admin.from("memorial_product_lines").update({ sync_status: "synced", sync_error: null, shopify_ref: d.name, shopify_draft_id: d.id, invoice_url: d.invoiceUrl, target_company_id: companyId, synced_at: new Date().toISOString(), updated_at: new Date().toISOString() }).in("id", ids);
+  };
+  const bad = lines.filter((l) => !Number.isInteger(l.quantity) || l.quantity < 1 || l.quantity > 999 || l.unit_price == null || !l.product_name);
+  if (bad.length) return failAll("有項目欠缺單價或數量不是整數，請修改後再同步。");
+
+  try {
+    const [companyRes, cremationRes] = await Promise.all([
+      admin.from("company_orders").select("*").eq("invoice_no", invoiceNo).neq("status", "cancelled").order("created_at", { ascending: false }),
+      admin.from("cremation_bookings").select("id, status, payment_status, source").eq("invoice_no", invoiceNo),
+    ]);
+    const companies = companyRes.data || [];
+
+    // 上次開附加單時 Shopify 失敗：先重試同一張，不會重覆開單
+    for (const c of companies.filter((x) => x.status === "draft" && !x.shopify_draft_id && (x.details as { addonLineIds?: string[] } | null)?.addonLineIds?.length)) {
+      const res = await syncToShopify(c.id, staff);
+      if (res.error) return failAll(`Shopify 未能建立附加付款連結：${res.error}`);
+      const { data: fresh } = await admin.from("company_orders").select("shopify_draft_id, shopify_invoice_url, status").eq("id", c.id).maybeSingle();
+      const addonIds = ((c.details as { addonLineIds?: string[] }).addonLineIds || []);
+      const d = await shopifyGraphQL<{ draftOrder: DraftForAdd | null }>(DRAFT_FOR_ADD, { id: fresh?.shopify_draft_id });
+      await markSynced(addonIds, { name: d.draftOrder?.name || "", id: String(fresh?.shopify_draft_id || ""), invoiceUrl: fresh?.shopify_invoice_url || null }, c.id);
+      c.shopify_draft_id = fresh?.shopify_draft_id; c.status = fresh?.status; c.shopify_invoice_url = fresh?.shopify_invoice_url;
+      lines = lines.filter((l) => !addonIds.includes(l.id));
+    }
+    if (!lines.length) {
+      rv();
+      return { done: "已重試成功，新項目已建立 Shopify 付款連結。" };
+    }
+
+    // 找仍未付款的付款連結草稿（接送訂金除外）
+    const candidates: { draftId: string; companyId: string | null; table?: "cremation_bookings"; bookingId?: string }[] = [];
+    for (const c of companies) if (c.order_type !== "deposit" && c.status === "awaiting_payment" && c.shopify_draft_id && !c.shopify_order_id) candidates.push({ draftId: c.shopify_draft_id, companyId: c.id, ...(c.linked_table === "cremation_bookings" ? { table: "cremation_bookings" as const, bookingId: c.linked_id } : {}) });
+    const unpaid = (cremationRes.data || []).filter((b) => b.status !== "cancelled" && b.payment_status !== "paid" && b.payment_status !== "refunded");
+    if (unpaid.length) {
+      const { data: marks } = await admin.from("follow_up_marks").select("ref, payment_draft_id").in("entity", ["cremation", "vet"]).in("ref", unpaid.map((b) => b.id)).not("payment_draft_id", "is", null);
+      for (const m of marks || []) if (!candidates.some((x) => x.draftId === m.payment_draft_id)) candidates.push({ draftId: String(m.payment_draft_id), companyId: null, table: "cremation_bookings", bookingId: String(m.ref) });
+    }
+    for (const cand of candidates) {
+      const cur = await shopifyGraphQL<{ draftOrder: DraftForAdd | null }>(DRAFT_FOR_ADD, { id: cand.draftId });
+      const d = cur.draftOrder;
+      if (!d || d.order || d.status === "COMPLETED") continue;
+      const present = new Set(d.lineItems.nodes.flatMap((n) => n.customAttributes.filter((a) => a.key === LINE_KEY).map((a) => String(a.value))));
+      const toAdd = lines.filter((l) => !present.has(l.id));
+      if (toAdd.length) {
+        const added = await linesToDraftItems(toAdd, []);
+        const res = await shopifyGraphQL<{ draftOrderUpdate: { draftOrder: { id: string; name: string; invoiceUrl: string | null } | null; userErrors: { message: string }[] } }>(DRAFT_ADD, {
+          id: d.id,
+          input: { lineItems: [...existingDraftItems(d), ...added], ...(d.appliedDiscount ? { appliedDiscount: discountInput(d.appliedDiscount) } : {}) },
+        });
+        if (res.draftOrderUpdate.userErrors.length || !res.draftOrderUpdate.draftOrder) return failAll(`Shopify 未能加入項目：${res.draftOrderUpdate.userErrors.map((e) => e.message).join("；") || "未知錯誤"}`);
+      }
+      await markSynced(lines.map((l) => l.id), { name: d.name, id: d.id, invoiceUrl: d.invoiceUrl }, cand.companyId);
+      // 後台項目及金額跟隨 Shopify
+      await applyFix({ kind: "refresh-lines", id: cand.bookingId || cand.companyId || "", ...(cand.table && cand.bookingId ? { table: cand.table } : {}), ...(cand.companyId ? { companyId: cand.companyId } : {}), draftId: d.id }, who, logAudit);
+      await logAudit("sync_product_lines", "memorial_product_lines", String(invoiceNo), `單號 ${invoiceNo}｜加入 Shopify ${d.name}｜${lines.map((l) => `${l.product_name}×${l.quantity}`).join("、")}`);
+      rv();
+      return { done: `已加入現有付款連結 ${d.name}，客人用同一條連結付款。`, shopifyRef: d.name, invoiceUrl: d.invoiceUrl || undefined };
+    }
+
+    // 沒有可加入的付款連結（已付款或未開付款連結）：同一單號另開付款連結
+    const info = await invoiceCustomer(invoiceNo);
+    if (!info.name || !phoneKey(info.phone)) return failAll("此單未有客人姓名或有效電話，未能開付款連結。請先在客戶資料補上。");
+    // 單號對應的專案編號（舊 Excel 單號未有記錄時補上，令付款後仍歸入同一單號）
+    const { data: inv } = await admin.from("company_invoices").select("project_no").eq("invoice_no", invoiceNo).maybeSingle();
+    let projectNo = inv?.project_no as string | null | undefined;
+    if (!projectNo) {
+      projectNo = info.projectNo || String(invoiceNo);
+      const write = inv ? await admin.from("company_invoices").update({ project_no: projectNo }).eq("invoice_no", invoiceNo) : await admin.from("company_invoices").insert({ invoice_no: invoiceNo, project_no: projectNo, manual: true, note: "紀念品加購：舊單號補記錄" });
+      if (write.error) return failAll(`未能記錄單號 ${invoiceNo}：${write.error.message}`);
+    }
+    const def = ORDER_TYPE_MAP.product;
+    const paymentRef = makePaymentRef();
+    const refAttrs = [{ key: "Project No", value: projectNo }];
+    const items = await linesToDraftItems(lines, refAttrs);
+    const summary = lines.map((l) => ({ label: l.variant_title ? `${l.product_name}（${l.variant_title}）` : l.product_name, quantity: l.quantity, price: Number(l.unit_price || 0) }));
+    const amount = summary.reduce((n, l) => n + l.price * l.quantity, 0);
+    const plan: DraftPlan = {
+      email: info.email,
+      note: [info.pet ? `寵物：${info.pet}` : "", `單據編號：${invoiceLabel(invoiceNo, "product")}`, "開單後加購"].filter(Boolean).join("\n"),
+      tags: [...def.tags, ...(projectNo !== String(invoiceNo) ? [projectNo] : [])],
+      attributes: [{ key: "Invoice No", value: invoiceLabel(invoiceNo, "product") }, { key: "Order Type", value: def.label }, ...refAttrs, { key: "Owner", value: info.name }, { key: "Phone", value: info.phone }, ...(info.pet ? [{ key: "Pet", value: info.pet }] : [])],
+      lineItems: items,
+    };
+    const { data: order, error: orderError } = await admin.from("company_orders").insert({
+      client_token: randomUUID(), invoice_no: invoiceNo, project_no: projectNo, order_type: "product", status: "draft",
+      customer_name: info.name, phone: info.phone, phone_key: phoneKey(info.phone), email: info.email || null, pet_name: info.pet || null,
+      amount, payment_intent: "link", payment_ref: paymentRef, created_by: who,
+      details: { lines: summary, addon: true, addonLineIds: lines.map((l) => l.id), draft: plan },
+    }).select("id").single();
+    if (orderError || !order) return failAll(`未能建立附加單記錄：${orderError?.message || "未知錯誤"}`);
+    await admin.from("memorial_product_lines").update({ target_company_id: order.id }).in("id", lines.map((l) => l.id));
+    const created = await syncToShopify(order.id, staff);
+    if (created.error) return failAll(`Shopify 未能建立付款連結：${created.error}`);
+    const { data: fresh } = await admin.from("company_orders").select("shopify_draft_id, shopify_invoice_url").eq("id", order.id).maybeSingle();
+    const d = await shopifyGraphQL<{ draftOrder: DraftForAdd | null }>(DRAFT_FOR_ADD, { id: fresh?.shopify_draft_id });
+    const name = d.draftOrder?.name || "";
+    await markSynced(lines.map((l) => l.id), { name, id: String(fresh?.shopify_draft_id || ""), invoiceUrl: fresh?.shopify_invoice_url || null }, order.id);
+    await logAudit("sync_product_lines", "memorial_product_lines", String(invoiceNo), `單號 ${invoiceNo}｜另開付款連結 ${name}｜${hk(amount)}`);
+    rv();
+    return { done: `此單已付款或未有付款連結，已用同一單號另開付款連結 ${name}（${hk(amount)}），客人只付新增項目。`, shopifyRef: name, invoiceUrl: fresh?.shopify_invoice_url || undefined };
+  } catch (e) {
+    console.error("[sync_product_lines]", e instanceof Error ? e.message : "unknown");
+    return failAll("未能連接 Shopify，請稍後再試。");
+  }
+}
+
+// 單號的客人資料（新單優先，舊 Excel 單號讀客戶資料）
+async function invoiceCustomer(invoiceNo: number): Promise<{ name: string; phone: string; email: string; pet: string; projectNo: string }> {
+  const admin = createAdminClient();
+  const [company, deposit, cremation, product, logistics] = await Promise.all([
+    admin.from("company_orders").select("customer_name, phone, email, pet_name, project_no").eq("invoice_no", invoiceNo).order("created_at", { ascending: false }).limit(1).maybeSingle(),
+    admin.from("deposit_bookings").select("owner_name, contact, pet_name, project_no").eq("invoice_no", invoiceNo).limit(1).maybeSingle(),
+    admin.from("cremation_bookings").select("owner_name, contact, pet_name, case_no").eq("invoice_no", invoiceNo).limit(1).maybeSingle(),
+    admin.from("product_orders").select("customer_name, phone, email, project_no").eq("invoice_no", invoiceNo).limit(1).maybeSingle(),
+    admin.from("logistics_orders").select("owner_name, phone, email, pet_name").eq("invoice_no", invoiceNo).maybeSingle(),
+  ]);
+  const first = (...v: (string | null | undefined)[]) => v.map((x) => String(x || "").trim()).find(Boolean) || "";
+  return {
+    name: first(company.data?.customer_name, cremation.data?.owner_name, deposit.data?.owner_name, product.data?.customer_name, logistics.data?.owner_name),
+    phone: first(company.data?.phone, cremation.data?.contact, deposit.data?.contact, product.data?.phone, logistics.data?.phone),
+    email: first(company.data?.email, product.data?.email, logistics.data?.email),
+    pet: first(company.data?.pet_name, cremation.data?.pet_name, deposit.data?.pet_name, logistics.data?.pet_name),
+    projectNo: first(company.data?.project_no, cremation.data?.case_no, deposit.data?.project_no, product.data?.project_no),
+  };
+}

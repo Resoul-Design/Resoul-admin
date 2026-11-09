@@ -53,6 +53,7 @@ type Row = {
   projectNo: string;
   owner: string;
   pet: string;
+  invoiceNo?: string;
   primary: string;
   secondary: string;
   plan: string;
@@ -231,6 +232,10 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Pro
     });
   }
   rows.splice(0, rows.length, ...combined);
+  // 專案對應的公司單號（列表可按單號搜尋）
+  const { data: invoiceRows } = await admin.from("company_invoices").select("invoice_no, project_no").not("project_no", "is", null).limit(5000);
+  const invoiceByProject = new Map((invoiceRows || []).map((r) => [String(r.project_no), String(r.invoice_no)]));
+  for (const r of rows) r.invoiceNo = invoiceByProject.get(r.projectNo) || (/^\d+$/.test(r.projectNo) ? r.projectNo : "");
 
   // 按專案編號由大至細排列；未有編號者排最後
   const numKey = (s: string) => {

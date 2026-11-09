@@ -7,6 +7,9 @@ import { LOGISTICS_FIELDS } from "@/lib/logistics-fields";
 import { deriveCustomerData } from "@/lib/logistics-derive";
 import { extraOrders, parseExtraRef } from "@/lib/logistics-extra";
 import { ExtraOrders } from "../_extra-orders";
+import { ProductLines } from "../_product-lines";
+import { loadInvoiceProductLines } from "@/lib/memorial-lines";
+import { loadCatalog } from "@/lib/catalog";
 
 export const dynamic = "force-dynamic";
 export default async function LogisticsDetail({ params }: { params: Promise<{ invoice: string }> }) {
@@ -38,5 +41,7 @@ export default async function LogisticsDetail({ params }: { params: Promise<{ in
     if (auto != null && String(auto) !== "") { autoKeys.push(f.key); return [f.key, String(auto).slice(0, f.type === "date" ? 10 : 2000)]; }
     return [f.key, ""];
   }));
-  return <div><div className="mb-5 flex items-center gap-3"><Link href="/logistics" className="text-sm text-[var(--gold)] hover:underline">← 客戶資料</Link><h1 className="text-2xl font-semibold">{invoice}</h1></div><LogisticsForm invoice={invoice} initial={formInitial} exists={!!logistics.data} isAdmin={staff.role === "admin"} autoKeys={autoKeys} /><ExtraOrders orders={extraOrders(logistics.data)} isAdmin={staff.role === "admin"} /></div>;
+  const invoiceNo = Number(invoice);
+  const [productLines, catalog] = await Promise.all([loadInvoiceProductLines(invoiceNo), loadCatalog("souvenir")]);
+  return <div><div className="mb-5 flex items-center gap-3"><Link href="/logistics" className="text-sm text-[var(--gold)] hover:underline">← 客戶資料</Link><h1 className="text-2xl font-semibold">{invoice}</h1></div><LogisticsForm invoice={invoice} initial={formInitial} exists={!!logistics.data} isAdmin={staff.role === "admin"} autoKeys={autoKeys} />{productLines.ready ? <ProductLines invoice={invoiceNo} lines={productLines.lines} catalog={catalog.products} catalogError={catalog.error} showCost cancelled={productLines.cancelled} /> : <p className="mb-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">未啟用紀念品產品表格：請先於 Supabase 執行 db/migration_20261109_memorial_lines_cancel.sql。</p>}<ExtraOrders orders={extraOrders(logistics.data)} isAdmin={staff.role === "admin"} /></div>;
 }

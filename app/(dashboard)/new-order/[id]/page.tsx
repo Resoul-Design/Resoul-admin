@@ -9,6 +9,9 @@ import { ChangeInvoiceNo, CopyLink, RetrySync, WhatsAppLink } from "./_panels";
 import { ConvertToCremation } from "./_convert";
 import { PLAN_CODES } from "@/lib/company";
 import { invoiceLabel } from "@/lib/invoice-label";
+import { ProductLines } from "../../logistics/_product-lines";
+import { loadInvoiceProductLines } from "@/lib/memorial-lines";
+import { loadCatalog } from "@/lib/catalog";
 
 export const dynamic = "force-dynamic";
 
@@ -77,6 +80,10 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
   const waNumber = digits.length === 8 ? `852${digits}` : digits;
   const waText = `${o.customer_name}你好，我係 Resoul。你的單號是 ${o.invoice_no}${o.pet_name ? `（${o.pet_name}）` : ""}，金額 ${hk(Number(o.amount || 0))}。${(draftGone ? "" : o.shopify_invoice_url) && status !== "paid" ? `付款連結：${(draftGone ? "" : o.shopify_invoice_url)}` : ""}`;
   const unsynced = !o.shopify_draft_id || !!o.sync_error;
+  // 開單後加產品（同一單號多行）；成本只限有「倉存」權限的同事
+  const canSeeCost = hasModule(staff, ["inventory"]);
+  const [productLines, catalog] = await Promise.all([loadInvoiceProductLines(o.invoice_no), loadCatalog("souvenir")]);
+  const visibleLines = canSeeCost ? productLines.lines : productLines.lines.map((l) => ({ ...l, cost: null }));
 
   return (
     <div className="mx-auto max-w-4xl">
@@ -124,6 +131,10 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
           {waNumber && <WhatsAppLink href={`https://wa.me/${waNumber}?text=${encodeURIComponent(waText)}`} className={headerLinkClass + " text-green-700"} />}
           <Link href={`${LIST_PATH[type]}?q=${encodeURIComponent(o.project_no)}`} className={headerLinkClass}>到「{def.label}」列表</Link>
         </div>
+      </div>
+
+      <div className="mt-4">
+        {productLines.ready ? <ProductLines invoice={o.invoice_no} lines={visibleLines} catalog={catalog.products} catalogError={catalog.error} showCost={canSeeCost} cancelled={status === "cancelled" || productLines.cancelled} /> : <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">未啟用「加產品」：請先於 Supabase 執行 db/migration_20261109_memorial_lines_cancel.sql。</p>}
       </div>
 
       <details className="mt-4 rounded-2xl border border-[var(--line)] bg-[var(--card)] p-4 text-sm">

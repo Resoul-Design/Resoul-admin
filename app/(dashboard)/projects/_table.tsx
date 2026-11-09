@@ -4,6 +4,8 @@ import { csvCell } from "@/lib/csv";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
+import { matchesInvoice } from "@/lib/invoice-search";
+
 export type ProjectRow = {
   key: string;
   href: string;
@@ -13,6 +15,7 @@ export type ProjectRow = {
   primary: string;
   secondary: string;
   plan: string;
+  invoiceNo?: string; // 公司單號
   status: string;
   kind: "pickup" | "vet" | "cremation" | "product";
   income: number;
@@ -39,6 +42,7 @@ export function ProjectsTable({ rows }: { rows: ProjectRow[] }) {
       if (status !== "all" && r.status !== status && !r.records?.some((record) => record.status === status)) return false;
       if (!kw) return true;
       return (
+        matchesInvoice(kw, r.invoiceNo) ||
         r.projectNo.toLowerCase().includes(kw) ||
         r.owner.toLowerCase().includes(kw) ||
         r.pet.toLowerCase().includes(kw) ||
@@ -74,7 +78,7 @@ export function ProjectsTable({ rows }: { rows: ProjectRow[] }) {
         <input
           value={q}
           onChange={(e) => { setQ(e.target.value); reset(); }}
-          placeholder="搜尋 專案編號 / 主人 / 寵物 / 方案…"
+          placeholder="搜尋 單號 / 專案編號 / 主人 / 寵物 / 方案…"
           className="min-w-[200px] flex-1 rounded-lg border border-[var(--line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--gold)]"
         />
         <select value={kind} onChange={(e) => { setKind(e.target.value); reset(); }} className="rounded-lg border border-[var(--line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--gold)]">

@@ -4,6 +4,7 @@ import { loadSouvenirDrafts } from "@/lib/souvenir-drafts";
 import { getStaff, hasModule } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { extraOrders } from "@/lib/logistics-extra";
+import { invoiceQuery } from "@/lib/invoice-search";
 import { canonicalProjectNo, productOrderProjectNo, projectNoFromNotes } from "@/lib/order-label";
 
 export type SearchItem = { key: string; title: string; sub: string; href: string };
@@ -30,8 +31,11 @@ function makeMatcher(raw: string) {
   const text = raw.trim().toLowerCase();
   const compact = raw.replace(/[\s()+-]/g, "");
   const digits = /^\d{4,}$/.test(compact) ? compact.replace(/^852(?=\d{8}$)/, "") : "";
+  // 單號格式：#319、單號 319、319-DEPOSIT、66B 都對應單號欄
+  const invoice = invoiceQuery(raw);
+  const invoiceBase = invoice.replace(/[A-Z]$/, "");
   return (fields: (string | null | undefined)[], phones: (string | null | undefined)[] = []) =>
-    fields.some((f) => !!f && f.toLowerCase().includes(text)) ||
+    fields.some((f) => !!f && (f.toLowerCase().includes(text) || (!!invoice && (f.toUpperCase() === invoice || f === invoiceBase)))) ||
     (!!digits && phones.some((p) => !!p && p.replace(/\D/g, "").includes(digits)));
 }
 

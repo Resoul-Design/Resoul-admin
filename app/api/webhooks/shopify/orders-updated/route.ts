@@ -37,6 +37,14 @@ function findPaymentRef(order: Payload) {
   return null;
 }
 
+// Shopify 已全數退款：後台取消記錄由「待退款」改為「已退款」（表格未建立時略過）
+async function settleCancellationRefund(order: Payload) {
+  if (String(order.financial_status || "").toLowerCase() !== "refunded") return;
+  const gid = order.admin_graphql_api_id || (order.id ? `gid://shopify/Order/${order.id}` : "");
+  if (!gid) return;
+  await createAdminClient().from("order_cancellations").update({ refund_status: "refunded", refunded_at: new Date().toISOString(), refunded_by: "Shopify 通知" }).eq("shopify_order_id", gid).eq("refund_status", "pending");
+}
+
 export async function POST(request: Request) {
   const rawBody = await request.text();
   const hmac = request.headers.get("x-shopify-hmac-sha256");
@@ -55,6 +63,7 @@ export async function POST(request: Request) {
   const isCancelled = !!order.cancelled_at;
   const isRefunded = fin === "refunded" || fin === "partially_refunded" || fin === "voided";
   const paymentRef = findPaymentRef(order);
+  await settleCancellationRefund(order);
 
   // 略過殘缺 payload（例如 orders/delete 只帶 {id}），避免寫入空白訂單
   const incomplete = !order.name && !(order.line_items && order.line_items.length);

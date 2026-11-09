@@ -18,6 +18,7 @@ import { PROGRESS_COLUMNS, type ProgressData } from "@/lib/booking-progress";
 import { canonicalProjectNo, projectNoFromNotes } from "@/lib/order-label";
 import { FollowUpInline, type FollowUpItem } from "./_followup";
 import { TestFlagPanel, TestRecordsBar } from "../_test-controls";
+import { matchesInvoice } from "@/lib/invoice-search";
 
 export const dynamic = "force-dynamic";
 
@@ -277,7 +278,7 @@ export default async function DepositsPage({ searchParams }: { searchParams: Pro
     if (statusFilter === "unpaid" ? r.payment_status === "paid" || r.status === "cancelled" : statusFilter && r.status !== statusFilter) return false;
     if (!query) return true;
     // 搜尋兼容貼上 Shopify 訂單號，結果仍以公司單號顯示
-    return [r.owner_name, r.pet_name, r.payment_ref, r.invoice_no ? String(r.invoice_no) : "", r.shopify_order_name, r.notes].some((v) => (v || "").toLowerCase().includes(queryText)) ||
+    return matchesInvoice(query, r.invoice_no) || [r.owner_name, r.pet_name, r.payment_ref, r.invoice_no ? String(r.invoice_no) : "", r.shopify_order_name, r.notes].some((v) => (v || "").toLowerCase().includes(queryText)) ||
       (!!queryDigits && (r.contact || "").replace(/\D/g, "").includes(queryDigits));
   });
 
