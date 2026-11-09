@@ -21,6 +21,7 @@ import { newCompanyProjectNo } from "@/lib/project-no";
 import { loadSiteContent } from "@/lib/site-content-server";
 import { ORDER_TYPE_MAP, RECEIVED_METHODS, type OrderType, type PaymentIntent } from "@/lib/order-types";
 import { applyFix } from "@/lib/reconcile-fix";
+import { MEMORIAL_REMARK, invoiceRemarkLines, isUrnPickup, type UrnPickup } from "@/lib/invoice-remark";
 import { loadInvoiceProductLines } from "@/lib/memorial-lines";
 import { reapplyDepositCredit } from "@/lib/deposit-credit-repair";
 
@@ -44,6 +45,7 @@ export type NewOrderInput = {
   depositCreditId?: string; // 扣除同一專案已付的接送訂金（deposit_bookings.id）
   vetSurcharges?: number[]; // 安樂在家附加費（網站內容的序號）
   other?: { title: string; amount: number; description?: string };
+  urnPickup?: UrnPickup; // 發票預設備註（接送訂金以外必選）
 };
 
 export type CustomerMatch = {
@@ -199,6 +201,7 @@ export async function createOrder(input: NewOrderInput): Promise<{ id?: string; 
   if (enteredProject && !isProjectNo(enteredProject)) return { error: "專案編號只可包含文字、數字、空格、連字號或底線（2–40 個字元）。" };
   if (serviceDate && !/^\d{4}-\d{2}-\d{2}$/.test(serviceDate)) return { error: "日期格式無效。" };
   if (intent === "received" && !RECEIVED_METHODS.includes(method)) return { error: "請選擇收款方式。" };
+  if (input.type !== "deposit" && !isUrnPickup(input.urnPickup)) return { error: "請選擇發票備註：骨灰取回安排。" };
 
   // 類型細節：金額一律由 Shopify 產品或網站內容計算，不信任瀏覽器提交的價錢
   const lines: Line[] = [];
@@ -262,6 +265,9 @@ export async function createOrder(input: NewOrderInput): Promise<{ id?: string; 
     return { error: "未能讀取 Shopify 產品或收費資料，請稍後再試。" };
   }
   const amount = lines.reduce((n, l) => n + (l.price || 0) * l.quantity, 0);
+  // 發票預設備註：骨灰取回＋（有紀念品時）約 90 個工作天完成
+  const hasMemorial = input.type === "product" || ((input.type === "cremation" || input.type === "vet") && lines.some((l, i) => i > 0 && !!l.variantId));
+  const remarkLines = input.type === "deposit" ? [] : invoiceRemarkLines(input.urnPickup, hasMemorial);
 
   // 新專案：專案編號＝單號（例如 290）；沿用舊專案則保留原編號
   const projectNo = enteredProject || (await newCompanyProjectNo(admin));
@@ -337,7 +343,7 @@ export async function createOrder(input: NewOrderInput): Promise<{ id?: string; 
   const refAttrs = [{ key: "Project No", value: projectNo }, ...(booking ? [{ key: "payment_ref", value: paymentRef }] : [])];
   const basePlan: DraftPlan = {
     email,
-    note: [publicNote, otherDescription && input.type === "other" ? otherDescription : "", petName ? `寵物：${petName}` : "", `單據編號：${invoiceLabel(invoiceNo, input.type)}`].filter(Boolean).join("\n"),
+    note: [...remarkLines, publicNote, otherDescription && input.type === "other" ? otherDescription : "", petName ? `寵物：${petName}` : "", `單據編號：${invoiceLabel(invoiceNo, input.type)}`].filter(Boolean).join("\n"),
     // 標籤只放類型；舊專案（RSL- 或自訂編號）另加專案編號。單號不加標籤（已在自訂欄位 Invoice No 及備註）
     tags: [...def2.tags, ...(projectNo !== String(invoiceNo) ? [projectNo] : [])],
     attributes: [
@@ -369,6 +375,7 @@ export async function createOrder(input: NewOrderInput): Promise<{ id?: string; 
     lines: lines.map((l) => ({ label: l.label, quantity: l.quantity, price: l.price })),
     petType: petType || null, serviceDate: serviceDate || null, serviceSlot: slot || null, address: address || null,
     internalNote: internalNote || null, publicNote: publicNote || null, receivedMethod: intent === "received" ? method : null,
+    urnPickup: input.type === "deposit" ? null : input.urnPickup, invoiceRemark: remarkLines,
     other: input.type === "other" ? { title: lines[0].title, description: otherDescription || null } : null,
     vetSurcharges: input.type === "vet" ? input.vetSurcharges || [] : null,
     depositCredit: credit ? { depositId: credit.id, amount: credit.amount, invoiceNo: credit.invoiceNo } : null,
@@ -685,7 +692,7 @@ export async function syncInvoiceProducts(invoiceNo: number): Promise<ProductSyn
     const amount = summary.reduce((n, l) => n + l.price * l.quantity, 0);
     const plan: DraftPlan = {
       email: info.email,
-      note: [info.pet ? `寵物：${info.pet}` : "", `單據編號：${invoiceLabel(invoiceNo, "product")}`, "開單後加購"].filter(Boolean).join("\n"),
+      note: [MEMORIAL_REMARK, info.pet ? `寵物：${info.pet}` : "", `單據編號：${invoiceLabel(invoiceNo, "product")}`, "開單後加購"].filter(Boolean).join("\n"),
       tags: [...def.tags, ...(projectNo !== String(invoiceNo) ? [projectNo] : [])],
       attributes: [{ key: "Invoice No", value: invoiceLabel(invoiceNo, "product") }, { key: "Order Type", value: def.label }, ...refAttrs, { key: "Owner", value: info.name }, { key: "Phone", value: info.phone }, ...(info.pet ? [{ key: "Pet", value: info.pet }] : [])],
       lineItems: items,

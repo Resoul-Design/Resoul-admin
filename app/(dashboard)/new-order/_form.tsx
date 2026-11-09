@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import type { DraftCatalogProduct } from "@/lib/catalog";
 import { ORDER_TYPES, ORDER_TYPE_MAP, PAYMENT_INTENTS, RECEIVED_METHODS, type OrderType, type PaymentIntent } from "@/lib/order-types";
 import { createOrder, lookupCustomer, type CustomerMatch, type NewOrderLine } from "./actions";
+import { URN_PICKUP_OPTIONS, invoiceRemarkLines, type UrnPickup } from "@/lib/invoice-remark";
 
 export type NewOrderCatalog = {
   cremation: DraftCatalogProduct[];
@@ -123,6 +124,7 @@ export function NewOrderForm({ catalog, allowed, prefill }: { catalog: NewOrderC
   const [slot, setSlot] = useState("");
   const [address, setAddress] = useState("");
   const [publicNote, setPublicNote] = useState("");
+  const [urnPickup, setUrnPickup] = useState<UrnPickup | "">("");
   const [internalNote, setInternalNote] = useState("");
   const [intent, setIntent] = useState<PaymentIntent>("link");
   const [method, setMethod] = useState("");
@@ -200,6 +202,7 @@ export function NewOrderForm({ catalog, allowed, prefill }: { catalog: NewOrderC
     type === "other" && !otherTitle.trim() && "項目名稱",
     type === "other" && !(Number(otherAmount) > 0) && "金額",
     intent === "received" && !method && "收款方式",
+    type && type !== "deposit" && !urnPickup && "發票備註（骨灰取回）",
   ].filter(Boolean) as string[];
 
   function submit() {
@@ -218,6 +221,7 @@ export function NewOrderForm({ catalog, allowed, prefill }: { catalog: NewOrderC
         address,
         internalNote,
         publicNote,
+        ...(type !== "deposit" && urnPickup ? { urnPickup } : {}),
         paymentIntent: intent,
         receivedMethod: method,
         ...(type === "cremation" ? { variantId, lines } : {}),
@@ -409,6 +413,22 @@ export function NewOrderForm({ catalog, allowed, prefill }: { catalog: NewOrderC
                 )}
                 {type === "vet" && (
                   <div className="sm:col-span-2"><div className="mb-1 text-sm">加購紀念品</div><LinePicker products={catalog.souvenir} lines={lines} onChange={setLines} /></div>
+                )}
+                {type !== "deposit" && (
+                  <fieldset className="sm:col-span-2">
+                    <legend className="text-sm">發票備註：骨灰取回 *</legend>
+                    <div className="mt-1 flex flex-wrap gap-2">
+                      {URN_PICKUP_OPTIONS.map((o) => (
+                        <label key={o.key} className={"flex cursor-pointer items-center gap-2 rounded-xl border px-3 py-2 text-sm " + (urnPickup === o.key ? "border-[var(--gold)] bg-[var(--cream)]" : "border-[var(--line)] bg-white")}>
+                          <input type="radio" name="urnPickup" checked={urnPickup === o.key} onChange={() => setUrnPickup(o.key)} />{o.label}
+                        </label>
+                      ))}
+                    </div>
+                    {urnPickup && (() => {
+                      const preview = invoiceRemarkLines(urnPickup, type === "product" ? lines.length > 0 : (type === "cremation" || type === "vet") && lines.length > 0);
+                      return <p className="mt-1 text-xs text-[var(--soft)]">發票顯示：{preview.length ? preview.join(" ") : "（不加備註）"}{type === "product" || type === "cremation" || type === "vet" ? "　有紀念品時自動加「約 90 個工作天完成」。" : ""}</p>;
+                    })()}
+                  </fieldset>
                 )}
                 <label className={label}>對外備註（會顯示在 Shopify 單據）<input value={publicNote} onChange={(e) => setPublicNote(e.target.value)} maxLength={500} className={input + " mt-1"} /></label>
                 <label className={label}>內部備註（只在後台）<input value={internalNote} onChange={(e) => setInternalNote(e.target.value)} maxLength={1000} className={input + " mt-1"} /></label>

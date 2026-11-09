@@ -19,7 +19,7 @@ const hk = (n: number) => `HK$${n.toLocaleString("en-US", { maximumFractionDigit
 const LIST_PATH: Record<OrderType, string> = { cremation: "/bookings", vet: "/vet-assessments", deposit: "/deposits", product: "/orders", other: "/orders" };
 const PAY_LABEL: Record<string, string> = { paid: "已付款", pending: "待付款", failed: "付款失敗", refunded: "已退款" };
 
-type Detail = { lines?: { label: string; quantity: number; price?: number }[]; serviceDate?: string | null; serviceSlot?: string | null; address?: string | null; internalNote?: string | null; publicNote?: string | null; receivedMethod?: string | null };
+type Detail = { invoiceRemark?: string[] | null; lines?: { label: string; quantity: number; price?: number }[]; serviceDate?: string | null; serviceSlot?: string | null; address?: string | null; internalNote?: string | null; publicNote?: string | null; receivedMethod?: string | null };
 
 export default async function OrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const staff = await getStaff();
@@ -119,6 +119,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
           {(d.serviceDate || d.serviceSlot) && <><dt className="text-[var(--soft)]">日期／時段</dt><dd>{[d.serviceDate, d.serviceSlot].filter(Boolean).join(" ")}</dd></>}
           {d.address && <><dt className="text-[var(--soft)]">地址</dt><dd>{d.address}</dd></>}
           {o.referrer_phone && <><dt className="text-[var(--soft)]">推薦人電話</dt><dd>{o.referrer_phone}</dd></>}
+          {!!d.invoiceRemark?.length && <><dt className="text-[var(--soft)]">發票備註</dt><dd>{d.invoiceRemark.join(" ")}</dd></>}
           {d.publicNote && <><dt className="text-[var(--soft)]">對外備註</dt><dd>{d.publicNote}</dd></>}
           {d.internalNote && <><dt className="text-[var(--soft)]">內部備註</dt><dd>{d.internalNote}</dd></>}
           <dt className="text-[var(--soft)]">開單</dt><dd>{o.created_by || "—"} · {new Date(o.created_at).toLocaleString("zh-HK", { timeZone: "Asia/Hong_Kong" })}</dd>
