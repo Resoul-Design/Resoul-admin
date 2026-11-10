@@ -1,4 +1,4 @@
-// 附加單（Excel「66B」等）：同一客人之後再加的骨灰盅存放、紀念品等單，附在原單號 logistics_orders.extra_orders。
+// 附加單（Excel「66B」等）：同一客人之後再加的骨灰龕存放、紀念品等單，附在原單號 logistics_orders.extra_orders。
 // 每項 { ref: "66B", fields: { 欄位代號: 值 }, source_row? }，欄位代號與 lib/logistics-fields.ts 相同。
 export type ExtraOrder = { ref: string; fields: Record<string, string | number | null>; source_row?: number };
 

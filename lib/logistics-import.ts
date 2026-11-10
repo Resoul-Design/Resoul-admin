@@ -32,7 +32,8 @@ export function parseCsv(text: string): string[][] {
 const norm = (s: string) => s.trim().toLowerCase().replace(/[\s（）()：:]/g, "");
 const INVOICE_HEADERS = ["invoice_no", "單號", "發票編號", "order no.", "order no", "invoice no", "invoice no."].map(norm);
 const BY_HEADER = new Map<string, LogisticsField>();
-for (const f of LOGISTICS_FIELDS) { BY_HEADER.set(norm(f.key), f); BY_HEADER.set(norm(f.label), f); }
+// 舊範本的欄名「骨灰盅…」（2026-11-10 改為「骨灰龕」）仍可匯入
+for (const f of LOGISTICS_FIELDS) { BY_HEADER.set(norm(f.key), f); BY_HEADER.set(norm(f.label), f); BY_HEADER.set(norm(f.label.replaceAll("骨灰龕", "骨灰盅")), f); }
 
 // 空值記號：視作空白（不覆蓋現有資料）
 const EMPTY = new Set(["", "-", "—", "n/a", "na", "#n/a", "null"]);

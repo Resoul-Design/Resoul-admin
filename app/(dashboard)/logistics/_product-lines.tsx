@@ -138,10 +138,10 @@ export function ProductLines({ invoice, lines, catalog, catalogError, showCost, 
           {catalogError && <p className="mb-3 text-sm text-amber-700">未能讀取 Shopify 產品清單：{catalogError}。仍可按「＋ 加一行」輸入自訂項目。</p>}
           {suggestedOnly > 0 && <p className="mb-2 text-xs text-[var(--soft)]"><span className="mr-1 inline-block h-3 w-3 rounded border border-amber-300 bg-amber-50 align-middle" />淡黃色行按此單的 Shopify／開單項目自動列出（{suggestedOnly} 行），按「儲存」才寫入表格。</p>}
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[1320px] text-sm">
+            <table className="w-full min-w-[980px] text-sm">
               <thead>
                 <tr className="text-left text-xs text-[var(--soft)]">
-                  {["產品名稱", "款式", "產品代碼", "供應商", "數量", "單價", "金額", "狀態", "下單日期", "完成日期", ...(showCost ? ["成本"] : []), "備註", "Shopify", ""].map((h) => <th key={h} className="px-1 py-2 font-medium">{h}</th>)}
+                  {["產品名稱", "款式", "產品代碼", "數量", "單價", "金額", "狀態", "下單日期", "Shopify", ""].map((h) => <th key={h} className="px-1 py-2 font-medium">{h}</th>)}
                 </tr>
               </thead>
               <tbody>
@@ -150,7 +150,6 @@ export function ProductLines({ invoice, lines, catalog, catalogError, showCost, 
                     <td className="min-w-[180px] p-1"><input value={r.product_name} disabled={r.locked} onChange={(e) => set(r.key, { product_name: e.target.value })} maxLength={300} className={cell} aria-label="產品名稱" />{r.extra_ref && <span className="text-xs text-[var(--soft)]">附加單 {r.extra_ref}</span>}</td>
                     <td className="min-w-[110px] p-1"><input value={r.variant_title} disabled={r.locked} onChange={(e) => set(r.key, { variant_title: e.target.value })} maxLength={200} className={cell} aria-label="款式" /></td>
                     <td className="w-24 p-1"><input value={r.product_code} onChange={(e) => set(r.key, { product_code: e.target.value })} maxLength={120} className={cell} aria-label="產品代碼" /></td>
-                    <td className="w-24 p-1"><input value={r.vendor} onChange={(e) => set(r.key, { vendor: e.target.value })} maxLength={120} className={cell} aria-label="供應商" /></td>
                     <td className="w-16 p-1"><input value={r.quantity} disabled={r.locked} onChange={(e) => set(r.key, { quantity: e.target.value.replace(/[^\d.]/g, "") })} inputMode="decimal" className={cell} aria-label="數量" /></td>
                     <td className="w-20 p-1"><input value={r.unit_price} disabled={r.locked} onChange={(e) => set(r.key, { unit_price: e.target.value.replace(/[^\d.]/g, "") })} inputMode="decimal" className={cell} aria-label="單價" /></td>
                     <td className="w-20 p-1"><input value={r.amount} disabled={r.locked} onChange={(e) => set(r.key, { amount: e.target.value.replace(/[^\d.]/g, "") })} inputMode="decimal" className={cell} aria-label="金額" /></td>
@@ -162,9 +161,6 @@ export function ProductLines({ invoice, lines, catalog, catalogError, showCost, 
                       {r.status_note && <span className="mt-0.5 block max-w-[150px] truncate text-xs text-[var(--soft)]" title={r.status_note}>{r.status_note}</span>}
                     </td>
                     <td className="w-32 p-1"><input type="date" value={r.customer_order_date} onChange={(e) => set(r.key, { customer_order_date: e.target.value })} className={cell} aria-label="下單日期" /></td>
-                    <td className="w-32 p-1"><input type="date" value={r.completed_on} onChange={(e) => set(r.key, { completed_on: e.target.value })} className={cell} aria-label="完成日期" /></td>
-                    {showCost && <td className="w-20 p-1"><input value={r.cost} onChange={(e) => set(r.key, { cost: e.target.value.replace(/[^\d.]/g, "") })} inputMode="decimal" className={cell} aria-label="成本" /></td>}
-                    <td className="min-w-[160px] p-1"><input value={r.remarks} onChange={(e) => set(r.key, { remarks: e.target.value })} maxLength={2000} className={cell} aria-label="備註" /></td>
                     <td className="w-36 p-1 text-xs">
                       {r.missing ? (
                         <span className="text-red-700">Shopify {r.shopify_ref || ""} 已沒有此項目，可按「移除」刪走此行</span>
@@ -184,7 +180,7 @@ export function ProductLines({ invoice, lines, catalog, catalogError, showCost, 
                     <td className="w-10 p-1 text-right">{r.suggested ? <span className="px-1 text-xs text-[var(--soft)]" title="先按「儲存」，之後可移除（會同時刪除 Shopify 項目）">—</span> : r.sync_status !== "syncing" && <button type="button" onClick={() => remove(r)} className="px-1 py-1.5 text-xs text-red-700 hover:underline">移除</button>}</td>
                   </tr>
                 ))}
-                {rows.length === 0 && <tr><td colSpan={showCost ? 14 : 13} className="p-6 text-center text-[var(--soft)]">未有產品。可選擇 Shopify 產品或按「＋ 加一行」。</td></tr>}
+                {rows.length === 0 && <tr><td colSpan={10} className="p-6 text-center text-[var(--soft)]">未有產品。可選擇 Shopify 產品或按「＋ 加一行」。</td></tr>}
               </tbody>
             </table>
           </div>

@@ -133,3 +133,30 @@ export async function saveProductLines(invoiceNo: number, rows: SaveLine[], dele
   for (const p of [`/logistics/${invoiceNo}`, "/logistics", "/orders", "/services", "/projects", "/crm"]) revalidatePath(p);
   return { done: ["已保存。", shopifyNote].filter(Boolean).join(" ") };
 }
+
+// 「6. 紀念品及成本」：每件紀念品的供應商、日期、成本及備註（只改這幾欄，不影響產品名稱、數量、價錢及 Shopify）
+export type LineDetail = { id: string; vendor: string; delivered_to_vendor_on: string; vendor_returned_on: string; completed_on: string; cost: string; remarks: string };
+export async function saveProductLineDetails(invoiceNo: number, items: LineDetail[]): Promise<{ error?: string }> {
+  const staff = await getStaff();
+  if (!staff || !hasModule(staff, ["inventory"])) return { error: "沒有權限。" };
+  if (!Number.isInteger(invoiceNo) || !Array.isArray(items) || items.length > 200) return { error: "資料無效。" };
+  if (!items.length) return {};
+  const admin = createAdminClient();
+  const { data: own, error } = await admin.from("memorial_product_lines").select("id").eq("invoice_no", invoiceNo).in("id", items.map((i) => i.id));
+  if (error) return { error: NOT_READY };
+  const ids = new Set((own || []).map((r) => String(r.id)));
+  for (let i = 0; i < items.length; i++) {
+    const it = items[i];
+    if (!ids.has(it.id)) return { error: "表格內容已過期，請重新整理頁面。" };
+    const d1 = date(it.delivered_to_vendor_on, "交供應商日期", i + 1), d2 = date(it.vendor_returned_on, "供應商交回日期", i + 1), d3 = date(it.completed_on, "完成日期", i + 1), c = num(it.cost, "成本", i + 1);
+    const err = [d1, d2, d3, c].find((x) => x.error)?.error;
+    if (err) return { error: err.replace(/^第 (\d+) 行/, "第 $1 件紀念品") };
+    const { error: upErr } = await admin.from("memorial_product_lines").update({
+      vendor: text(it.vendor, 120), delivered_to_vendor_on: d1.value, vendor_returned_on: d2.value, completed_on: d3.value, cost: c.value, remarks: text(it.remarks, 2000), updated_at: new Date().toISOString(),
+    }).eq("id", it.id);
+    if (upErr) return { error: `未能保存：${upErr.message}` };
+  }
+  await logAudit("save_product_line_details", "memorial_product_lines", String(invoiceNo), `單號 ${invoiceNo}｜紀念品成本資料 ${items.length} 件`);
+  revalidatePath(`/logistics/${invoiceNo}`);
+  return {};
+}
