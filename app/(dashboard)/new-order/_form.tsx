@@ -4,7 +4,7 @@ import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { DraftCatalogProduct } from "@/lib/catalog";
 import { ORDER_TYPES, ORDER_TYPE_MAP, PAYMENT_INTENTS, RECEIVED_METHODS, type OrderType, type PaymentIntent } from "@/lib/order-types";
-import { createOrder, lookupCustomer, type CustomerMatch, type NewOrderLine } from "./actions";
+import { createOrder, lookupCustomer, type CustomerMatch, type NewOrderLine, type PetProfile } from "./actions";
 import { URN_PICKUP_OPTIONS, invoiceRemarkLines, type UrnPickup } from "@/lib/invoice-remark";
 import { PET_GENDERS } from "@/lib/order-types";
 
@@ -16,7 +16,7 @@ export type NewOrderCatalog = {
   vet: { base: number; surcharges: { zh: string; price: number }[] };
   slots: { zh: string; label: string }[];
 };
-export type NewOrderPrefill = { type?: OrderType; name?: string; phone?: string; email?: string; projectNo?: string; petName?: string };
+export type NewOrderPrefill = { type?: OrderType; name?: string; phone?: string; email?: string; projectNo?: string; petName?: string; pet?: PetProfile | null };
 
 const input = "w-full rounded-lg border border-[var(--line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--gold)]";
 const label = "block text-sm";
@@ -110,6 +110,8 @@ export function NewOrderForm({ catalog, allowed, prefill }: { catalog: NewOrderC
         if (!name) setName(m.name);
         if (!email && m.email) setEmail(m.email);
         if (!petName && m.pets[0]) setPetName(m.pets[0]);
+        // 同一寵物：預先填入上次的寵物資料（只填空白欄位）
+        if (m.petProfile && (!petName || petName === m.petProfile.name)) fillPet(m.petProfile);
         if (!projectNo && m.projects[0]) setProjectNo(m.projects[0].projectNo);
       }
     });
@@ -120,16 +122,21 @@ export function NewOrderForm({ catalog, allowed, prefill }: { catalog: NewOrderC
 
   // C. 共用欄位
   const [petName, setPetName] = useState(prefill.petName || "");
-  const [petType, setPetType] = useState("");
+  const [petType, setPetType] = useState(prefill.pet?.petType || "");
   const needPet = type === "deposit" || type === "cremation";
   // 接送訂金及善終／告別套餐必填的寵物資料
-  const [petWeight, setPetWeight] = useState("");
-  const [petBreed, setPetBreed] = useState("");
-  const [petGender, setPetGender] = useState("");
-  const [petAge, setPetAge] = useState("");
+  const [petWeight, setPetWeight] = useState(prefill.pet?.weightKg || "");
+  const [petBreed, setPetBreed] = useState(prefill.pet?.breed || "");
+  const [petGender, setPetGender] = useState(prefill.pet?.gender || "");
+  const [petAge, setPetAge] = useState(prefill.pet?.age || "");
   const [serviceDate, setServiceDate] = useState("");
+  const [pickupDate, setPickupDate] = useState(""); // 善終／告別套餐的接送日期（火化日期另計）
   const [slot, setSlot] = useState("");
-  const [address, setAddress] = useState("");
+  const [address, setAddress] = useState(prefill.pet?.address || "");
+  function fillPet(p: PetProfile) {
+    setPetWeight((v) => v || p.weightKg); setPetBreed((v) => v || p.breed); setPetGender((v) => v || (["公", "母", "不詳"].includes(p.gender) ? p.gender : ""));
+    setPetAge((v) => v || p.age); setPetType((v) => v || p.petType); setAddress((v) => v || p.address);
+  }
   const [publicNote, setPublicNote] = useState("");
   const [urnPickup, setUrnPickup] = useState<UrnPickup | "">("");
   const [internalNote, setInternalNote] = useState("");
@@ -231,6 +238,7 @@ export function NewOrderForm({ catalog, allowed, prefill }: { catalog: NewOrderC
         petType,
         ...(needPet ? { petWeight: Number(petWeight), petBreed, petGender, petAge } : {}),
         serviceDate,
+        ...(type === "cremation" && pickupDate ? { pickupDate } : {}),
         serviceSlot: slot,
         address,
         internalNote,
@@ -369,7 +377,10 @@ export function NewOrderForm({ catalog, allowed, prefill }: { catalog: NewOrderC
               </>
             )}
             {showDate && (
-              <label className={label}>{type === "deposit" ? "接送日期" : "服務日期"}<input type="date" value={serviceDate} onChange={(e) => setServiceDate(e.target.value)} className={input + " mt-1"} /></label>
+              <label className={label}>{type === "deposit" ? "接送日期" : type === "cremation" ? "火化日期" : "服務日期"}<input type="date" value={serviceDate} onChange={(e) => setServiceDate(e.target.value)} className={input + " mt-1"} /></label>
+            )}
+            {type === "cremation" && (
+              <label className={label}>接送日期<input type="date" value={pickupDate} onChange={(e) => setPickupDate(e.target.value)} className={input + " mt-1"} /></label>
             )}
             {showDate && (
               <label className={label}>{needPet ? "接送時間" : "時段"}

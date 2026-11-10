@@ -37,7 +37,8 @@ export type NewOrderInput = {
   petBreed?: string;
   petGender?: string;
   petAge?: string;
-  serviceDate?: string;
+  serviceDate?: string; // 接送訂金＝接送日期；善終／告別套餐＝火化日期
+  pickupDate?: string; // 善終／告別套餐的接送日期
   serviceSlot?: string;
   address?: string;
   internalNote?: string;
@@ -52,10 +53,14 @@ export type NewOrderInput = {
   urnPickup?: UrnPickup; // 發票預設備註（接送訂金以外必選）
 };
 
+// 寵物資料（開單必填欄位）
+export type PetProfile = { name: string; weightKg: string; breed: string; gender: string; age: string; petType: string; address: string };
+
 export type CustomerMatch = {
   name: string;
   email: string;
   pets: string[];
+  petProfile?: PetProfile | null; // 最近一次的寵物資料（再開單時預先填入）
   projects: { projectNo: string; invoiceNo: number | null; lastDate: string; labels: string[]; deposits: DepositCredit[] }[];
 };
 
@@ -103,11 +108,11 @@ export async function lookupCustomer(phone: string): Promise<CustomerMatch | nul
   if (!key) return null;
   const admin = createAdminClient();
   const [dep, crem, prod, co, logistics] = await Promise.all([
-    admin.from("deposit_bookings").select("id, owner_name, contact, pet_name, project_no, invoice_no, created_at, payment_status, payment_amount, paid_at, credit_target, status, is_test").ilike("contact", `%${key}%`).order("created_at", { ascending: false }).limit(20),
-    admin.from("cremation_bookings").select("owner_name, contact, pet_name, case_no, notes, source, invoice_no, created_at").ilike("contact", `%${key}%`).order("created_at", { ascending: false }).limit(20),
+    admin.from("deposit_bookings").select("id, owner_name, contact, pet_name, pet_type, pickup_address, project_no, invoice_no, created_at, payment_status, payment_amount, paid_at, credit_target, status, is_test").ilike("contact", `%${key}%`).order("created_at", { ascending: false }).limit(20),
+    admin.from("cremation_bookings").select("owner_name, contact, pet_name, pet_type, pickup_address, case_no, notes, source, invoice_no, created_at").ilike("contact", `%${key}%`).order("created_at", { ascending: false }).limit(20),
     admin.from("product_orders").select("customer_name, email, project_no, invoice_no, shopify_created_at").eq("phone_key", key).order("shopify_created_at", { ascending: false }).limit(20),
-    admin.from("company_orders").select("customer_name, email, pet_name, project_no, invoice_no, order_type, created_at").eq("phone_key", key).order("created_at", { ascending: false }).limit(20),
-    admin.from("logistics_orders").select("owner_name, phone, email, pet_name, invoice_no, created_at").ilike("phone", `%${key}%`).order("created_at", { ascending: false }).limit(20),
+    admin.from("company_orders").select("customer_name, email, pet_name, project_no, invoice_no, order_type, created_at, details").eq("phone_key", key).order("created_at", { ascending: false }).limit(20),
+    admin.from("logistics_orders").select("owner_name, phone, email, pet_name, invoice_no, created_at, breed, weight_kg, animal, pickup_from").ilike("phone", `%${key}%`).order("created_at", { ascending: false }).limit(20),
   ]);
   const projects = new Map<string, { projectNo: string; invoiceNo: number | null; lastDate: string; labels: Set<string>; deposits: DepositCredit[] }>();
   const add = (no: string | null | undefined, invoice: number | null | undefined, date: string | null | undefined, label: string) => {
@@ -161,12 +166,29 @@ export async function lookupCustomer(phone: string): Promise<CustomerMatch | nul
     name: names.find(Boolean) || "",
     email,
     pets: [...pets].slice(0, 5),
+    petProfile: petProfileOf([...pets][0] || "", co.data || [], logistics.data || [], [...(dep.data || []), ...(crem.data || [])]),
     projects: [...projects.values()]
       // 按單號由新到舊；未有單號的舊專案排最後
       .sort((a, b) => (b.invoiceNo ?? -1) - (a.invoiceNo ?? -1) || b.lastDate.localeCompare(a.lastDate))
       .slice(0, 10)
       .map((p) => ({ projectNo: p.projectNo, invoiceNo: p.invoiceNo, lastDate: p.lastDate, labels: [...p.labels], deposits: p.deposits })),
   };
+}
+
+// 同一寵物最近一次的資料：開新單記錄（體重、品種、性別、年齡、地址）優先，其次客戶資料及預約記錄
+function petProfileOf(name: string, company: Record<string, unknown>[], logistics: Record<string, unknown>[], bookings: Record<string, unknown>[]): PetProfile | null {
+  if (!name) return null;
+  const same = (v: unknown) => String(v || "").trim() === name;
+  const str = (v: unknown) => (v == null ? "" : String(v).trim());
+  const out: PetProfile = { name, weightKg: "", breed: "", gender: "", age: "", petType: "", address: "" };
+  for (const c of company.filter((x) => same(x.pet_name))) {
+    const d = (c.details || {}) as { pet?: { weightKg?: number; breed?: string; gender?: string; age?: string } | null; petType?: string | null; address?: string | null };
+    out.weightKg ||= str(d.pet?.weightKg); out.breed ||= str(d.pet?.breed); out.gender ||= str(d.pet?.gender); out.age ||= str(d.pet?.age);
+    out.petType ||= str(d.petType); out.address ||= str(d.address);
+  }
+  for (const l of logistics.filter((x) => same(x.pet_name))) { out.weightKg ||= str(l.weight_kg); out.breed ||= str(l.breed); out.petType ||= str(l.animal); out.address ||= str(l.pickup_from); }
+  for (const b of bookings.filter((x) => same(x.pet_name))) { out.petType ||= str(b.pet_type); out.address ||= str(b.pickup_address); }
+  return out;
 }
 
 // ---- 開新單 ----
@@ -204,6 +226,8 @@ export async function createOrder(input: NewOrderInput): Promise<{ id?: string; 
   if (referrerPhone && !phoneKey(referrerPhone)) return { error: "推薦人電話格式無效。" };
   if (enteredProject && !isProjectNo(enteredProject)) return { error: "專案編號只可包含文字、數字、空格、連字號或底線（2–40 個字元）。" };
   if (serviceDate && !/^\d{4}-\d{2}-\d{2}$/.test(serviceDate)) return { error: "日期格式無效。" };
+  const pickupDate = input.type === "cremation" ? t(input.pickupDate, 10) : input.type === "deposit" ? serviceDate : "";
+  if (pickupDate && !/^\d{4}-\d{2}-\d{2}$/.test(pickupDate)) return { error: "接送日期格式無效。" };
   if (intent === "received" && !RECEIVED_METHODS.includes(method)) return { error: "請選擇收款方式。" };
   if (input.type !== "deposit" && !isUrnPickup(input.urnPickup)) return { error: "請選擇發票備註：骨灰取回安排。" };
   // 接送訂金及善終／告別套餐：寵物及接送資料必填
@@ -323,6 +347,7 @@ export async function createOrder(input: NewOrderInput): Promise<{ id?: string; 
       `付款參考: ${paymentRef}`,
       input.type === "vet" ? "" : `產品: ${lines[0].label}`,
       petInfo,
+      input.type === "cremation" && pickupDate ? `接送日期: ${pickupDate}` : "",
       input.type === "vet" && address ? `地點：${address}` : "",
       slot ? `希望時段: ${slot}` : "",
       lines.length > 1 ? `${input.type === "vet" ? "收費" : "加購"}: ${lines.slice(input.type === "vet" ? 0 : 1).map((l) => `${l.label}×${l.quantity}`).join("、")}` : "",
@@ -393,7 +418,7 @@ export async function createOrder(input: NewOrderInput): Promise<{ id?: string; 
     : basePlan;
   const details = {
     lines: lines.map((l) => ({ label: l.label, quantity: l.quantity, price: l.price })),
-    petType: petType || null, serviceDate: serviceDate || null, serviceSlot: slot || null, address: address || null,
+    petType: petType || null, serviceDate: serviceDate || null, pickupDate: pickupDate || null, serviceSlot: slot || null, address: address || null,
     pet: needPet ? { weightKg: petWeight, breed: petBreed, gender: petGender, age: petAge } : null,
     internalNote: internalNote || null, publicNote: publicNote || null, receivedMethod: intent === "received" ? method : null,
     urnPickup: input.type === "deposit" ? null : input.urnPickup, invoiceRemark: remarkLines,
@@ -424,7 +449,7 @@ export async function createOrder(input: NewOrderInput): Promise<{ id?: string; 
 
   const { error: logisticsError } = await admin.from("logistics_orders").upsert({
     invoice_no: invoiceNo, source: "admin", owner_name: name, phone, email: email || null, pet_name: petName || null, animal: petType || null, ...(needPet ? { breed: petBreed, weight_kg: petWeight } : {}),
-    package_name: planName || def2.label, arrival_date: serviceDate || null, arrival_time: slot || null, pickup_from: address || null,
+    package_name: planName || def2.label, arrival_date: pickupDate || null, arrival_time: slot || null, pickup_from: address || null, ...(input.type === "cremation" && serviceDate ? { ceremony_or_order_date: serviceDate } : {}),
   }, { onConflict: "invoice_no", ignoreDuplicates: true });
   if (logisticsError) console.error("[new_order_logistics]", logisticsError.message);
 

@@ -28,8 +28,13 @@ export default async function NewOrderPage({ searchParams }: { searchParams: Pro
   const prefill: NewOrderPrefill = {};
   if (type && allowed.includes(type as OrderType)) prefill.type = type as OrderType;
   if (from && /^[0-9a-f-]{36}$/i.test(from)) {
-    const { data: o } = await createAdminClient().from("company_orders").select("order_type, customer_name, phone, email, project_no, pet_name").eq("id", from).maybeSingle();
-    if (o) Object.assign(prefill, { type: allowed.includes(o.order_type) ? o.order_type : undefined, name: o.customer_name, phone: o.phone || "", email: o.email || "", projectNo: o.project_no, petName: o.pet_name || "" });
+    const { data: o } = await createAdminClient().from("company_orders").select("order_type, customer_name, phone, email, project_no, pet_name, details").eq("id", from).maybeSingle();
+    if (o) {
+      // 複製為新單：連同寵物資料（體重、品種、性別、年齡、種類、地址）
+      const d = (o.details || {}) as { pet?: { weightKg?: number; breed?: string; gender?: string; age?: string } | null; petType?: string | null; address?: string | null };
+      const pet = { name: o.pet_name || "", weightKg: d.pet?.weightKg != null ? String(d.pet.weightKg) : "", breed: d.pet?.breed || "", gender: d.pet?.gender || "", age: d.pet?.age || "", petType: d.petType || "", address: d.address || "" };
+      Object.assign(prefill, { type: allowed.includes(o.order_type) ? o.order_type : undefined, name: o.customer_name, phone: o.phone || "", email: o.email || "", projectNo: o.project_no, petName: o.pet_name || "", pet });
+    }
   }
 
   return (

@@ -39,8 +39,9 @@ export function deriveCustomerData(src: { deposits: Row[]; cremations: Row[]; co
   set("animal", first(crem?.pet_type, dep?.pet_type, vet?.pet_type));
 
   // 接送（接送訂金優先，否則火化預約）
-  set("arrival_date", first(dep?.service_date, crem?.service_date));
-  set("arrival_time", first(dep?.service_time, crem?.service_time));
+  const cremPickup = (companies.find((c) => crem && c.linked_id === crem.id)?.details || {}) as { pickupDate?: string | null; serviceSlot?: string | null };
+  set("arrival_date", first(dep?.service_date, cremPickup.pickupDate));
+  set("arrival_time", first(dep?.service_time, cremPickup.serviceSlot));
   set("pickup_from", first(dep?.pickup_address, crem?.pickup_address, vet?.pickup_address));
 
   // 套餐及儀式
