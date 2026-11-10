@@ -9,6 +9,7 @@ import { Suspense } from "react";
 import { NavProgress } from "./_nav-progress";
 import { GlobalSearch } from "./_global-search";
 import { SyncAllButton } from "./_sync-all-button";
+import { BackButton } from "./_back-button";
 
 export default async function DashboardLayout({
   children,
@@ -57,6 +58,7 @@ export default async function DashboardLayout({
       </header>
 
       <main className="flex-1 min-w-0 w-full max-w-[1400px] mx-auto px-4 md:px-6 py-6 md:py-8">
+        <BackButton />
         {children}
       </main>
     </div>

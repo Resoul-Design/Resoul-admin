@@ -1,5 +1,6 @@
 "use client";
 
+import { displayPhone } from "@/lib/phone-display";
 import { FollowUpPanel } from "../_follow-up-panel";
 import { FollowUpBar } from "../_follow-up-bar";
 import { FOLLOW_UP_ORDER, followAction, followLabel } from "@/lib/follow-up";
@@ -189,7 +190,7 @@ export function OrdersTable({ rows, initialQuery = "", staffName = "同事", fol
               </td>
               <td className="px-4 py-3">
                 <div className="break-words">{r.customer || "—"}</div>
-                <div className="mt-0.5 text-xs text-[var(--soft)]">{r.phone ? "📞 " + r.phone : "—"}</div>
+                <div className="mt-0.5 text-xs text-[var(--soft)]">{r.phone ? "📞 " + displayPhone(r.phone) : "—"}</div>
               </td>
               <td className="break-words px-4 py-3 text-[var(--soft)]">{r.items}</td>
               {/* 金額／付款／出貨同一行；操作掣放在第二行，合併為一個「操作」掣 */}
@@ -220,7 +221,7 @@ export function OrdersTable({ rows, initialQuery = "", staffName = "同事", fol
           </div>
           <dl className="mt-3 grid grid-cols-[6.5rem_minmax(0,1fr)] [&>dt]:whitespace-nowrap gap-x-3 gap-y-1.5 text-sm">
             <dt className="text-[var(--soft)]">客戶 · 電話</dt>
-            <dd className="min-w-0"><div className="truncate">{r.customer || "—"}</div><div className="text-xs text-[var(--soft)]">{r.phone ? "📞 " + r.phone : "—"}</div></dd>
+            <dd className="min-w-0"><div className="truncate">{r.customer || "—"}</div><div className="text-xs text-[var(--soft)]">{r.phone ? "📞 " + displayPhone(r.phone) : "—"}</div></dd>
             {r.projectNo && r.projectNo !== "—" && <>
               <dt className="text-[var(--soft)]">專案編號</dt>
               <dd className="min-w-0 break-all text-xs text-[var(--soft)]">{r.projectNo}</dd>
