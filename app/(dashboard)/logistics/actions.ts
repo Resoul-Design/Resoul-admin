@@ -35,6 +35,7 @@ export async function updateCustomerData(invoice: string, values: Record<string,
 
   const admin = createAdminClient();
   const { data: existing } = await admin.from("logistics_orders").select("invoice_no").eq("invoice_no", invoiceNo).maybeSingle();
+  if (existing && !Object.keys(row).length) return {}; // 沒有修改：不寫入
   const { error } = existing
     ? await admin.from("logistics_orders").update({ ...row, updated_at: new Date().toISOString() }).eq("invoice_no", invoiceNo)
     : await admin.from("logistics_orders").insert({ invoice_no: invoiceNo, source: "admin", ...row });

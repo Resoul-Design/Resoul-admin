@@ -1,7 +1,5 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { after } from "next/server";
-import { syncOrderAttributes } from "@/lib/shopify-order-attrs";
 import { getStaff, hasModule } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { shopifyGraphQL } from "@/lib/shopify";
@@ -25,8 +23,6 @@ export default async function ServicesPage({ searchParams }: { searchParams: Pro
   const statusFilter = ["active", "cancelled", "refund"].includes(String(params.status)) ? String(params.status) : "";
   // 搜尋或篩選時讀取較多記錄，令舊單都搵到
   const LIMIT = q || statusFilter ? 2000 : 100;
-  // 頁面顯示後在背景為新開的 Shopify 訂單補上單號等資料欄位（舊單不改；不影響載入速度）
-  after(() => syncOrderAttributes({ first: 30 }).then((r) => { if (r.errors.length) console.error("[order_attrs]", r.errors.join(" | ")); }).catch((e) => console.error("[order_attrs]", e instanceof Error ? e.message : "unknown")));
   const staff = await getStaff();
   if (!staff) redirect("/login");
   const available = services.filter((service) => hasModule(staff, [service.key]));
@@ -37,7 +33,7 @@ export default async function ServicesPage({ searchParams }: { searchParams: Pro
   const labelHref: Record<string, string> = Object.fromEntries(Object.entries(typeLabel).map(([key, label]) => [label, typeHref[key]]));
   const serviceQueryHref = (label: string, invoice: unknown) => `${labelHref[label] || "/new-order"}?q=${encodeURIComponent(String(invoice))}`;
   const serviceOrder: Record<string, number> = { deposit: 1, cremation: 2, vet: 3, product: 4, other: 5 };
-  const statusLabel: Record<string, string> = { draft: "草稿", awaiting_payment: "待付款", pending: "處理中", paid: "已付款", completed: "已完成", cancelled: "已取消", cancelled_refunded: "已取消（已退款）", refunded: "已退款", partially_refunded: "部分退款", failed: "失敗" };
+  const statusLabel: Record<string, string> = { draft: "草稿", awaiting_payment: "待付款", pending: "待付款", paid: "已付款", completed: "已完成", cancelled: "已取消", cancelled_refunded: "已取消（已退款）", refunded: "已退款", partially_refunded: "部分退款", failed: "失敗" };
   // 狀態統一：取消優先（連同退款），其次付款狀態
   const bookingStatus = (r: { status?: string | null; payment_status?: string | null }) =>
     r.status === "cancelled" ? (r.payment_status === "refunded" ? "cancelled_refunded" : "cancelled") : r.payment_status || "";

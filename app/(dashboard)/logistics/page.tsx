@@ -5,6 +5,7 @@ import { LogisticsTable, type LogisticsRow } from "./_table";
 import { bookingChip, companyChip, productChip, type StatusChip } from "@/lib/service-status";
 import { memorialClass, memorialLabel, slowestStatus } from "@/lib/memorial-status";
 import { extraOrders } from "@/lib/logistics-extra";
+import { referralFee } from "@/lib/logistics-calc";
 
 export const dynamic = "force-dynamic";
 
@@ -101,6 +102,7 @@ export default async function LogisticsPage() {
     status: text(row, "status", "logistics_status") || "—",
     updated: hkTime(text(row, "updated_at", "synced_at", "created_at")),
     extraRefs: extraOrders(row).map((x) => x.ref),
+    referral: referralFee(row.referral, row.package_price, row.package_code),
     pickupChips: chips.get(String(row.invoice_no))?.pickup || [],
     serviceChips: chips.get(String(row.invoice_no))?.service || [],
     memorialChips: chips.get(String(row.invoice_no))?.memorial || [],

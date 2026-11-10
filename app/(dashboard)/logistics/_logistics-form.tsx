@@ -4,6 +4,9 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { LOGISTICS_GROUPS } from "@/lib/logistics-fields";
 import { updateCustomerData } from "./actions";
+import { REFERRAL_PARTNERS, computeLogistics, findPartner, type LineTotals } from "@/lib/logistics-calc";
+
+const hk = (n: number) => `HK$${n.toLocaleString("en-US", { maximumFractionDigits: 2 })}`;
 
 const input = "mt-1 w-full rounded-lg border border-[var(--line)] bg-white px-3 py-2 text-sm";
 
@@ -14,7 +17,7 @@ const input = "mt-1 w-full rounded-lg border border-[var(--line)] bg-white px-3 
 const COMPARE = new Set(["invoice_amount", "package_price", "memorial_addon_price", "other_surcharge", "deposit_received", "balance_settled"]);
 const differs = (a: string, b: string) => { const x = Number(String(a).replace(/[$,\s]/g, "")), y = Number(String(b).replace(/[$,\s]/g, "")); return Number.isFinite(x) && Number.isFinite(y) ? Math.abs(x - y) > 0.005 : a.trim() !== b.trim(); };
 
-export function LogisticsForm({ invoice, initial, exists, isAdmin, autoKeys = [], derived = {} }: { invoice: string; initial: Record<string, string>; exists: boolean; isAdmin: boolean; autoKeys?: string[]; derived?: Record<string, string> }) {
+export function LogisticsForm({ invoice, initial, exists, isAdmin, autoKeys = [], derived = {}, lines = null }: { invoice: string; initial: Record<string, string>; exists: boolean; isAdmin: boolean; autoKeys?: string[]; derived?: Record<string, string>; lines?: LineTotals | null }) {
   const auto = new Set(autoKeys);
   const router = useRouter();
   const [values, setValues] = useState<Record<string, string>>(initial);
@@ -27,14 +30,20 @@ export function LogisticsForm({ invoice, initial, exists, isAdmin, autoKeys = []
   const [saved, setSaved] = useState<Record<string, string>>(initial);
   const changed = (k: string) => (values[k] || "") !== (saved[k] || "");
   const changedCount = groups.reduce((n, g) => n + g.fields.filter((f) => changed(f.key)).length, 0);
+  // 自動填入（淡黃色）的值：按「採用自動填入」才保存，否則保留資料庫原有（空白）值
+  const [acceptAuto, setAcceptAuto] = useState(false);
+  const calc = computeLogistics(values, lines);
 
   function save() {
     setMsg(null);
     start(async () => {
-      const res = await updateCustomerData(invoice, values);
+      // 只送出真正修改的欄位；未修改的欄位維持已存值，不會被重寫
+      const payload = Object.fromEntries(Object.entries(values).filter(([k, v]) => (v || "") !== (initial[k] || "") || (acceptAuto && auto.has(k) && (v || "") !== "")));
+      if (exists && !Object.keys(payload).length) return setMsg({ ok: true, text: "沒有修改，未有保存。" });
+      const res = await updateCustomerData(invoice, payload);
       if (res.error) return setMsg({ ok: false, text: res.error });
       setSaved(values);
-      setMsg(res.warning ? { ok: false, text: `已保存。${res.warning}` } : { ok: true, text: "已保存。" });
+      setMsg(res.warning ? { ok: false, text: `已保存。${res.warning}` } : { ok: true, text: `已保存（${Object.keys(payload).length} 項）。` });
       router.refresh();
     });
   }
@@ -56,7 +65,23 @@ export function LogisticsForm({ invoice, initial, exists, isAdmin, autoKeys = []
         ))}
       </nav>
       {staleCount > 0 && <p className="mb-3 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">有 {staleCount} 個金額與單據最新計算不同（例如開單後加減了產品），請在「費用與付款」核對，按「用單據金額」更新後儲存。</p>}
-      {autoKeys.length > 0 && <p className="mb-3 text-xs text-[var(--soft)]"><span className="mr-1 inline-block h-3 w-3 rounded border border-amber-300 bg-amber-50 align-middle" />淡黃色欄位按單據資料自動填入（{autoKeys.length} 項），請核對後按「儲存修改」保存。</p>}
+      {autoKeys.length > 0 && (
+        <p className="mb-3 flex flex-wrap items-center gap-2 text-xs text-[var(--soft)]">
+          <span><span className="mr-1 inline-block h-3 w-3 rounded border border-amber-300 bg-amber-50 align-middle" />淡黃色欄位按單據資料自動填入（{autoKeys.length} 項），只作參考；修改後或按「採用自動填入」才會保存。</span>
+          <label className="flex items-center gap-1 text-[var(--ink)]"><input type="checkbox" checked={acceptAuto} onChange={(e) => setAcceptAuto(e.target.checked)} />採用自動填入</label>
+        </p>
+      )}
+      {/* 計算欄：按 Google Sheet 公式即時計算，只作顯示，不會保存 */}
+      <div className="mb-3 rounded-2xl border border-[var(--line)] bg-[var(--card)] p-3 text-sm">
+        <p className="mb-2 text-xs text-[var(--soft)]">計算欄（按 Excel 公式即時計算，只作顯示，不會寫入資料）</p>
+        <dl className="grid gap-x-4 gap-y-2 sm:grid-cols-2 lg:grid-cols-5">
+          <div><dt className="text-xs text-[var(--soft)]">發票總額</dt><dd className="font-medium tabular-nums">{hk(calc.invoiceTotal)}</dd><dd className="text-xs text-[var(--soft)]">套餐＋紀念品{calc.memorial.from === "lines" ? "（產品行）" : ""}＋盅仔租用＋回歸自然</dd></div>
+          <div><dt className="text-xs text-[var(--soft)]">尚欠</dt><dd className="font-medium tabular-nums">{hk(calc.balanceDue)}</dd><dd className="text-xs text-[var(--soft)]">發票總額－訂金－折扣</dd></div>
+          <div><dt className="text-xs text-[var(--soft)]">轉介費{calc.referral.partner ? `（${calc.referral.partner}）` : ""}</dt><dd className="font-medium tabular-nums">{calc.referral.fee == null ? "—" : hk(calc.referral.fee)}{calc.referral.payable && calc.referral.fee != null && <span className="ml-1 rounded-full bg-amber-100 px-1.5 text-xs font-normal text-amber-800">應付</span>}</dd><dd className="text-xs text-[var(--soft)]">{calc.referral.note}</dd></div>
+          <div><dt className="text-xs text-[var(--soft)]">司機費</dt><dd className="font-medium tabular-nums">{hk(calc.driverCost.value)}</dd><dd className="text-xs text-[var(--soft)]">{calc.driverCost.from === "saved" ? "已存值（人手）" : "預設＝接送費"}</dd></div>
+          {isAdmin && <div><dt className="text-xs text-[var(--soft)]">毛利</dt><dd className="font-medium tabular-nums">{hk(calc.grossProfit)}</dd><dd className="text-xs text-[var(--soft)]">發票總額－折扣－紀念品成本{calc.memorialCost.from === "lines" ? "（產品行）" : ""}－運送－司機－佣金</dd></div>}
+        </dl>
+      </div>
       <div className="space-y-3">
         {groups.map((group, i) => {
           const open = !closed.has(group.title);
@@ -77,7 +102,15 @@ export function LogisticsForm({ invoice, initial, exists, isAdmin, autoKeys = []
                   {group.fields.map((f) => (
                     <label key={f.key} className={"text-sm" + (f.type === "textarea" ? " sm:col-span-2 lg:col-span-4" : "")}>
                       {f.label}
-                      {f.type === "textarea" ? (
+                      {f.key === "referral" ? (
+                        // 轉介夥伴：對照表選項；舊資料的其他文字保留為選項，不會自動改寫
+                        <select value={values[f.key] || ""} onChange={(e) => setValues((v) => ({ ...v, [f.key]: e.target.value }))} className={input + (auto.has(f.key) && values[f.key] === initial[f.key] ? " !bg-amber-50" : "")}>
+                          <option value="">（沒有轉介）</option>
+                          {REFERRAL_PARTNERS.map((p) => <option key={p.key} value={p.key}>{p.key}{p.payable ? "" : "（不收費）"}</option>)}
+                          {values[f.key] && !findPartner(values[f.key]) && <option value={values[f.key]}>{values[f.key]}（對照表以外，不計費）</option>}
+                          {values[f.key] && findPartner(values[f.key]) && findPartner(values[f.key])?.key !== values[f.key] && <option value={values[f.key]}>{values[f.key]}</option>}
+                        </select>
+                      ) : f.type === "textarea" ? (
                         <textarea value={values[f.key] || ""} onChange={(e) => setValues((v) => ({ ...v, [f.key]: e.target.value }))} rows={2} maxLength={2000} className={input + (auto.has(f.key) && values[f.key] === initial[f.key] ? " !bg-amber-50" : "")} />
                       ) : (
                         <input
