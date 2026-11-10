@@ -19,7 +19,7 @@ import { invoiceLabel } from "@/lib/invoice-label";
 import { depositCreditValue } from "@/lib/deposit-amount";
 import { newCompanyProjectNo } from "@/lib/project-no";
 import { loadSiteContent } from "@/lib/site-content-server";
-import { ORDER_TYPE_MAP, RECEIVED_METHODS, type OrderType, type PaymentIntent } from "@/lib/order-types";
+import { ORDER_TYPE_MAP, PET_GENDERS, RECEIVED_METHODS, type OrderType, type PaymentIntent } from "@/lib/order-types";
 import { applyFix } from "@/lib/reconcile-fix";
 import { MEMORIAL_REMARK, invoiceRemarkLines, isUrnPickup, type UrnPickup } from "@/lib/invoice-remark";
 import { loadInvoiceProductLines } from "@/lib/memorial-lines";
@@ -33,6 +33,10 @@ export type NewOrderInput = {
   projectNo?: string; // 沿用客人原有專案；留空＝新專案
   petName?: string;
   petType?: string;
+  petWeight?: number; // 接送訂金及善終／告別套餐必填
+  petBreed?: string;
+  petGender?: string;
+  petAge?: string;
   serviceDate?: string;
   serviceSlot?: string;
   address?: string;
@@ -202,6 +206,22 @@ export async function createOrder(input: NewOrderInput): Promise<{ id?: string; 
   if (serviceDate && !/^\d{4}-\d{2}-\d{2}$/.test(serviceDate)) return { error: "日期格式無效。" };
   if (intent === "received" && !RECEIVED_METHODS.includes(method)) return { error: "請選擇收款方式。" };
   if (input.type !== "deposit" && !isUrnPickup(input.urnPickup)) return { error: "請選擇發票備註：骨灰取回安排。" };
+  // 接送訂金及善終／告別套餐：寵物及接送資料必填
+  const needPet = input.type === "deposit" || input.type === "cremation";
+  const petWeight = Number(input.petWeight);
+  const petBreed = t(input.petBreed, 80);
+  const petGender = PET_GENDERS.includes(t(input.petGender, 20)) ? t(input.petGender, 20) : "";
+  const petAge = t(input.petAge, 40);
+  if (needPet) {
+    if (!petName) return { error: "請填寫寵物姓名。" };
+    if (!Number.isFinite(petWeight) || petWeight <= 0 || petWeight > 300) return { error: "請填寫寵物體重（公斤）。" };
+    if (!petBreed) return { error: "請填寫品種。" };
+    if (!petGender) return { error: "請選擇性別。" };
+    if (!petAge) return { error: "請填寫年齡。" };
+    if (!address) return { error: "請填寫接送地址。" };
+    if (!slot) return { error: "請選擇接送時間。" };
+  }
+  const petInfo = needPet ? `寵物資料：體重 ${petWeight} 公斤、品種 ${petBreed}、性別 ${petGender}、年齡 ${petAge}` : "";
 
   // 類型細節：金額一律由 Shopify 產品或網站內容計算，不信任瀏覽器提交的價錢
   const lines: Line[] = [];
@@ -303,6 +323,7 @@ export async function createOrder(input: NewOrderInput): Promise<{ id?: string; 
       `專案編號：${projectNo}`,
       `付款參考: ${paymentRef}`,
       input.type === "vet" ? "" : `產品: ${lines[0].label}`,
+      petInfo,
       input.type === "vet" && address ? `地點：${address}` : "",
       slot ? `希望時段: ${slot}` : "",
       lines.length > 1 ? `${input.type === "vet" ? "收費" : "加購"}: ${lines.slice(input.type === "vet" ? 0 : 1).map((l) => `${l.label}×${l.quantity}`).join("、")}` : "",
@@ -374,6 +395,7 @@ export async function createOrder(input: NewOrderInput): Promise<{ id?: string; 
   const details = {
     lines: lines.map((l) => ({ label: l.label, quantity: l.quantity, price: l.price })),
     petType: petType || null, serviceDate: serviceDate || null, serviceSlot: slot || null, address: address || null,
+    pet: needPet ? { weightKg: petWeight, breed: petBreed, gender: petGender, age: petAge } : null,
     internalNote: internalNote || null, publicNote: publicNote || null, receivedMethod: intent === "received" ? method : null,
     urnPickup: input.type === "deposit" ? null : input.urnPickup, invoiceRemark: remarkLines,
     other: input.type === "other" ? { title: lines[0].title, description: otherDescription || null } : null,
@@ -402,7 +424,7 @@ export async function createOrder(input: NewOrderInput): Promise<{ id?: string; 
   }
 
   const { error: logisticsError } = await admin.from("logistics_orders").upsert({
-    invoice_no: invoiceNo, source: "admin", owner_name: name, phone, email: email || null, pet_name: petName || null, animal: petType || null,
+    invoice_no: invoiceNo, source: "admin", owner_name: name, phone, email: email || null, pet_name: petName || null, animal: petType || null, ...(needPet ? { breed: petBreed, weight_kg: petWeight } : {}),
     package_name: planName || def2.label, arrival_date: serviceDate || null, arrival_time: slot || null, pickup_from: address || null,
   }, { onConflict: "invoice_no", ignoreDuplicates: true });
   if (logisticsError) console.error("[new_order_logistics]", logisticsError.message);

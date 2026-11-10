@@ -6,6 +6,7 @@ import type { DraftCatalogProduct } from "@/lib/catalog";
 import { ORDER_TYPES, ORDER_TYPE_MAP, PAYMENT_INTENTS, RECEIVED_METHODS, type OrderType, type PaymentIntent } from "@/lib/order-types";
 import { createOrder, lookupCustomer, type CustomerMatch, type NewOrderLine } from "./actions";
 import { URN_PICKUP_OPTIONS, invoiceRemarkLines, type UrnPickup } from "@/lib/invoice-remark";
+import { PET_GENDERS } from "@/lib/order-types";
 
 export type NewOrderCatalog = {
   cremation: DraftCatalogProduct[];
@@ -120,6 +121,12 @@ export function NewOrderForm({ catalog, allowed, prefill }: { catalog: NewOrderC
   // C. 共用欄位
   const [petName, setPetName] = useState(prefill.petName || "");
   const [petType, setPetType] = useState("");
+  const needPet = type === "deposit" || type === "cremation";
+  // 接送訂金及善終／告別套餐必填的寵物資料
+  const [petWeight, setPetWeight] = useState("");
+  const [petBreed, setPetBreed] = useState("");
+  const [petGender, setPetGender] = useState("");
+  const [petAge, setPetAge] = useState("");
   const [serviceDate, setServiceDate] = useState("");
   const [slot, setSlot] = useState("");
   const [address, setAddress] = useState("");
@@ -202,6 +209,13 @@ export function NewOrderForm({ catalog, allowed, prefill }: { catalog: NewOrderC
     type === "other" && !otherTitle.trim() && "項目名稱",
     type === "other" && !(Number(otherAmount) > 0) && "金額",
     intent === "received" && !method && "收款方式",
+    needPet && !petName.trim() && "寵物姓名",
+    needPet && !(Number(petWeight) > 0) && "體重",
+    needPet && !petBreed.trim() && "品種",
+    needPet && !petGender && "性別",
+    needPet && !petAge.trim() && "年齡",
+    needPet && !address.trim() && "接送地址",
+    needPet && !slot && "接送時間",
     type && type !== "deposit" && !urnPickup && "發票備註（骨灰取回）",
   ].filter(Boolean) as string[];
 
@@ -216,6 +230,7 @@ export function NewOrderForm({ catalog, allowed, prefill }: { catalog: NewOrderC
         projectNo: projectNo === "new" ? "" : projectNo,
         petName,
         petType,
+        ...(needPet ? { petWeight: Number(petWeight), petBreed, petGender, petAge } : {}),
         serviceDate,
         serviceSlot: slot,
         address,
@@ -237,7 +252,7 @@ export function NewOrderForm({ catalog, allowed, prefill }: { catalog: NewOrderC
   }
 
   const showDate = type === "cremation" || type === "deposit" || type === "vet";
-  const showAddress = type === "deposit" || type === "vet";
+  const showAddress = type === "deposit" || type === "vet" || type === "cremation";
 
   return (
     <div className="space-y-4">
@@ -340,20 +355,33 @@ export function NewOrderForm({ catalog, allowed, prefill }: { catalog: NewOrderC
                 <label className={label + " sm:col-span-2"}>說明（會顯示在單據備註）<input value={otherDesc} onChange={(e) => setOtherDesc(e.target.value)} maxLength={500} className={input + " mt-1"} /></label>
               </>
             )}
-            <label className={label}>寵物名稱<input value={petName} onChange={(e) => setPetName(e.target.value)} maxLength={100} className={input + " mt-1"} /></label>
+            <label className={label}>{needPet ? "寵物姓名 *" : "寵物名稱"}<input value={petName} onChange={(e) => setPetName(e.target.value)} maxLength={100} className={input + " mt-1"} /></label>
+            {needPet && (
+              <>
+                <label className={label}>體重（公斤）*<input value={petWeight} onChange={(e) => setPetWeight(e.target.value.replace(/[^\d.]/g, ""))} inputMode="decimal" className={input + " mt-1"} /></label>
+                <label className={label}>品種 *<input value={petBreed} onChange={(e) => setPetBreed(e.target.value)} maxLength={80} className={input + " mt-1"} /></label>
+                <label className={label}>性別 *
+                  <select value={petGender} onChange={(e) => setPetGender(e.target.value)} className={input + " mt-1"}>
+                    <option value="">請選擇</option>
+                    {PET_GENDERS.map((g) => <option key={g}>{g}</option>)}
+                  </select>
+                </label>
+                <label className={label}>年齡 *<input value={petAge} onChange={(e) => setPetAge(e.target.value)} maxLength={40} placeholder="例如：12 歲" className={input + " mt-1"} /></label>
+              </>
+            )}
             {showDate && (
               <label className={label}>{type === "deposit" ? "接送日期" : "服務日期"}<input type="date" value={serviceDate} onChange={(e) => setServiceDate(e.target.value)} className={input + " mt-1"} /></label>
             )}
             {showDate && (
-              <label className={label}>時段
+              <label className={label}>{needPet ? "接送時間 *" : "時段"}
                 <select value={slot} onChange={(e) => setSlot(e.target.value)} className={input + " mt-1"}>
-                  <option value="">待確認</option>
+                  <option value="">{needPet ? "請選擇" : "待確認"}</option>
                   {catalog.slots.map((s) => <option key={s.zh} value={s.zh}>{s.label}</option>)}
                 </select>
               </label>
             )}
             {showAddress && (
-              <label className={label}>{type === "vet" ? "地區／地址" : "接送地址"}<input value={address} onChange={(e) => setAddress(e.target.value)} maxLength={300} className={input + " mt-1"} /></label>
+              <label className={label}>{type === "vet" ? "地區／地址" : `接送地址${needPet ? " *" : ""}`}<input value={address} onChange={(e) => setAddress(e.target.value)} maxLength={300} className={input + " mt-1"} /></label>
             )}
           </div>
 
@@ -393,9 +421,6 @@ export function NewOrderForm({ catalog, allowed, prefill }: { catalog: NewOrderC
               <div className="mt-3 grid gap-3 sm:grid-cols-2">
                 {(type === "cremation" || type === "deposit") && (
                   <label className={label}>寵物種類<input value={petType} onChange={(e) => setPetType(e.target.value)} maxLength={80} placeholder="例如：貓、狗" className={input + " mt-1"} /></label>
-                )}
-                {type === "cremation" && (
-                  <label className={label}>接送地址<input value={address} onChange={(e) => setAddress(e.target.value)} maxLength={300} className={input + " mt-1"} /></label>
                 )}
                 {type === "cremation" && (
                   <div className="sm:col-span-2"><div className="mb-1 text-sm">加購紀念品</div><LinePicker products={catalog.souvenir} lines={lines} onChange={setLines} /></div>
