@@ -38,7 +38,7 @@ export type NewOrderInput = {
   petGender?: string;
   petAge?: string;
   serviceDate?: string; // 接送訂金＝接送日期；善終／告別套餐＝火化日期
-  pickupDate?: string; // 善終／告別套餐的接送日期
+  ceremonyTime?: string; // 善終／告別套餐的火化時間（HH:MM）
   serviceSlot?: string;
   address?: string;
   internalNote?: string;
@@ -226,8 +226,9 @@ export async function createOrder(input: NewOrderInput): Promise<{ id?: string; 
   if (referrerPhone && !phoneKey(referrerPhone)) return { error: "推薦人電話格式無效。" };
   if (enteredProject && !isProjectNo(enteredProject)) return { error: "專案編號只可包含文字、數字、空格、連字號或底線（2–40 個字元）。" };
   if (serviceDate && !/^\d{4}-\d{2}-\d{2}$/.test(serviceDate)) return { error: "日期格式無效。" };
-  const pickupDate = input.type === "cremation" ? t(input.pickupDate, 10) : input.type === "deposit" ? serviceDate : "";
-  if (pickupDate && !/^\d{4}-\d{2}-\d{2}$/.test(pickupDate)) return { error: "接送日期格式無效。" };
+  const pickupDate = input.type === "deposit" ? serviceDate : "";
+  const ceremonyTime = input.type === "cremation" ? t(input.ceremonyTime, 5) : "";
+  if (ceremonyTime && !/^\d{2}:\d{2}$/.test(ceremonyTime)) return { error: "火化時間格式無效。" };
   if (intent === "received" && !RECEIVED_METHODS.includes(method)) return { error: "請選擇收款方式。" };
   if (input.type !== "deposit" && !isUrnPickup(input.urnPickup)) return { error: "請選擇發票備註：骨灰取回安排。" };
   // 接送訂金及善終／告別套餐：寵物及接送資料必填
@@ -242,7 +243,7 @@ export async function createOrder(input: NewOrderInput): Promise<{ id?: string; 
     if (!petBreed) return { error: "請填寫品種。" };
     if (!petGender) return { error: "請選擇性別。" };
     if (!petAge) return { error: "請填寫年齡。" };
-    if (!address) return { error: "請填寫接送地址。" };
+    if (input.type === "deposit" && !address) return { error: "請填寫接送地址。" };
   }
   const petInfo = needPet ? `寵物資料：體重 ${petWeight} 公斤、品種 ${petBreed}、性別 ${petGender}、年齡 ${petAge}` : "";
 
@@ -347,7 +348,7 @@ export async function createOrder(input: NewOrderInput): Promise<{ id?: string; 
       `付款參考: ${paymentRef}`,
       input.type === "vet" ? "" : `產品: ${lines[0].label}`,
       petInfo,
-      input.type === "cremation" && pickupDate ? `接送日期: ${pickupDate}` : "",
+      ceremonyTime ? `火化時間: ${ceremonyTime}` : "",
       input.type === "vet" && address ? `地點：${address}` : "",
       slot ? `希望時段: ${slot}` : "",
       lines.length > 1 ? `${input.type === "vet" ? "收費" : "加購"}: ${lines.slice(input.type === "vet" ? 0 : 1).map((l) => `${l.label}×${l.quantity}`).join("、")}` : "",
@@ -363,7 +364,7 @@ export async function createOrder(input: NewOrderInput): Promise<{ id?: string; 
     };
     const row: Record<string, unknown> = input.type === "deposit"
       ? { ...common, project_no: projectNo, plan: planName, service_time: slot || null, source: "admin:deposit" }
-      : { ...common, case_no: projectNo, plan: input.type === "vet" ? null : planName, service_time: null, source: input.type === "vet" ? "admin:euthanasia" : "admin:cremation" };
+      : { ...common, case_no: projectNo, plan: input.type === "vet" ? null : planName, service_time: ceremonyTime || null, source: input.type === "vet" ? "admin:euthanasia" : "admin:cremation" };
     let ins = await admin.from(linkedTable).insert(row).select("id, invoice_no").single();
     // 同一專案已有火化預約或獸醫評估（case_no 唯一）：專案編號只寫入備註
     if (ins.error && linkedTable === "cremation_bookings" && /duplicate|unique/i.test(ins.error.message)) {
@@ -418,7 +419,7 @@ export async function createOrder(input: NewOrderInput): Promise<{ id?: string; 
     : basePlan;
   const details = {
     lines: lines.map((l) => ({ label: l.label, quantity: l.quantity, price: l.price })),
-    petType: petType || null, serviceDate: serviceDate || null, pickupDate: pickupDate || null, serviceSlot: slot || null, address: address || null,
+    petType: petType || null, serviceDate: serviceDate || null, ceremonyTime: ceremonyTime || null, serviceSlot: slot || null, address: address || null,
     pet: needPet ? { weightKg: petWeight, breed: petBreed, gender: petGender, age: petAge } : null,
     internalNote: internalNote || null, publicNote: publicNote || null, receivedMethod: intent === "received" ? method : null,
     urnPickup: input.type === "deposit" ? null : input.urnPickup, invoiceRemark: remarkLines,
@@ -449,7 +450,7 @@ export async function createOrder(input: NewOrderInput): Promise<{ id?: string; 
 
   const { error: logisticsError } = await admin.from("logistics_orders").upsert({
     invoice_no: invoiceNo, source: "admin", owner_name: name, phone, email: email || null, pet_name: petName || null, animal: petType || null, ...(needPet ? { breed: petBreed, weight_kg: petWeight } : {}),
-    package_name: planName || def2.label, arrival_date: pickupDate || null, arrival_time: slot || null, pickup_from: address || null, ...(input.type === "cremation" && serviceDate ? { ceremony_or_order_date: serviceDate } : {}),
+    package_name: planName || def2.label, arrival_date: pickupDate || null, arrival_time: slot || null, pickup_from: address || null, ...(input.type === "cremation" && serviceDate ? { ceremony_or_order_date: serviceDate } : {}), ...(ceremonyTime ? { ceremony_time: ceremonyTime } : {}),
   }, { onConflict: "invoice_no", ignoreDuplicates: true });
   if (logisticsError) console.error("[new_order_logistics]", logisticsError.message);
 

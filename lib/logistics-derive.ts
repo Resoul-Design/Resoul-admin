@@ -39,9 +39,9 @@ export function deriveCustomerData(src: { deposits: Row[]; cremations: Row[]; co
   set("animal", first(crem?.pet_type, dep?.pet_type, vet?.pet_type));
 
   // 接送（接送訂金優先，否則火化預約）
-  const cremPickup = (companies.find((c) => crem && c.linked_id === crem.id)?.details || {}) as { pickupDate?: string | null; serviceSlot?: string | null };
-  set("arrival_date", first(dep?.service_date, cremPickup.pickupDate));
-  set("arrival_time", first(dep?.service_time, cremPickup.serviceSlot));
+  // 接送日期／時間只跟接送訂金；火化日期及時間另記在「火化與儀式」
+  set("arrival_date", first(dep?.service_date));
+  set("arrival_time", first(dep?.service_time));
   set("pickup_from", first(dep?.pickup_address, crem?.pickup_address, vet?.pickup_address));
 
   // 套餐及儀式
@@ -53,6 +53,7 @@ export function deriveCustomerData(src: { deposits: Row[]; cremations: Row[]; co
   } else set("package_name", plan);
   const ceremony = str(crem?.service_date);
   set("ceremony_or_order_date", ceremony);
+  set("ceremony_time", first(crem?.service_time));
   const codeDate = ceremony || hkDate(any.map((r) => str(r.created_at || r.shopify_created_at)).filter(Boolean).sort()[0]);
   if (codeDate) set("date_code", `${codeDate.slice(5, 7)}${codeDate.slice(0, 4)}`);
 

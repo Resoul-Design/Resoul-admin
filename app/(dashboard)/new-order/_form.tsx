@@ -130,7 +130,7 @@ export function NewOrderForm({ catalog, allowed, prefill }: { catalog: NewOrderC
   const [petGender, setPetGender] = useState(prefill.pet?.gender || "");
   const [petAge, setPetAge] = useState(prefill.pet?.age || "");
   const [serviceDate, setServiceDate] = useState("");
-  const [pickupDate, setPickupDate] = useState(""); // 善終／告別套餐的接送日期（火化日期另計）
+  const [ceremonyTime, setCeremonyTime] = useState(""); // 善終／告別套餐的火化時間
   const [slot, setSlot] = useState("");
   const [address, setAddress] = useState(prefill.pet?.address || "");
   function fillPet(p: PetProfile) {
@@ -221,7 +221,7 @@ export function NewOrderForm({ catalog, allowed, prefill }: { catalog: NewOrderC
     needPet && !petBreed.trim() && "品種",
     needPet && !petGender && "性別",
     needPet && !petAge.trim() && "年齡",
-    needPet && !address.trim() && "接送地址",
+    type === "deposit" && !address.trim() && "接送地址",
     type && type !== "deposit" && !urnPickup && "發票備註（骨灰取回）",
   ].filter(Boolean) as string[];
 
@@ -238,7 +238,7 @@ export function NewOrderForm({ catalog, allowed, prefill }: { catalog: NewOrderC
         petType,
         ...(needPet ? { petWeight: Number(petWeight), petBreed, petGender, petAge } : {}),
         serviceDate,
-        ...(type === "cremation" && pickupDate ? { pickupDate } : {}),
+        ...(type === "cremation" && ceremonyTime ? { ceremonyTime } : {}),
         serviceSlot: slot,
         address,
         internalNote,
@@ -259,7 +259,7 @@ export function NewOrderForm({ catalog, allowed, prefill }: { catalog: NewOrderC
   }
 
   const showDate = type === "cremation" || type === "deposit" || type === "vet";
-  const showAddress = type === "deposit" || type === "vet" || type === "cremation";
+  const showAddress = type === "deposit" || type === "vet"; // 火化單的接送資料已在接送訂金單填寫
 
   return (
     <div className="space-y-4">
@@ -380,9 +380,9 @@ export function NewOrderForm({ catalog, allowed, prefill }: { catalog: NewOrderC
               <label className={label}>{type === "deposit" ? "接送日期" : type === "cremation" ? "火化日期" : "服務日期"}<input type="date" value={serviceDate} onChange={(e) => setServiceDate(e.target.value)} className={input + " mt-1"} /></label>
             )}
             {type === "cremation" && (
-              <label className={label}>接送日期<input type="date" value={pickupDate} onChange={(e) => setPickupDate(e.target.value)} className={input + " mt-1"} /></label>
+              <label className={label}>火化時間<input type="time" value={ceremonyTime} onChange={(e) => setCeremonyTime(e.target.value)} className={input + " mt-1"} /></label>
             )}
-            {showDate && (
+            {showDate && type !== "cremation" && (
               <label className={label}>{needPet ? "接送時間" : "時段"}
                 <select value={slot} onChange={(e) => setSlot(e.target.value)} className={input + " mt-1"}>
                   <option value="">待確認</option>
@@ -391,7 +391,7 @@ export function NewOrderForm({ catalog, allowed, prefill }: { catalog: NewOrderC
               </label>
             )}
             {showAddress && (
-              <label className={label}>{type === "vet" ? "地區／地址" : `接送地址${needPet ? " *" : ""}`}<input value={address} onChange={(e) => setAddress(e.target.value)} maxLength={300} className={input + " mt-1"} /></label>
+              <label className={label}>{type === "vet" ? "地區／地址" : `接送地址${type === "deposit" ? " *" : ""}`}<input value={address} onChange={(e) => setAddress(e.target.value)} maxLength={300} className={input + " mt-1"} /></label>
             )}
           </div>
 
