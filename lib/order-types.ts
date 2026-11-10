@@ -28,7 +28,7 @@ export const PAYMENT_INTENTS: { key: PaymentIntent; label: string; hint: string 
   { key: "received", label: "已收款", hint: "現金、FPS 等已收：Shopify 訂單直接標記已付款" },
 ];
 
-export const PET_GENDERS = ["公", "母", "公（已絕育）", "母（已絕育）", "不詳"];
+export const PET_GENDERS = ["公", "母", "不詳"];
 
 export const RECEIVED_METHODS = ["現金", "FPS 轉數快", "PayMe", "信用卡", "銀行轉帳", "其他"];
 
