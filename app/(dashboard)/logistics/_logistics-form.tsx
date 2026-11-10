@@ -73,13 +73,12 @@ export function LogisticsForm({ invoice, initial, exists, isAdmin, autoKeys = []
       )}
       {/* 計算欄：按 Google Sheet 公式即時計算，只作顯示，不會保存 */}
       <div className="mb-3 rounded-2xl border border-[var(--line)] bg-[var(--card)] p-3 text-sm">
-        <p className="mb-2 text-xs text-[var(--soft)]">計算欄（按 Excel 公式即時計算，只作顯示，不會寫入資料）</p>
         <dl className="grid gap-x-4 gap-y-2 sm:grid-cols-2 lg:grid-cols-5">
-          <div><dt className="text-xs text-[var(--soft)]">發票總額</dt><dd className="font-medium tabular-nums">{hk(calc.invoiceTotal)}</dd><dd className="text-xs text-[var(--soft)]">套餐＋紀念品{calc.memorial.from === "lines" ? "（產品行）" : ""}＋盅仔租用＋回歸自然</dd></div>
-          <div><dt className="text-xs text-[var(--soft)]">尚欠</dt><dd className="font-medium tabular-nums">{hk(calc.balanceDue)}</dd><dd className="text-xs text-[var(--soft)]">發票總額－訂金－折扣</dd></div>
-          <div><dt className="text-xs text-[var(--soft)]">轉介費{calc.referral.partner ? `（${calc.referral.partner}）` : ""}</dt><dd className="font-medium tabular-nums">{calc.referral.fee == null ? "—" : hk(calc.referral.fee)}{calc.referral.payable && calc.referral.fee != null && <span className="ml-1 rounded-full bg-amber-100 px-1.5 text-xs font-normal text-amber-800">應付</span>}</dd><dd className="text-xs text-[var(--soft)]">{calc.referral.note}</dd></div>
-          <div><dt className="text-xs text-[var(--soft)]">司機費</dt><dd className="font-medium tabular-nums">{hk(calc.driverCost.value)}</dd><dd className="text-xs text-[var(--soft)]">{calc.driverCost.from === "saved" ? "已存值（人手）" : "預設＝接送費"}</dd></div>
-          {isAdmin && <div><dt className="text-xs text-[var(--soft)]">毛利</dt><dd className="font-medium tabular-nums">{hk(calc.grossProfit)}</dd><dd className="text-xs text-[var(--soft)]">發票總額－折扣－紀念品成本{calc.memorialCost.from === "lines" ? "（產品行）" : ""}－運送－司機－佣金</dd></div>}
+          <div><dt className="text-xs text-[var(--soft)]">發票總額</dt><dd className="font-medium tabular-nums">{hk(calc.invoiceTotal)}</dd></div>
+          <div><dt className="text-xs text-[var(--soft)]">尚欠</dt><dd className="font-medium tabular-nums">{hk(calc.balanceDue)}</dd></div>
+          <div><dt className="text-xs text-[var(--soft)]">轉介費{calc.referral.partner ? `（${calc.referral.partner}）` : ""}</dt><dd className="font-medium tabular-nums">{calc.referral.fee == null ? "—" : hk(calc.referral.fee)}{calc.referral.payable && calc.referral.fee != null && <span className="ml-1 rounded-full bg-amber-100 px-1.5 text-xs font-normal text-amber-800">應付</span>}</dd></div>
+          <div><dt className="text-xs text-[var(--soft)]">司機費</dt><dd className="font-medium tabular-nums">{hk(calc.driverCost.value)}</dd></div>
+          {isAdmin && <div><dt className="text-xs text-[var(--soft)]">毛利</dt><dd className="font-medium tabular-nums">{hk(calc.grossProfit)}</dd></div>}
         </dl>
       </div>
       <div className="space-y-3">
