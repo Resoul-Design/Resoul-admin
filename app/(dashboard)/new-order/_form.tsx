@@ -215,7 +215,6 @@ export function NewOrderForm({ catalog, allowed, prefill }: { catalog: NewOrderC
     needPet && !petGender && "性別",
     needPet && !petAge.trim() && "年齡",
     needPet && !address.trim() && "接送地址",
-    needPet && !slot && "接送時間",
     type && type !== "deposit" && !urnPickup && "發票備註（骨灰取回）",
   ].filter(Boolean) as string[];
 
@@ -373,9 +372,9 @@ export function NewOrderForm({ catalog, allowed, prefill }: { catalog: NewOrderC
               <label className={label}>{type === "deposit" ? "接送日期" : "服務日期"}<input type="date" value={serviceDate} onChange={(e) => setServiceDate(e.target.value)} className={input + " mt-1"} /></label>
             )}
             {showDate && (
-              <label className={label}>{needPet ? "接送時間 *" : "時段"}
+              <label className={label}>{needPet ? "接送時間" : "時段"}
                 <select value={slot} onChange={(e) => setSlot(e.target.value)} className={input + " mt-1"}>
-                  <option value="">{needPet ? "請選擇" : "待確認"}</option>
+                  <option value="">待確認</option>
                   {catalog.slots.map((s) => <option key={s.zh} value={s.zh}>{s.label}</option>)}
                 </select>
               </label>

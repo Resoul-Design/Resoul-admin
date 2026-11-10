@@ -219,7 +219,6 @@ export async function createOrder(input: NewOrderInput): Promise<{ id?: string; 
     if (!petGender) return { error: "請選擇性別。" };
     if (!petAge) return { error: "請填寫年齡。" };
     if (!address) return { error: "請填寫接送地址。" };
-    if (!slot) return { error: "請選擇接送時間。" };
   }
   const petInfo = needPet ? `寵物資料：體重 ${petWeight} 公斤、品種 ${petBreed}、性別 ${petGender}、年齡 ${petAge}` : "";
 
