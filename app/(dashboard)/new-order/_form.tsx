@@ -6,7 +6,8 @@ import type { DraftCatalogProduct } from "@/lib/catalog";
 import { ORDER_TYPES, ORDER_TYPE_MAP, PAYMENT_INTENTS, RECEIVED_METHODS, type OrderType, type PaymentIntent } from "@/lib/order-types";
 import { createOrder, lookupCustomer, type CustomerMatch, type NewOrderLine, type PetProfile } from "./actions";
 import { URN_PICKUP_OPTIONS, invoiceRemarkLines, type UrnPickup } from "@/lib/invoice-remark";
-import { CREMATION_TIMES, PET_GENDERS, URN_BASIC_OPTIONS } from "@/lib/order-types";
+import { PET_GENDERS } from "@/lib/order-types";
+import { TimePicker, UrnPicker, type UrnProduct } from "../_pickers";
 
 export type NewOrderCatalog = {
   cremation: DraftCatalogProduct[];
@@ -135,6 +136,7 @@ export function NewOrderForm({ catalog, allowed, prefill }: { catalog: NewOrderC
   const [urnType, setUrnType] = useState("");
   const [urnPickupDate, setUrnPickupDate] = useState("");
   const [urnRemark, setUrnRemark] = useState("");
+  const urnProducts: UrnProduct[] = useMemo(() => catalog.souvenir.filter((p) => p.productType.includes("骨灰龕")).map((p) => ({ id: p.id, title: p.title, variants: p.variants.map((v) => ({ id: v.id, title: v.title, sku: v.sku })) })), [catalog.souvenir]);
   const [slot, setSlot] = useState("");
   const [address, setAddress] = useState(prefill.pet?.address || "");
   function fillPet(p: PetProfile) {
@@ -384,26 +386,11 @@ export function NewOrderForm({ catalog, allowed, prefill }: { catalog: NewOrderC
               <label className={label}>{type === "deposit" ? "接送日期" : type === "cremation" ? "火化日期" : "服務日期"}<input type="date" value={serviceDate} onChange={(e) => setServiceDate(e.target.value)} className={input + " mt-1"} /></label>
             )}
             {type === "cremation" && (
-              <label className={label}>火化時間
-                <select value={ceremonyTime} onChange={(e) => setCeremonyTime(e.target.value)} className={input + " mt-1"}>
-                  <option value="">待確認</option>
-                  {CREMATION_TIMES.map((tm) => <option key={tm}>{tm}</option>)}
-                </select>
-              </label>
+              <label className={label}>火化時間<div className="mt-1"><TimePicker value={ceremonyTime} onChange={setCeremonyTime} className={input} /></div></label>
             )}
             {type === "cremation" && (
               <>
-                <label className={label}>骨灰龕類別
-                  <select value={urnType} onChange={(e) => setUrnType(e.target.value)} className={input + " mt-1"}>
-                    <option value="">請選擇</option>
-                    {URN_BASIC_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-                    {catalog.souvenir.filter((p) => p.productType.includes("骨灰龕")).map((p) => (
-                      <optgroup key={p.id} label={p.title}>
-                        {p.variants.map((v) => <option key={v.id} value={v.sku || `${p.title}（${v.title}）`}>{v.title === "Default Title" ? p.title : v.title}{v.sku ? `（${v.sku}）` : ""}</option>)}
-                      </optgroup>
-                    ))}
-                  </select>
-                </label>
+                <div className={label + " sm:col-span-2"}>骨灰龕類別<div className="mt-1"><UrnPicker value={urnType} onChange={setUrnType} products={urnProducts} className={input} /></div></div>
                 <label className={label}>骨灰龕取回日期<input type="date" value={urnPickupDate} onChange={(e) => setUrnPickupDate(e.target.value)} className={input + " mt-1"} /></label>
                 <label className={label + " sm:col-span-2"}>骨灰龕備註<input value={urnRemark} onChange={(e) => setUrnRemark(e.target.value)} maxLength={500} className={input + " mt-1"} /></label>
               </>

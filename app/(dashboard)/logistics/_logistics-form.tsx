@@ -6,7 +6,7 @@ import { LOGISTICS_GROUPS } from "@/lib/logistics-fields";
 import { updateCustomerData } from "./actions";
 import { saveProductLineDetails, type LineDetail } from "./_product-lines-actions";
 import { REFERRAL_PARTNERS, computeLogistics, findPartner, type LineTotals } from "@/lib/logistics-calc";
-import { CREMATION_TIMES } from "@/lib/order-types";
+import { TimePicker, UrnPicker, urnServiceName, type UrnProduct } from "../_pickers";
 
 const hk = (n: number) => `HK$${n.toLocaleString("en-US", { maximumFractionDigits: 2 })}`;
 
@@ -24,7 +24,7 @@ export type MemorialItem = LineDetail & { name: string; quantity: number };
 // 整張單的舊 Excel 紀念品欄（有每件紀念品資料後，只在已有數值時顯示）
 const LEGACY_MEMORIAL = new Set(["delivered_to_supplier_on", "supplier_returned_on", "memorial_cost"]);
 
-export function LogisticsForm({ invoice, initial, exists, isAdmin, autoKeys = [], derived = {}, lines = null, memorialItems = [] }: { invoice: string; initial: Record<string, string>; exists: boolean; isAdmin: boolean; autoKeys?: string[]; derived?: Record<string, string>; lines?: LineTotals | null; memorialItems?: MemorialItem[] }) {
+export function LogisticsForm({ invoice, initial, exists, isAdmin, autoKeys = [], derived = {}, lines = null, memorialItems = [], urnProducts = [] }: { invoice: string; initial: Record<string, string>; exists: boolean; isAdmin: boolean; autoKeys?: string[]; derived?: Record<string, string>; lines?: LineTotals | null; memorialItems?: MemorialItem[]; urnProducts?: UrnProduct[] }) {
   const auto = new Set(autoKeys);
   const router = useRouter();
   const [values, setValues] = useState<Record<string, string>>(initial);
@@ -143,14 +143,15 @@ export function LogisticsForm({ invoice, initial, exists, isAdmin, autoKeys = []
                     <div className="text-sm">紀念品成本合計<div className={readonly}>{hk(calc.memorialCost.value)}</div></div>
                   )}
                   {group.fields.filter((f) => !(group.title === "紀念品及成本" && items.length > 0 && LEGACY_MEMORIAL.has(f.key) && !(initial[f.key] || "").trim())).map((f) => (
-                    <label key={f.key} className={"text-sm" + (f.type === "textarea" ? " sm:col-span-2 lg:col-span-4" : "")}>
+                    <label key={f.key} className={"text-sm" + (f.type === "textarea" ? " sm:col-span-2 lg:col-span-4" : f.key === "urn" ? " sm:col-span-2" : "")}>
                       {f.label}
                       {f.key === "ceremony_time" ? (
-                        <select value={values[f.key] || ""} onChange={(e) => setValues((v) => ({ ...v, [f.key]: e.target.value }))} className={input + (auto.has(f.key) && values[f.key] === initial[f.key] ? " !bg-amber-50" : "")}>
-                          <option value="">待確認</option>
-                          {CREMATION_TIMES.map((tm) => <option key={tm}>{tm}</option>)}
-                          {values[f.key] && !CREMATION_TIMES.includes(values[f.key]) && <option value={values[f.key]}>{values[f.key]}</option>}
-                        </select>
+                        <div className="mt-1"><TimePicker value={values[f.key] || ""} onChange={(val) => setValues((v) => ({ ...v, [f.key]: val }))} className={input.replace("mt-1 ", "") + (auto.has(f.key) && values[f.key] === initial[f.key] ? " !bg-amber-50" : "")} /></div>
+                      ) : f.key === "urn" ? (
+                        <div className="mt-1">
+                          <UrnPicker value={values[f.key] || ""} onChange={(val) => setValues((v) => ({ ...v, [f.key]: val }))} products={urnProducts} className={input.replace("mt-1 ", "") + (auto.has(f.key) && values[f.key] === initial[f.key] ? " !bg-amber-50" : "")} />
+                          {urnServiceName(values[f.key] || "", urnProducts) && <span className="mt-1 block text-xs text-[var(--soft)]">{urnServiceName(values[f.key] || "", urnProducts)}</span>}
+                        </div>
                       ) : f.key === "referral" ? (
                         // 轉介夥伴：對照表選項；舊資料的其他文字保留為選項，不會自動改寫
                         <select value={values[f.key] || ""} onChange={(e) => setValues((v) => ({ ...v, [f.key]: e.target.value }))} className={input + (auto.has(f.key) && values[f.key] === initial[f.key] ? " !bg-amber-50" : "")}>
