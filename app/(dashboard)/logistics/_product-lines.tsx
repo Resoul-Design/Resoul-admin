@@ -184,7 +184,7 @@ export function ProductLines({ invoice, lines, catalog, catalogError, showCost, 
                     <td className="w-10 p-1 text-right">{r.suggested ? <span className="px-1 text-xs text-[var(--soft)]" title="先按「儲存」，之後可移除（會同時刪除 Shopify 項目）">—</span> : r.sync_status !== "syncing" && <button type="button" onClick={() => remove(r)} className="px-1 py-1.5 text-xs text-red-700 hover:underline">移除</button>}</td>
                   </tr>
                 ))}
-                {rows.length === 0 && <tr><td colSpan={showCost ? 14 : 13} className="p-6 text-center text-[var(--soft)]">未有產品。可揀選 Shopify 產品或按「＋ 加一行」。</td></tr>}
+                {rows.length === 0 && <tr><td colSpan={showCost ? 14 : 13} className="p-6 text-center text-[var(--soft)]">未有產品。可選擇 Shopify 產品或按「＋ 加一行」。</td></tr>}
               </tbody>
             </table>
           </div>
