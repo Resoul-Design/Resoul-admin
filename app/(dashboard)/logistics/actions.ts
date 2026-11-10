@@ -36,9 +36,17 @@ export async function updateCustomerData(invoice: string, values: Record<string,
   const admin = createAdminClient();
   const { data: existing } = await admin.from("logistics_orders").select("invoice_no").eq("invoice_no", invoiceNo).maybeSingle();
   if (existing && !Object.keys(row).length) return {}; // 沒有修改：不寫入
-  const { error } = existing
-    ? await admin.from("logistics_orders").update({ ...row, updated_at: new Date().toISOString() }).eq("invoice_no", invoiceNo)
-    : await admin.from("logistics_orders").insert({ invoice_no: invoiceNo, source: "admin", ...row });
+  const write = (r: typeof row) => existing
+    ? admin.from("logistics_orders").update({ ...r, updated_at: new Date().toISOString() }).eq("invoice_no", invoiceNo)
+    : admin.from("logistics_orders").insert({ invoice_no: invoiceNo, source: "admin", ...r });
+  let { error } = await write(row);
+  let urnWarning = "";
+  if (error && "urn_cost" in row && /urn_cost/.test(error.message)) {
+    const rest = { ...row };
+    delete rest.urn_cost;
+    ({ error } = await write(rest));
+    urnWarning = "骨灰龕成本未能保存：請先於 Supabase 執行 db/migration_20261111_urn_cost.sql。";
+  }
   if (error) {
     console.error("[logistics_update]", error.message);
     return { error: "未能保存，請稍後再試。" };
@@ -48,6 +56,7 @@ export async function updateCustomerData(invoice: string, values: Record<string,
   const warnings = await syncServiceRecords(invoiceNo, row);
   revalidatePath(`/logistics/${invoiceNo}`);
   revalidatePath("/logistics");
+  if (urnWarning) warnings.push(urnWarning);
   return warnings.length ? { warning: warnings.join(" ") } : {};
 }
 

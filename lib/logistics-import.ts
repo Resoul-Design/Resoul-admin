@@ -1,6 +1,6 @@
 // 客戶資料 CSV 匯入：讀取 CSV（支援引號、逗號、換行）、對應欄位（中文標籤或欄位名）、轉換數字及日期。
 // 欄位定義與單號詳細頁表格共用 lib/logistics-fields.ts。
-import { LOGISTICS_FIELDS, type LogisticsField } from "@/lib/logistics-fields";
+import { LOGISTICS_FIELDS, type LogisticsField, LEGACY_FIELD_LABELS } from "@/lib/logistics-fields";
 
 // RFC 4180 CSV：雙引號包住的欄位可含逗號、換行；兩個雙引號代表一個引號
 export function parseCsv(text: string): string[][] {
@@ -34,6 +34,7 @@ const INVOICE_HEADERS = ["invoice_no", "單號", "發票編號", "order no.", "o
 const BY_HEADER = new Map<string, LogisticsField>();
 // 舊範本的欄名「骨灰盅…」（2026-11-10 改為「骨灰龕」）仍可匯入
 for (const f of LOGISTICS_FIELDS) { BY_HEADER.set(norm(f.key), f); BY_HEADER.set(norm(f.label), f); BY_HEADER.set(norm(f.label.replaceAll("骨灰龕", "骨灰盅")), f); }
+for (const [label, key] of Object.entries(LEGACY_FIELD_LABELS)) { const f = LOGISTICS_FIELDS.find((x) => x.key === key); if (f) BY_HEADER.set(norm(label), f); }
 
 // 空值記號：視作空白（不覆蓋現有資料）
 const EMPTY = new Set(["", "-", "—", "n/a", "na", "#n/a", "null"]);

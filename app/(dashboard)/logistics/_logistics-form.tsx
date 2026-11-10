@@ -21,7 +21,7 @@ const differs = (a: string, b: string) => { const x = Number(String(a).replace(/
 
 export type MemorialItem = LineDetail & { name: string; quantity: number };
 // 整張單的舊 Excel 紀念品欄（有每件紀念品資料後，只在已有數值時顯示）
-const LEGACY_MEMORIAL = new Set(["memorial_remarks", "memorial_supplier", "delivered_to_supplier_on", "supplier_returned_on", "product_pickup_or_delivery_on", "memorial_cost"]);
+const LEGACY_MEMORIAL = new Set(["delivered_to_supplier_on", "supplier_returned_on", "memorial_cost"]);
 
 export function LogisticsForm({ invoice, initial, exists, isAdmin, autoKeys = [], derived = {}, lines = null, memorialItems = [] }: { invoice: string; initial: Record<string, string>; exists: boolean; isAdmin: boolean; autoKeys?: string[]; derived?: Record<string, string>; lines?: LineTotals | null; memorialItems?: MemorialItem[] }) {
   const auto = new Set(autoKeys);
