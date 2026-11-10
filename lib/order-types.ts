@@ -30,6 +30,16 @@ export const PAYMENT_INTENTS: { key: PaymentIntent; label: string; hint: string 
 
 export const PET_GENDERS = ["公", "母", "不詳"];
 
+// 火化時間選項（09:00–19:30，每半小時）
+export const CREMATION_TIMES = Array.from({ length: 22 }, (_, i) => `${String(9 + Math.floor(i / 2)).padStart(2, "0")}:${i % 2 ? "30" : "00"}`);
+
+// 骨灰龕類別（跟 logistics Excel）：另加 Shopify「骨灰龕 URN」產品代碼
+export const URN_BASIC_OPTIONS = [
+  { value: "By Package", label: "套餐包括（By Package）" },
+  { value: "No Urn", label: "不需要（No Urn）" },
+  { value: "Pending", label: "待定（Pending）" },
+];
+
 export const RECEIVED_METHODS = ["現金", "FPS 轉數快", "PayMe", "信用卡", "銀行轉帳", "其他"];
 
 export const ORDER_STATUS_LABEL: Record<string, string> = {

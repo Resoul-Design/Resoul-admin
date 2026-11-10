@@ -39,6 +39,7 @@ export type NewOrderInput = {
   petAge?: string;
   serviceDate?: string; // 接送訂金＝接送日期；善終／告別套餐＝火化日期
   ceremonyTime?: string; // 善終／告別套餐的火化時間（HH:MM）
+  urn?: { type?: string; pickupDate?: string; remark?: string }; // 骨灰龕類別、取回日期、備註
   serviceSlot?: string;
   address?: string;
   internalNote?: string;
@@ -229,6 +230,10 @@ export async function createOrder(input: NewOrderInput): Promise<{ id?: string; 
   const pickupDate = input.type === "deposit" ? serviceDate : "";
   const ceremonyTime = input.type === "cremation" ? t(input.ceremonyTime, 5) : "";
   if (ceremonyTime && !/^\d{2}:\d{2}$/.test(ceremonyTime)) return { error: "火化時間格式無效。" };
+  const urnType = input.type === "cremation" ? t(input.urn?.type, 120) : "";
+  const urnPickupDate = input.type === "cremation" ? t(input.urn?.pickupDate, 10) : "";
+  const urnRemark = input.type === "cremation" ? t(input.urn?.remark, 500) : "";
+  if (urnPickupDate && !/^\d{4}-\d{2}-\d{2}$/.test(urnPickupDate)) return { error: "骨灰龕取回日期格式無效。" };
   if (intent === "received" && !RECEIVED_METHODS.includes(method)) return { error: "請選擇收款方式。" };
   if (input.type !== "deposit" && !isUrnPickup(input.urnPickup)) return { error: "請選擇發票備註：骨灰取回安排。" };
   // 接送訂金及善終／告別套餐：寵物及接送資料必填
@@ -349,6 +354,7 @@ export async function createOrder(input: NewOrderInput): Promise<{ id?: string; 
       input.type === "vet" ? "" : `產品: ${lines[0].label}`,
       petInfo,
       ceremonyTime ? `火化時間: ${ceremonyTime}` : "",
+      urnType || urnPickupDate || urnRemark ? `骨灰龕: ${[urnType, urnPickupDate ? `取回 ${urnPickupDate}` : "", urnRemark].filter(Boolean).join("、")}` : "",
       input.type === "vet" && address ? `地點：${address}` : "",
       slot ? `希望時段: ${slot}` : "",
       lines.length > 1 ? `${input.type === "vet" ? "收費" : "加購"}: ${lines.slice(input.type === "vet" ? 0 : 1).map((l) => `${l.label}×${l.quantity}`).join("、")}` : "",
@@ -419,7 +425,7 @@ export async function createOrder(input: NewOrderInput): Promise<{ id?: string; 
     : basePlan;
   const details = {
     lines: lines.map((l) => ({ label: l.label, quantity: l.quantity, price: l.price })),
-    petType: petType || null, serviceDate: serviceDate || null, ceremonyTime: ceremonyTime || null, serviceSlot: slot || null, address: address || null,
+    petType: petType || null, serviceDate: serviceDate || null, ceremonyTime: ceremonyTime || null, urn: urnType || urnPickupDate || urnRemark ? { type: urnType || null, pickupDate: urnPickupDate || null, remark: urnRemark || null } : null, serviceSlot: slot || null, address: address || null,
     pet: needPet ? { weightKg: petWeight, breed: petBreed, gender: petGender, age: petAge } : null,
     internalNote: internalNote || null, publicNote: publicNote || null, receivedMethod: intent === "received" ? method : null,
     urnPickup: input.type === "deposit" ? null : input.urnPickup, invoiceRemark: remarkLines,
@@ -450,7 +456,7 @@ export async function createOrder(input: NewOrderInput): Promise<{ id?: string; 
 
   const { error: logisticsError } = await admin.from("logistics_orders").upsert({
     invoice_no: invoiceNo, source: "admin", owner_name: name, phone, email: email || null, pet_name: petName || null, animal: petType || null, ...(needPet ? { breed: petBreed, weight_kg: petWeight } : {}),
-    package_name: planName || def2.label, arrival_date: pickupDate || null, arrival_time: slot || null, pickup_from: address || null, ...(input.type === "cremation" && serviceDate ? { ceremony_or_order_date: serviceDate } : {}), ...(ceremonyTime ? { ceremony_time: ceremonyTime } : {}),
+    package_name: planName || def2.label, arrival_date: pickupDate || null, arrival_time: slot || null, pickup_from: address || null, ...(input.type === "cremation" && serviceDate ? { ceremony_or_order_date: serviceDate } : {}), ...(ceremonyTime ? { ceremony_time: ceremonyTime } : {}), ...(input.type === "cremation" && serviceDate ? { shower_date: serviceDate } : {}), ...(urnType ? { urn: urnType } : {}), ...(urnPickupDate ? { urn_pickup_status: urnPickupDate } : {}), ...(urnRemark ? { memorial_remarks: urnRemark } : {}),
   }, { onConflict: "invoice_no", ignoreDuplicates: true });
   if (logisticsError) console.error("[new_order_logistics]", logisticsError.message);
 

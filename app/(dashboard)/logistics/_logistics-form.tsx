@@ -6,6 +6,7 @@ import { LOGISTICS_GROUPS } from "@/lib/logistics-fields";
 import { updateCustomerData } from "./actions";
 import { saveProductLineDetails, type LineDetail } from "./_product-lines-actions";
 import { REFERRAL_PARTNERS, computeLogistics, findPartner, type LineTotals } from "@/lib/logistics-calc";
+import { CREMATION_TIMES } from "@/lib/order-types";
 
 const hk = (n: number) => `HK$${n.toLocaleString("en-US", { maximumFractionDigits: 2 })}`;
 
@@ -144,7 +145,13 @@ export function LogisticsForm({ invoice, initial, exists, isAdmin, autoKeys = []
                   {group.fields.filter((f) => !(group.title === "紀念品及成本" && items.length > 0 && LEGACY_MEMORIAL.has(f.key) && !(initial[f.key] || "").trim())).map((f) => (
                     <label key={f.key} className={"text-sm" + (f.type === "textarea" ? " sm:col-span-2 lg:col-span-4" : "")}>
                       {f.label}
-                      {f.key === "referral" ? (
+                      {f.key === "ceremony_time" ? (
+                        <select value={values[f.key] || ""} onChange={(e) => setValues((v) => ({ ...v, [f.key]: e.target.value }))} className={input + (auto.has(f.key) && values[f.key] === initial[f.key] ? " !bg-amber-50" : "")}>
+                          <option value="">待確認</option>
+                          {CREMATION_TIMES.map((tm) => <option key={tm}>{tm}</option>)}
+                          {values[f.key] && !CREMATION_TIMES.includes(values[f.key]) && <option value={values[f.key]}>{values[f.key]}</option>}
+                        </select>
+                      ) : f.key === "referral" ? (
                         // 轉介夥伴：對照表選項；舊資料的其他文字保留為選項，不會自動改寫
                         <select value={values[f.key] || ""} onChange={(e) => setValues((v) => ({ ...v, [f.key]: e.target.value }))} className={input + (auto.has(f.key) && values[f.key] === initial[f.key] ? " !bg-amber-50" : "")}>
                           <option value="">（沒有轉介）</option>
@@ -159,7 +166,12 @@ export function LogisticsForm({ invoice, initial, exists, isAdmin, autoKeys = []
                           type={f.type === "date" ? "date" : f.type === "url" ? "url" : "text"}
                           inputMode={f.type === "number" ? "decimal" : undefined}
                           value={values[f.key] || ""}
-                          onChange={(e) => setValues((v) => ({ ...v, [f.key]: e.target.value }))}
+                          onChange={(e) => setValues((v) => {
+                            const next = { ...v, [f.key]: e.target.value };
+                            // 告別日期跟火化日期（告別日期空白或原本相同時）
+                            if (f.key === "ceremony_or_order_date" && (!v.shower_date || v.shower_date === v.ceremony_or_order_date)) next.shower_date = e.target.value;
+                            return next;
+                          })}
                           maxLength={300}
                           className={input + (auto.has(f.key) && values[f.key] === initial[f.key] ? " !bg-amber-50" : "")}
                         />

@@ -54,6 +54,11 @@ export function deriveCustomerData(src: { deposits: Row[]; cremations: Row[]; co
   const ceremony = str(crem?.service_date);
   set("ceremony_or_order_date", ceremony);
   set("ceremony_time", first(crem?.service_time));
+  set("shower_date", ceremony); // 告別日期與火化日期相同
+  const cremUrn = ((companies.find((c) => crem && c.linked_id === crem.id)?.details || {}) as { urn?: { type?: string | null; pickupDate?: string | null; remark?: string | null } | null }).urn;
+  set("urn", first(cremUrn?.type));
+  set("urn_pickup_status", first(cremUrn?.pickupDate));
+  set("memorial_remarks", first(cremUrn?.remark));
   const codeDate = ceremony || hkDate(any.map((r) => str(r.created_at || r.shopify_created_at)).filter(Boolean).sort()[0]);
   if (codeDate) set("date_code", `${codeDate.slice(5, 7)}${codeDate.slice(0, 4)}`);
 
