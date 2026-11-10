@@ -9,12 +9,13 @@ import { REFERRAL_PARTNERS, computeLogistics, findPartner, type LineTotals } fro
 const hk = (n: number) => `HK$${n.toLocaleString("en-US", { maximumFractionDigits: 2 })}`;
 
 const input = "mt-1 w-full rounded-lg border border-[var(--line)] bg-white px-3 py-2 text-sm";
+const readonly = "mt-1 w-full rounded-lg border border-[var(--line)] bg-[var(--head)] px-3 py-2 text-sm font-medium tabular-nums";
 
 // 客戶資料（Excel 欄位）：所有單號共用同一表格；未有客戶資料時保存即建立。
 // 分 6 組（主人及寵物、接送、火化、費用、骨灰盅、紀念品），預設收起，按組名展開；
 // 收起的組別仍保留已修改的內容，最後按「儲存修改」一次過保存全部。
 // 金額欄：已保存的數與單據即時計算不同時提示（例如開單後再加產品）
-const COMPARE = new Set(["invoice_amount", "package_price", "memorial_addon_price", "other_surcharge", "deposit_received", "balance_settled"]);
+const COMPARE = new Set(["package_price", "memorial_addon_price", "other_surcharge", "deposit_received"]);
 const differs = (a: string, b: string) => { const x = Number(String(a).replace(/[$,\s]/g, "")), y = Number(String(b).replace(/[$,\s]/g, "")); return Number.isFinite(x) && Number.isFinite(y) ? Math.abs(x - y) > 0.005 : a.trim() !== b.trim(); };
 
 export function LogisticsForm({ invoice, initial, exists, isAdmin, autoKeys = [], derived = {}, lines = null }: { invoice: string; initial: Record<string, string>; exists: boolean; isAdmin: boolean; autoKeys?: string[]; derived?: Record<string, string>; lines?: LineTotals | null }) {
@@ -33,6 +34,14 @@ export function LogisticsForm({ invoice, initial, exists, isAdmin, autoKeys = []
   // 自動填入（淡黃色）的值：按「採用自動填入」才保存，否則保留資料庫原有（空白）值
   const [acceptAuto, setAcceptAuto] = useState(false);
   const calc = computeLogistics(values, lines);
+  // 計算欄（只顯示，不會保存）：放在「費用與付款」組最前
+  const calcFields: { label: string; value: string }[] = [
+    { label: "發票總額", value: hk(calc.invoiceTotal) },
+    { label: "尚欠", value: hk(calc.balanceDue) },
+    { label: `轉介費${calc.referral.partner ? `（${calc.referral.partner}）` : ""}`, value: calc.referral.fee == null ? "—" : `${hk(calc.referral.fee)}${calc.referral.payable && calc.referral.fee ? "（應付）" : ""}` },
+    { label: "司機費", value: hk(calc.driverCost.value) },
+    ...(isAdmin ? [{ label: "毛利", value: hk(calc.grossProfit) }] : []),
+  ];
 
   function save() {
     setMsg(null);
@@ -71,16 +80,6 @@ export function LogisticsForm({ invoice, initial, exists, isAdmin, autoKeys = []
           <label className="flex items-center gap-1 text-[var(--ink)]"><input type="checkbox" checked={acceptAuto} onChange={(e) => setAcceptAuto(e.target.checked)} />採用自動填入</label>
         </p>
       )}
-      {/* 計算欄：按 Google Sheet 公式即時計算，只作顯示，不會保存 */}
-      <div className="mb-3 rounded-2xl border border-[var(--line)] bg-[var(--card)] p-3 text-sm">
-        <dl className="grid gap-x-4 gap-y-2 sm:grid-cols-2 lg:grid-cols-5">
-          <div><dt className="text-xs text-[var(--soft)]">發票總額</dt><dd className="font-medium tabular-nums">{hk(calc.invoiceTotal)}</dd></div>
-          <div><dt className="text-xs text-[var(--soft)]">尚欠</dt><dd className="font-medium tabular-nums">{hk(calc.balanceDue)}</dd></div>
-          <div><dt className="text-xs text-[var(--soft)]">轉介費{calc.referral.partner ? `（${calc.referral.partner}）` : ""}</dt><dd className="font-medium tabular-nums">{calc.referral.fee == null ? "—" : hk(calc.referral.fee)}{calc.referral.payable && calc.referral.fee != null && <span className="ml-1 rounded-full bg-amber-100 px-1.5 text-xs font-normal text-amber-800">應付</span>}</dd></div>
-          <div><dt className="text-xs text-[var(--soft)]">司機費</dt><dd className="font-medium tabular-nums">{hk(calc.driverCost.value)}</dd></div>
-          {isAdmin && <div><dt className="text-xs text-[var(--soft)]">毛利</dt><dd className="font-medium tabular-nums">{hk(calc.grossProfit)}</dd></div>}
-        </dl>
-      </div>
       <div className="space-y-3">
         {groups.map((group, i) => {
           const open = !closed.has(group.title);
@@ -98,6 +97,12 @@ export function LogisticsForm({ invoice, initial, exists, isAdmin, autoKeys = []
               </button>
               {open && (
                 <div className="grid gap-3 border-t border-[var(--line)] px-4 pb-4 pt-3 sm:grid-cols-2 lg:grid-cols-4">
+                  {group.title === "費用與付款" && calcFields.map((c) => (
+                    <div key={c.label} className="text-sm">
+                      {c.label}
+                      <div className={readonly}>{c.value}</div>
+                    </div>
+                  ))}
                   {group.fields.map((f) => (
                     <label key={f.key} className={"text-sm" + (f.type === "textarea" ? " sm:col-span-2 lg:col-span-4" : "")}>
                       {f.label}
