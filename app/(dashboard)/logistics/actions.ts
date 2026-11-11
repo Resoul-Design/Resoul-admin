@@ -16,8 +16,8 @@ function inputValue(input: CustomerDataInput, key: string) {
   return input instanceof FormData ? input.get(key) : input[key];
 }
 
-export function updateCustomerData(invoice: string, formData: FormData): Promise<void>;
 export function updateCustomerData(invoice: string, formData: Record<string, string>): Promise<UpdateResult>;
+export function updateCustomerData(invoice: string, formData: FormData): Promise<void>;
 export async function updateCustomerData(invoice: string, formData: CustomerDataInput): Promise<void | UpdateResult> {
   const fromForm = formData instanceof FormData;
   const fail = (message: string): UpdateResult => ({ error: message });
