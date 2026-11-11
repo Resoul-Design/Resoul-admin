@@ -1,4 +1,4 @@
-import { bookingDraftIds, payableText, shopifyTotals } from "@/lib/shopify-payable";
+import { bookingDraftIds, loadShopifyTotals, payableText } from "@/lib/shopify-payable";
 import { orderMemorialLabel } from "@/lib/memorial-status";
 import { loadSouvenirDrafts } from "@/lib/souvenir-drafts";
 import Link from "next/link";
@@ -133,13 +133,19 @@ export default async function CustomerPage({
   // 金額欄：未付款讀 Shopify 付款連結的實時應付，已付款為實收（原價－接送訂金抵扣）
   const unpaid = allBookings.filter((b) => b.payment_status !== "paid" && b.status !== "cancelled").map((b) => (b as unknown as { id: string }).id);
   const draftOf = await bookingDraftIds(unpaid);
-  const liveTotals = await shopifyTotals([...draftOf.values()]);
+  const liveLoad = await loadShopifyTotals([...draftOf.values()]);
+  const liveTotals = liveLoad.totals;
   const amountText = (b: Booking) => {
     const id = (b as unknown as { id: string }).id;
-    const t = draftOf.has(id) ? liveTotals.get(draftOf.get(id) as string) : undefined;
-    if (t && t.open) return payableText(t, "$");
     const credit = Number((b as unknown as { deposit_credit?: number | null }).deposit_credit || 0);
-    return credit ? payableText({ gross: Number(eff(b)), credit, other: 0, payable: Number(eff(b)) - credit }, "$") : money(eff(b));
+    const gross = Number(eff(b));
+    const local = credit || b.payment_status === "paid"
+      ? payableText({ gross, credit, other: 0, payable: gross - credit, open: b.payment_status !== "paid", received: b.payment_status === "paid" ? gross - credit : 0 }, "$")
+      : money(eff(b));
+    if (!liveLoad.ok && draftOf.has(id)) return `本機記錄 ${local}（Shopify 未能讀取，未改為 0）`;
+    const t = draftOf.has(id) ? liveTotals.get(draftOf.get(id) as string) : undefined;
+    if (t && t.open) return payableText({ ...t, open: true }, "$");
+    return `本機記錄 ${local}`;
   };
 
   // 火化：已付款預約金額

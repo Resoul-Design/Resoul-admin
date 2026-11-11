@@ -1,11 +1,12 @@
-// 客戶資料計算欄（對應 Google Sheet「Basic Info Logistic」，2026-11-10 已驗證公式）。
+// 客戶資料計算欄（對應 Google Sheet「Basic Info Logistic」）。
 // 全部純計算、只作顯示：不寫入資料庫，不改任何已存欄位。
-//   發票總額 invoice_total  ＝ 套餐價 ＋ 紀念品加購 ＋ 盅仔租用 ＋ 回歸自然（不含其他附加費）
-//   尚欠 balance_due        ＝ 發票總額 − 訂金 − 折扣額
-//   司機費 driver_cost      ＝ 按司機過往物流記錄自動帶入的「司機／GoGoVan 費用」
-//   轉介費 referral_fee     ＝ 按轉介夥伴對照表（只限「應付」夥伴）
-//   毛利 gross_profit       ＝ 發票總額 − 折扣額 − 紀念品成本 − 骨灰龕成本 − 運送成本 − 司機費 − 佣金（一律減佣金）
-// 紀念品加購／成本：有紀念品產品行時以產品行加總；沒有產品行時用已存值。
+//   發票總額：有 Shopify 單據時用原價；否則套餐價＋紀念品加購＋存放＋回歸自然。
+//   尚欠：有 Shopify 單據時用應付（已扣接送訂金抵扣及折扣，不再減已收訂金）；否則發票總額−已收訂金−折扣。
+//   司機費：只用已存的司機／GoGoVan 費用。沒有官方收費表，空白不是 0。
+//   骨灰龕成本：本單骨灰龕有明確代碼時用目錄成本（包括牌價 0 的代碼）；否則用已存值，沒有則留空。
+//   紀念品加購：有產品行時用實際行金額；行數為空時用已存值，不用 0 覆蓋舊數。
+import { lookupUrnCost } from "./urn-cost";
+import { sumMemorialLines } from "./memorial-total";
 
 export type ReferralType = "percent" | "fixed" | "zero" | "blank" | "unmapped";
 export type ReferralPartner = { key: string; aliases?: string[]; type: "percent" | "fixed" | "zero"; rate: number; payable: boolean; needsPackageCode?: boolean };
@@ -55,47 +56,87 @@ export function referralFee(referral: unknown, packagePrice: unknown, packageCod
   return { fee: round2((price ?? 0) * p.rate), type: "percent", payable: true, partner: p.key, note: `套餐價 × ${Math.round(p.rate * 100)}%${price == null ? "（未有套餐價）" : ""}` };
 }
 
-export type ShopifySummary = { hasDocs: boolean; depositPaid: number; gross: number; credit: number; other: number; payable: number };
-
-export type LineTotals = { count: number; amount: number; cost: number; costCount: number };
-
-export type LogisticsCalc = {
-  memorial: { value: number; from: "lines" | "saved" };
-  invoiceTotal: number;
-  depositPaid: number;
-  credit: number;
-  discount: number;
-  balanceDue: number;
-  driverCost: { value: number; from: "saved" | "default" };
-  referral: ReturnType<typeof referralFee>;
-  memorialCost: { value: number; from: "lines" | "saved" };
-  grossProfit: number;
+export type ShopifySummary = {
+  loadError?: boolean;
+  hasDocs: boolean;
+  depositPaid: number | null;
+  gross: number | null;
+  credit: number | null;
+  other: number | null;
+  payable: number | null;
+  planSku?: string;
+  depositNote?: string;
 };
 
-// values：表格目前的值（已存值或正在編輯的值）；lines：紀念品產品行加總
-// 有 Shopify 單據時：發票總額＝Shopify 原價、尚欠＝Shopify 應付、折扣＝Shopify 折扣；已收訂金只計 Shopify 已付款的接送訂金（沒有＝0）
+export type LineTotals = { count: number; amount: number; ambiguous: boolean; cost: number; costCount: number };
+
+export type LogisticsCalc = {
+  memorial: { value: number | null; from: "lines" | "saved" | "none" | "ambiguous" };
+  invoiceTotal: number | null;
+  depositPaid: number | null;
+  credit: number | null;
+  discount: number | null;
+  balanceDue: number | null;
+  driverCost: { value: number | null; from: "saved" | "unresolved" };
+  urnCost: { value: number | null; from: "catalog" | "saved" | "unresolved"; sku: string };
+  referral: ReturnType<typeof referralFee>;
+  memorialCost: { value: number; from: "lines" | "saved" };
+  grossProfit: number | null;
+};
+
+// values：表格目前的值。lines：已存紀念品產品行。shopify：實時單據；讀取失敗時金額留空，不用 0。
 export function computeLogistics(values: Record<string, unknown>, lines?: LineTotals | null, shopify?: ShopifySummary | null): LogisticsCalc {
   const v = (k: string) => num(values[k]) ?? 0;
-  const memorial = lines && lines.count > 0 ? { value: round2(lines.amount), from: "lines" as const } : { value: v("memorial_addon_price"), from: "saved" as const };
-  const depositPaid = shopify?.depositPaid ?? 0;
-  const discount = shopify?.other ?? 0;
-  const credit = shopify?.credit ?? 0;
-  const invoiceTotal = shopify?.hasDocs ? shopify.gross : round2(v("package_price") + memorial.value + v("urn_storage_rental_price") + v("back_to_nature_price"));
-  const balanceDue = shopify?.hasDocs ? shopify.payable : round2(invoiceTotal - depositPaid - discount);
+  const savedMemorial = num(values.memorial_addon_price);
+  const memorial = lines?.ambiguous
+    ? (savedMemorial != null ? { value: savedMemorial, from: "saved" as const } : { value: null, from: "ambiguous" as const })
+    : lines && lines.count > 0
+      ? { value: round2(lines.amount), from: "lines" as const }
+      : savedMemorial != null
+        ? { value: savedMemorial, from: "saved" as const }
+        : { value: 0, from: "none" as const };
+  const failed = !!shopify?.loadError;
+  const depositPaid = failed ? null : shopify?.depositPaid ?? 0;
+  const discount = failed ? null : shopify?.hasDocs ? shopify.other ?? 0 : 0;
+  const credit = failed ? null : shopify?.hasDocs ? shopify.credit ?? 0 : 0;
+  const invoiceTotal = failed
+    ? null
+    : shopify?.hasDocs
+      ? shopify.gross
+      : memorial.value == null
+        ? null
+        : round2(v("package_price") + memorial.value + v("urn_storage_rental_price") + v("back_to_nature_price"));
+  const balanceDue = failed
+    ? null
+    : shopify?.hasDocs
+      ? shopify.payable
+      : invoiceTotal == null || depositPaid == null
+        ? null
+        : round2(invoiceTotal - depositPaid - (discount ?? 0));
   const savedDriver = num(values.driver_or_gogovan_cost);
-  const driverCost = savedDriver != null ? { value: savedDriver, from: "saved" as const } : { value: 0, from: "default" as const };
+  const driverCost = savedDriver != null ? { value: savedDriver, from: "saved" as const } : { value: null, from: "unresolved" as const };
+  const savedUrn = num(values.urn_cost);
+  const urnLookup = lookupUrnCost(values.urn);
+  const urnCost = urnLookup.state === "amount"
+    ? { value: urnLookup.amount, from: "catalog" as const, sku: urnLookup.sku }
+    : savedUrn != null
+      ? { value: savedUrn, from: "saved" as const, sku: "" }
+      : { value: null, from: "unresolved" as const, sku: "" };
   const memorialCost = lines && lines.costCount > 0 ? { value: round2(lines.cost), from: "lines" as const } : { value: v("memorial_cost"), from: "saved" as const };
-  const grossProfit = round2(invoiceTotal - discount - memorialCost.value - v("urn_cost") - v("delivery_cost_to_customer") - driverCost.value - v("commission"));
-  return { memorial, invoiceTotal, depositPaid, credit, discount, balanceDue, driverCost, referral: referralFee(values.referral, values.package_price, values.package_code), memorialCost, grossProfit };
+  const grossProfit = invoiceTotal == null || discount == null || driverCost.value == null || urnCost.value == null
+    ? null
+    : round2(invoiceTotal - discount - memorialCost.value - urnCost.value - v("delivery_cost_to_customer") - driverCost.value - v("commission"));
+  return { memorial, invoiceTotal, depositPaid, credit, discount, balanceDue, driverCost, urnCost, referral: referralFee(values.referral, values.package_price, values.package_code), memorialCost, grossProfit };
 }
 
-// 紀念品產品行加總（只計已存的行；淡黃色建議行未保存，不計）
+// 紀念品產品行加總（只計已存的行；淡黃色建議行及已刪除行不計）
 export function lineTotals(lines: { id: string | null; amount: number | null; quantity: number; unit_price: number | null; cost: number | null; suggested?: boolean; missing?: boolean }[]): LineTotals {
-  // Shopify 已刪除的行（紅色）不計
   const saved = lines.filter((l) => l.id && !l.suggested && !l.missing);
+  const total = sumMemorialLines(saved.map((line) => ({ amount: line.amount, unitPrice: line.unit_price, quantity: line.quantity })));
   return {
     count: saved.length,
-    amount: saved.reduce((n, l) => n + (l.amount ?? (l.unit_price ?? 0) * l.quantity), 0),
+    amount: total.state === "amount" ? total.amount : 0,
+    ambiguous: total.state === "ambiguous",
     cost: saved.reduce((n, l) => n + (l.cost ?? 0), 0),
     costCount: saved.filter((l) => l.cost != null).length,
   };

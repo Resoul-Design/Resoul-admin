@@ -11,7 +11,7 @@ import { shopifyGraphQL } from "@/lib/shopify";
 import { createDraftWithCustomer } from "@/lib/shopify-customer";
 import { CREMATION_TYPES, DEPOSIT_TYPES } from "@/lib/catalog";
 import { PLAN_CODES } from "@/lib/company";
-import { findTimeSlot } from "@/lib/deposit-followup";
+import { preserveServiceTime } from "@/lib/service-time";
 import { isProjectNo, projectNoFromNotes, canonicalProjectNo } from "@/lib/order-label";
 import { phoneKey } from "@/lib/product-orders";
 import { appendNote } from "@/lib/payment-check";
@@ -21,7 +21,7 @@ import { newCompanyProjectNo } from "@/lib/project-no";
 import { loadSiteContent } from "@/lib/site-content-server";
 import { ORDER_TYPE_MAP, PET_GENDERS, RECEIVED_METHODS, type OrderType, type PaymentIntent } from "@/lib/order-types";
 import { applyFix } from "@/lib/reconcile-fix";
-import { driverOptions } from "@/lib/drivers";
+import { canonicalDriver, driverOptions } from "@/lib/drivers";
 import { MEMORIAL_REMARK, invoiceRemarkLines, isUrnPickup, type UrnPickup } from "@/lib/invoice-remark";
 import { loadInvoiceProductLines } from "@/lib/memorial-lines";
 import { reapplyDepositCredit } from "@/lib/deposit-credit-repair";
@@ -216,9 +216,8 @@ export async function createOrder(input: NewOrderInput): Promise<{ id?: string; 
   const petName = t(input.petName, 100);
   const petType = t(input.petType, 80);
   const serviceDate = t(input.serviceDate, 10);
-  // 接送時間：時／分（HH:MM），舊時段文字仍接受
-  const rawSlot = t(input.serviceSlot, 60);
-  const slot = !rawSlot ? "" : /^\d{2}:\d{2}$/.test(rawSlot) ? rawSlot : findTimeSlot(rawSlot)?.zh || "";
+  // 接送時間：新單用 HH:MM；舊時段文字保留，不會改成某個鐘點，也不會清成空白
+  const slot = preserveServiceTime(t(input.serviceSlot, 60));
   const address = t(input.address, 300);
   const internalNote = t(input.internalNote, 1000);
   const publicNote = t(input.publicNote, 500);
@@ -254,7 +253,7 @@ export async function createOrder(input: NewOrderInput): Promise<{ id?: string; 
     if (!petAge) return { error: "請填寫年齡。" };
     if (input.type === "deposit" && !address) return { error: "請填寫接送地址。" };
   }
-  const driver = input.type === "deposit" ? t(input.driver, 60) : "";
+  const driver = input.type === "deposit" ? canonicalDriver(t(input.driver, 60)) : "";
   if (driver && !(await driverOptions()).includes(driver)) return { error: "司機不在試算表司機名單內，請先在試算表加入並同步。" };
   const petInfo = needPet ? `寵物資料：體重 ${petWeight} 公斤、品種 ${petBreed}、性別 ${petGender}、年齡 ${petAge}` : "";
 

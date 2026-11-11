@@ -1,4 +1,4 @@
-import { bookingDraftIds, payableText, shopifyTotals } from "@/lib/shopify-payable";
+import { bookingDraftIds, loadShopifyTotals, payableText } from "@/lib/shopify-payable";
 import { TestingNotice } from "../_testing-notice";
 import { bookingFollowUps } from "@/lib/follow-up-server";
 import { PageHeader } from "../_page-header";
@@ -191,14 +191,24 @@ export async function BookingsPage({ mode, query = "", onlyFollow = false, showT
   // 未付款：讀取 Shopify 付款連結的實時應付；已付款：實收（原價－接送訂金抵扣）
   const unpaidIds = bookings.filter((b) => (b as { payment_status?: string | null }).payment_status !== "paid" && b.status !== "cancelled").map((b) => b.id);
   const draftOf = await bookingDraftIds(unpaidIds);
-  const liveTotals = await shopifyTotals([...draftOf.values()]);
+  const liveLoad = await loadShopifyTotals([...draftOf.values()]);
+  const liveTotals = liveLoad.totals;
   const amountOf = (b: { id: string; payment_amount?: number | null; payment_status?: string | null; deposit_credit?: number | null; payment_currency?: string | null }) => {
     const cur = (b.payment_currency || "HKD") + " ";
+    const local = () => {
+      if (b.payment_amount == null) return null;
+      const credit = Number(b.deposit_credit || 0);
+      const gross = Number(b.payment_amount);
+      return payableText({ gross, credit, other: 0, payable: gross - credit, open: b.payment_status !== "paid", received: b.payment_status === "paid" ? gross - credit : 0 }, cur);
+    };
+    if (!liveLoad.ok && draftOf.has(b.id)) {
+      const text = local();
+      return text ? `本機記錄 ${text}（Shopify 未能讀取，未改為 0）` : "Shopify 未能讀取，未改為 0";
+    }
     const t = draftOf.has(b.id) ? liveTotals.get(draftOf.get(b.id) as string) : undefined;
-    if (t && t.open) return payableText(t, cur);
-    if (b.payment_amount == null) return null;
-    const credit = Number(b.deposit_credit || 0);
-    return payableText({ gross: Number(b.payment_amount), credit, other: 0, payable: Number(b.payment_amount) - credit }, cur);
+    if (t && t.open) return payableText({ ...t, open: true }, cur);
+    const text = local();
+    return text ? `本機記錄 ${text}` : null;
   };
   const tableRows: BookingRow[] = bookings.map((b) => {
     // 專案編號僅限跨服務沿用的 RSL 編號；Shopify 訂單號屬付款發票。

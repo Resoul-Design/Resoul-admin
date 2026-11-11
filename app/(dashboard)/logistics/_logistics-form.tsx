@@ -6,9 +6,11 @@ import { LOGISTICS_GROUPS } from "@/lib/logistics-fields";
 import { updateCustomerData } from "./actions";
 import { saveProductLineDetails, type LineDetail } from "./_product-lines-actions";
 import { REFERRAL_PARTNERS, computeLogistics, findPartner, type LineTotals, type ShopifySummary } from "@/lib/logistics-calc";
-import { TimePicker, UrnPicker, urnServiceName, type UrnProduct } from "../_pickers";
+import { DriverPicker, TimePicker, UrnPicker, urnServiceName, type UrnProduct } from "../_pickers";
+import { lookupUrnCost } from "@/lib/urn-cost";
 
 const hk = (n: number) => `HK$${n.toLocaleString("en-US", { maximumFractionDigits: 2 })}`;
+const money = (n: number | null) => (n == null ? "—" : hk(n));
 
 const input = "mt-1 w-full rounded-lg border border-[var(--line)] bg-white px-3 py-2 text-sm";
 const readonly = "mt-1 w-full rounded-lg border border-[var(--line)] bg-[var(--head)] px-3 py-2 text-sm font-medium tabular-nums";
@@ -24,7 +26,7 @@ export type MemorialItem = LineDetail & { name: string; quantity: number };
 // 整張單的舊 Excel 紀念品欄（有每件紀念品資料後，只在已有數值時顯示）
 const LEGACY_MEMORIAL = new Set(["delivered_to_supplier_on", "supplier_returned_on", "memorial_cost"]);
 
-export function LogisticsForm({ invoice, initial, exists, isAdmin, autoKeys = [], derived = {}, lines = null, memorialItems = [], urnProducts = [], shopify = null, drivers = [] }: { invoice: string; initial: Record<string, string>; exists: boolean; isAdmin: boolean; autoKeys?: string[]; derived?: Record<string, string>; lines?: LineTotals | null; memorialItems?: MemorialItem[]; urnProducts?: UrnProduct[]; shopify?: ShopifySummary | null; drivers?: string[] }) {
+export function LogisticsForm({ invoice, initial, exists, isAdmin, autoKeys = [], derived = {}, lines = null, memorialItems = [], urnProducts = [], shopify = null, legacyNote = "", drivers = [] }: { invoice: string; initial: Record<string, string>; exists: boolean; isAdmin: boolean; autoKeys?: string[]; derived?: Record<string, string>; lines?: LineTotals | null; memorialItems?: MemorialItem[]; urnProducts?: UrnProduct[]; shopify?: ShopifySummary | null; legacyNote?: string; drivers?: string[] }) {
   const auto = new Set(autoKeys);
   const router = useRouter();
   const [values, setValues] = useState<Record<string, string>>(initial);
@@ -52,15 +54,30 @@ export function LogisticsForm({ invoice, initial, exists, isAdmin, autoKeys = []
   // 紀念品成本：有每件紀念品時按目前輸入加總
   const itemCosts = items.filter((x) => x.cost.trim() !== "");
   const calc = computeLogistics(values, lines ? { ...lines, cost: itemCosts.reduce((n, x) => n + (Number(x.cost) || 0), 0), costCount: itemCosts.length } : null, shopify);
+  const urnLookup = lookupUrnCost(values.urn || "");
+  const memorialNote = !lines
+    ? "紀念品產品表未啟用，沿用已存金額，未當 0。"
+    : lines.ambiguous
+      ? "產品行金額分不清是單行定價還是整單重覆總額，未加總，亦未當 0。"
+      : lines.count > 0
+        ? `紀念品加購按產品行實際金額合計 ${hk(lines.amount)}（未用目錄牌價，保存其他欄位不會改寫已存數）。`
+        : (values.memorial_addon_price || "").trim()
+          ? "沒有產品行，沿用已存紀念品加購，未改寫為 0。"
+          : "沒有產品行，紀念品加購為 0。";
+  const urnNote = urnLookup.state === "amount"
+    ? `目錄成本 ${hk(urnLookup.amount)}（${urnLookup.sku}）。牌價是否為 0 不影響成本。未按「用單據金額」就不會寫入。`
+    : urnLookup.state === "unresolved"
+      ? "骨灰龕未有唯一代碼，成本未對照，亦未填 0。"
+      : "";
   // 計算欄（只顯示，不會保存）：放在「費用與付款」組最前
   const calcFields: { label: string; value: string }[] = [
-    { label: "發票總額", value: hk(calc.invoiceTotal) },
-    { label: "已收訂金", value: hk(calc.depositPaid) },
-    { label: "接送訂金抵扣", value: hk(calc.credit) },
-    { label: "折扣金額", value: hk(calc.discount) },
-    { label: "尚欠", value: hk(calc.balanceDue) },
+    { label: shopify?.hasDocs ? "原價" : "發票總額", value: money(calc.invoiceTotal) },
+    { label: shopify?.depositNote ? `已收訂金（${shopify.depositNote}）` : "已收訂金", value: money(calc.depositPaid) },
+    { label: "接送訂金抵扣", value: money(calc.credit) },
+    { label: "折扣", value: money(calc.discount) },
+    { label: shopify?.hasDocs ? "尚欠（Shopify 應付）" : "尚欠", value: money(calc.balanceDue) },
     { label: `轉介費${calc.referral.partner ? `（${calc.referral.partner}）` : ""}`, value: calc.referral.fee == null ? "—" : `${hk(calc.referral.fee)}${calc.referral.payable && calc.referral.fee ? "（應付）" : ""}` },
-    ...(isAdmin ? [{ label: "毛利", value: hk(calc.grossProfit) }] : []),
+    ...(isAdmin ? [{ label: "毛利", value: calc.grossProfit == null ? "—（司機費或骨灰龕成本未對照，不以 0 計算）" : hk(calc.grossProfit) }] : []),
   ];
 
   function save() {
@@ -98,7 +115,9 @@ export function LogisticsForm({ invoice, initial, exists, isAdmin, autoKeys = []
           </a>
         ))}
       </nav>
-      {staleCount > 0 && <p className="mb-3 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">有 {staleCount} 個金額與單據最新計算不同（例如開單後加減了產品），請在「費用與付款」核對，按「用單據金額」更新後儲存。</p>}
+      {shopify?.loadError && <p className="mb-3 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">Shopify 金額未能讀取。已收訂金、折扣及尚欠顯示為「—」，沒有改成 0，亦未改寫已存數。</p>}
+      {legacyNote && <p className="mb-3 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">{legacyNote}</p>}
+      {staleCount > 0 && <p className="mb-3 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">有 {staleCount} 個欄位與單據最新計算不同。核對後按「用單據金額」才會在儲存時寫入；只改其他欄位不會覆蓋。</p>}
       {autoKeys.length > 0 && (
         <p className="mb-3 flex flex-wrap items-center gap-2 text-xs text-[var(--soft)]">
           <span><span className="mr-1 inline-block h-3 w-3 rounded border border-amber-300 bg-amber-50 align-middle" />淡黃色欄位按單據資料自動填入（{autoKeys.length} 項），只作參考；修改後或按「採用自動填入」才會保存。</span>
@@ -122,6 +141,7 @@ export function LogisticsForm({ invoice, initial, exists, isAdmin, autoKeys = []
               </button>
               {open && (
                 <div className="grid gap-3 border-t border-[var(--line)] px-4 pb-4 pt-3 sm:grid-cols-2 lg:grid-cols-4">
+                  {group.title === "費用與付款" && <p className="text-xs text-[var(--soft)] sm:col-span-2 lg:col-span-4">{memorialNote}{urnNote ? ` ${urnNote}` : ""} 司機／GoGoVan 費用沒有官方收費表，不會用歷史車費自動填入；留空代表未對照，不是 0。接送費已從表格移除，舊數仍保留在匯出。</p>}
                   {group.title === "費用與付款" && calcFields.map((c) => (
                     <div key={c.label} className="text-sm">
                       {c.label}
@@ -148,11 +168,7 @@ export function LogisticsForm({ invoice, initial, exists, isAdmin, autoKeys = []
                     <label key={f.key} className={"text-sm" + (f.type === "textarea" ? " sm:col-span-2 lg:col-span-4" : f.key === "urn" ? " sm:col-span-2" : "")}>
                       {f.label}
                       {f.key === "driver" ? (
-                        <select value={values[f.key] || ""} onChange={(e) => setValues((v) => ({ ...v, [f.key]: e.target.value }))} className={input + (auto.has(f.key) && values[f.key] === initial[f.key] ? " !bg-amber-50" : "")}>
-                          <option value="">（未選擇）</option>
-                          {drivers.map((d) => <option key={d}>{d}</option>)}
-                          {values[f.key] && !drivers.includes(values[f.key]) && <option value={values[f.key]}>{values[f.key]}</option>}
-                        </select>
+                        <div className="mt-1"><DriverPicker value={values[f.key] || ""} drivers={drivers} onChange={(val) => setValues((v) => ({ ...v, [f.key]: val }))} className={input.replace("mt-1 ", "") + (auto.has(f.key) && values[f.key] === initial[f.key] ? " !bg-amber-50" : "")} /></div>
                       ) : f.key === "ceremony_time" || f.key === "arrival_time" ? (
                         <div className="mt-1"><TimePicker value={values[f.key] || ""} onChange={(val) => setValues((v) => ({ ...v, [f.key]: val }))} className={input.replace("mt-1 ", "") + (auto.has(f.key) && values[f.key] === initial[f.key] ? " !bg-amber-50" : "")} /></div>
                       ) : f.key === "urn" ? (
@@ -185,9 +201,13 @@ export function LogisticsForm({ invoice, initial, exists, isAdmin, autoKeys = []
                           className={input + (auto.has(f.key) && values[f.key] === initial[f.key] ? " !bg-amber-50" : "")}
                         />
                       )}
+                      {f.key === "package_code" && shopify?.planSku && shopify.planSku !== (values.package_code || "") && (
+                        <span className="mt-1 block text-xs text-amber-800">Shopify 款式代碼：{shopify.planSku}（未改寫已存代碼）</span>
+                      )}
+                      {f.key === "driver_or_gogovan_cost" && !(values.driver_or_gogovan_cost || "").trim() && <span className="mt-1 block text-xs text-[var(--soft)]">未對照，不是 0。請人手填寫。</span>}
                       {stale(f.key) && (
                         <span className="mt-1 block text-xs text-amber-800">
-                          單據計算：{derived[f.key]}
+                          {f.key === "package_code" ? "Shopify 款式代碼" : "單據計算"}：{derived[f.key]}
                           <button type="button" onClick={() => setValues((v) => ({ ...v, [f.key]: derived[f.key] }))} className="ml-2 text-[var(--gold)] underline">用單據金額</button>
                         </span>
                       )}
