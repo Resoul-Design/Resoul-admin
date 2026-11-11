@@ -4,6 +4,7 @@ import { getStaff, hasModule } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { logAudit } from "@/lib/audit";
 import { LOGISTICS_FIELDS } from "@/lib/logistics-fields";
+import { deriveLogisticsAutoCosts } from "@/lib/logistics-auto-costs";
 import { updateServiceRecord, type RecordKind, type RecordValues } from "./_record-actions";
 
 // 保存客戶資料（Excel 欄位）：只更新表格內有的欄位；此單號未有客戶資料時建立一筆（來源：後台）。
@@ -34,15 +35,30 @@ export async function updateCustomerData(invoice: string, values: Record<string,
   if (typeof row.email === "string" && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(row.email)) return { error: "電郵格式不正確。" };
 
   const admin = createAdminClient();
-  const { data: existing } = await admin.from("logistics_orders").select("invoice_no").eq("invoice_no", invoiceNo).maybeSingle();
+  const [{ data: existing }, { data: current }, { data: logisticsRows }, { data: productLines }, { data: productOrders }, { data: companyOrders }] = await Promise.all([
+    admin.from("logistics_orders").select("invoice_no, driver, urn, urn_cost, driver_or_gogovan_cost, memorial_addon_price").eq("invoice_no", invoiceNo).maybeSingle(),
+    admin.from("logistics_orders").select("*").eq("invoice_no", invoiceNo).maybeSingle(),
+    admin.from("logistics_orders").select("driver, urn, urn_cost, driver_or_gogovan_cost").order("updated_at", { ascending: false }).limit(1000),
+    admin.from("memorial_product_lines").select("amount, unit_price, quantity").eq("invoice_no", invoiceNo),
+    admin.from("product_orders").select("amount, total_price").eq("invoice_no", invoiceNo),
+    admin.from("company_orders").select("order_type, amount, total_price").eq("invoice_no", invoiceNo),
+  ]);
   if (existing && !Object.keys(row).length) return {}; // 沒有修改：不寫入
+  const automatic = deriveLogisticsAutoCosts(
+    { ...(current || {}), ...row },
+    (logisticsRows || []) as Record<string, unknown>[],
+    (productLines || []) as Record<string, unknown>[],
+    (productOrders || []) as Record<string, unknown>[],
+    (companyOrders || []) as Record<string, unknown>[],
+  );
+  const fullRow = { ...row, ...automatic };
   const write = (r: typeof row) => existing
     ? admin.from("logistics_orders").update({ ...r, updated_at: new Date().toISOString() }).eq("invoice_no", invoiceNo)
     : admin.from("logistics_orders").insert({ invoice_no: invoiceNo, source: "admin", ...r });
-  let { error } = await write(row);
+  let { error } = await write(fullRow);
   let urnWarning = "";
-  if (error && "urn_cost" in row && /urn_cost/.test(error.message)) {
-    const rest = { ...row };
+  if (error && "urn_cost" in fullRow && /urn_cost/.test(error.message)) {
+    const rest = { ...fullRow };
     delete rest.urn_cost;
     ({ error } = await write(rest));
     urnWarning = "骨灰龕成本未能保存：請先於 Supabase 執行 db/migration_20261111_urn_cost.sql。";
@@ -51,9 +67,9 @@ export async function updateCustomerData(invoice: string, values: Record<string,
     console.error("[logistics_update]", error.message);
     return { error: "未能保存，請稍後再試。" };
   }
-  await logAudit("update_customer_data", "logistics_orders", String(invoiceNo), `${existing ? "更新" : "建立"}客戶資料：${Object.keys(row).filter((k) => row[k] != null).join("、") || "—"}`);
+  await logAudit("update_customer_data", "logistics_orders", String(invoiceNo), `${existing ? "更新" : "建立"}客戶資料：${Object.keys(fullRow).filter((k) => fullRow[k] != null).join("、") || "—"}`);
   // 同步到同一單號的接送／火化／開新單記錄及 Shopify（只限主人、電話、電郵、寵物名稱、動物類型）
-  const warnings = await syncServiceRecords(invoiceNo, row);
+  const warnings = await syncServiceRecords(invoiceNo, fullRow);
   revalidatePath(`/logistics/${invoiceNo}`);
   revalidatePath("/logistics");
   if (urnWarning) warnings.push(urnWarning);
