@@ -12,7 +12,7 @@ import { loadInvoiceProductLines } from "@/lib/memorial-lines";
 import { loadCatalog } from "@/lib/catalog";
 import { lineTotals } from "@/lib/logistics-calc";
 import { invoiceShopify } from "@/lib/shopify-payable";
-import { driverOptions } from "@/lib/drivers";
+import { canonicalDriver, driverOptions } from "@/lib/drivers";
 
 export const dynamic = "force-dynamic";
 export default async function LogisticsDetail({ params }: { params: Promise<{ invoice: string }> }) {
@@ -41,7 +41,8 @@ export default async function LogisticsDetail({ params }: { params: Promise<{ in
   const autoKeys: string[] = [];
   const formInitial: Record<string, string> = Object.fromEntries(LOGISTICS_FIELDS.map((f) => {
     const saved = lg ? lg[f.key] : null;
-    if (saved != null && String(saved) !== "") return [f.key, String(saved).slice(0, f.type === "date" ? 10 : 2000)];
+    // 司機：同一人不同寫法以合併後的名稱顯示（資料庫原文不變，未修改不會寫入）
+    if (saved != null && String(saved) !== "") return [f.key, f.key === "driver" ? canonicalDriver(String(saved)) : String(saved).slice(0, f.type === "date" ? 10 : 2000)];
     const auto = derived[f.key];
     if (auto != null && String(auto) !== "") { if (!f.hidden) autoKeys.push(f.key); return [f.key, String(auto).slice(0, f.type === "date" ? 10 : 2000)]; }
     return [f.key, ""];
