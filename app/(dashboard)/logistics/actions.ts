@@ -4,7 +4,7 @@ import { getStaff, hasModule } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { logAudit } from "@/lib/audit";
 import { LOGISTICS_FIELDS } from "@/lib/logistics-fields";
-import { deriveLogisticsAutoCosts } from "@/lib/logistics-auto-costs";
+import { logisticsSavePatch } from "@/lib/logistics-auto-costs";
 import { updateServiceRecord, type RecordKind, type RecordValues } from "./_record-actions";
 
 // 保存客戶資料（Excel 欄位）：只更新表格內有的欄位；此單號未有客戶資料時建立一筆（來源：後台）。
@@ -35,23 +35,10 @@ export async function updateCustomerData(invoice: string, values: Record<string,
   if (typeof row.email === "string" && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(row.email)) return { error: "電郵格式不正確。" };
 
   const admin = createAdminClient();
-  const [{ data: existing }, { data: current }, { data: logisticsRows }, { data: productLines }, { data: productOrders }, { data: companyOrders }] = await Promise.all([
-    admin.from("logistics_orders").select("invoice_no, driver, urn, urn_cost, driver_or_gogovan_cost, memorial_addon_price").eq("invoice_no", invoiceNo).maybeSingle(),
-    admin.from("logistics_orders").select("*").eq("invoice_no", invoiceNo).maybeSingle(),
-    admin.from("logistics_orders").select("driver, urn, urn_cost, driver_or_gogovan_cost").order("updated_at", { ascending: false }).limit(1000),
-    admin.from("memorial_product_lines").select("amount, unit_price, quantity").eq("invoice_no", invoiceNo),
-    admin.from("product_orders").select("amount, total_price").eq("invoice_no", invoiceNo),
-    admin.from("company_orders").select("order_type, amount, total_price").eq("invoice_no", invoiceNo),
-  ]);
-  if (existing && !Object.keys(row).length) return {}; // 沒有修改：不寫入
-  const automatic = deriveLogisticsAutoCosts(
-    { ...(current || {}), ...row },
-    (logisticsRows || []) as Record<string, unknown>[],
-    (productLines || []) as Record<string, unknown>[],
-    (productOrders || []) as Record<string, unknown>[],
-    (companyOrders || []) as Record<string, unknown>[],
-  );
-  const fullRow: typeof row = { ...row, ...automatic };
+  const { data: existing } = await admin.from("logistics_orders").select("invoice_no").eq("invoice_no", invoiceNo).maybeSingle();
+  // 只寫本次提交的欄位。接送費、已收訂金、折扣及未提交的計算欄不在這裡重算或覆蓋。
+  const fullRow = logisticsSavePatch(row);
+  if (existing && !Object.keys(fullRow).length) return {};
   const write = (r: typeof row) => existing
     ? admin.from("logistics_orders").update({ ...r, updated_at: new Date().toISOString() }).eq("invoice_no", invoiceNo)
     : admin.from("logistics_orders").insert({ invoice_no: invoiceNo, source: "admin", ...r });

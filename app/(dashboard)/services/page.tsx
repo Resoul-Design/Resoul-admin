@@ -3,7 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getStaff, hasModule } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { shopifyGraphQL } from "@/lib/shopify";
+import { loadShopifyTotals, payableText } from "@/lib/shopify-payable";
 import { invoiceLabel } from "@/lib/invoice-label";
 import { invoiceQuery, matchesInvoice } from "@/lib/invoice-search";
 import { CancelButton, MarkRefundedButton } from "./_cancel";
@@ -68,7 +68,7 @@ export default async function ServicesPage({ searchParams }: { searchParams: Pro
       .filter((o) => ((o.details as { lines?: { label: string }[] } | null)?.lines || []).slice(1).some((l) => !String(l.label).startsWith("附加費")))
       .map((o) => String(o.linked_id))
   );
-  type InvoiceRow = { id: string; kind: CancelKind; rawId: string; invoice_no: number | null; order_type: string; customer_name: string | null; phone: string | null; pet: string | null; amount: number; status: string; created_at: string; ref: string; test: boolean; extra?: string; shopify?: string };
+  type InvoiceRow = { id: string; kind: CancelKind; rawId: string; invoice_no: number | null; order_type: string; customer_name: string | null; phone: string | null; pet: string | null; amount: number; amountText?: string; status: string; created_at: string; ref: string; test: boolean; extra?: string; shopify?: string };
   // Shopify 後台訂單頁（可用 Order Printer 列印 Shopify 發票）；未付款則開付款連結草稿
   const shopDomain = (process.env.SHOPIFY_STORE_DOMAIN || "").replace(/^https?:\/\//, "").replace(/\/+$/, "");
   // 未付款的付款連結草稿：先向 Shopify 確認仍然存在（已刪除的草稿不顯示連結）；讀取失敗時照常顯示
@@ -78,16 +78,11 @@ export default async function ServicesPage({ searchParams }: { searchParams: Pro
     ...(company.data || []).filter((r) => !r.shopify_order_id && r.shopify_draft_id).map((r) => String(r.shopify_draft_id)),
   ].filter((id) => id.startsWith("gid://shopify/DraftOrder/")))];
   let aliveDrafts: Set<string> | null = new Set();
-  // 未付款付款連結的 Shopify 應付（已扣接送訂金及折扣）
-  const draftPayable = new Map<string, number>();
-  try {
-    for (let i = 0; i < draftIds.length; i += 100) {
-      const res = await shopifyGraphQL<{ nodes: ({ id: string; totalPriceSet?: { shopMoney: { amount: string } }; status?: string } | null)[] }>(`query($ids: [ID!]!) { nodes(ids: $ids) { ... on DraftOrder { id status totalPriceSet { shopMoney { amount } } } } }`, { ids: draftIds.slice(i, i + 100) });
-      for (const n of res.nodes) if (n?.id) { aliveDrafts.add(n.id); if (n.status !== "COMPLETED" && n.totalPriceSet) draftPayable.set(n.id, Number(n.totalPriceSet.shopMoney.amount)); }
-    }
-  } catch {
-    aliveDrafts = null;
-  }
+  // 未付款付款連結的 Shopify 原價、抵扣、折扣及應付。讀取失敗不把金額改成 0。
+  const draftPayable = new Map<string, { gross: number; credit: number; other: number; payable: number; open: boolean }>();
+  const liveMoney = await loadShopifyTotals(draftIds);
+  if (!liveMoney.ok) aliveDrafts = null;
+  else for (const [id, total] of liveMoney.totals) { aliveDrafts.add(id); if (total.open) draftPayable.set(id, total); }
   const shopifyHref = (orderId?: string | null, draftId?: string | null) => {
     const order = String(orderId || "").split("/").pop();
     const draft = String(draftId || "").split("/").pop();
@@ -110,7 +105,15 @@ export default async function ServicesPage({ searchParams }: { searchParams: Pro
   ].filter((r) => r.invoice_no != null);
   // 未付款行：金額跟 Shopify 付款連結的應付（後台記錄只作後備）
   const draftForRow = (r: InvoiceRow) => r.kind === "company" ? (company.data || []).find((c) => String(c.id) === r.rawId)?.shopify_draft_id : r.kind === "deposit" ? (deposits.data || []).find((d) => String(d.id) === r.rawId)?.payment_draft_id : r.kind === "cremation" ? bookingDraft.get(r.rawId) : null;
-  for (const r of sourceRows) { if (r.status === "paid" || r.status === "cancelled") continue; const d = draftForRow(r); if (d && draftPayable.has(String(d))) r.amount = draftPayable.get(String(d)) as number; }
+  for (const r of sourceRows) {
+    const local = r.amount > 0 ? `本機記錄 HK$${Number(r.amount).toLocaleString("en-US")}` : r.status === "paid" ? "本機記錄 HK$0" : "";
+    if (r.status === "paid" || r.status === "cancelled") { if (local) r.amountText = local; continue; }
+    const d = draftForRow(r);
+    if (!liveMoney.ok && d) { r.amountText = `${local || "本機記錄"}（Shopify 未能讀取，未改為 0）`; continue; }
+    const live = d ? draftPayable.get(String(d)) : undefined;
+    if (live) r.amountText = payableText(live, "HK$");
+    else if (local) r.amountText = local;
+  }
   const testCount = sourceRows.filter((r) => r.test).length;
   const cancelInfo = (r: InvoiceRow) => cancelMap.get(`${r.kind}:${r.rawId}`);
   const isCancelled = (r: InvoiceRow) => r.status === "cancelled" || r.status === "cancelled_refunded";
@@ -147,7 +150,7 @@ export default async function ServicesPage({ searchParams }: { searchParams: Pro
           {(q || statusFilter) && <Link href={showTest ? "/services?test=1" : "/services"} className="text-sm text-[var(--gold)] hover:underline">清除</Link>}
         </form>
         <div className="mb-3 flex items-center justify-between"><h2 className="text-xl font-semibold">{q || statusFilter ? "搜尋結果" : showTest ? "測試記錄" : "全部發票"}</h2><span className="flex items-center gap-3 text-sm text-[var(--soft)]">共 {invoiceRows?.length || 0} 張<a href={showTest ? "/api/export/services?test=1" : "/api/export/services"} className="rounded-lg border border-[var(--line)] bg-white px-3 py-1.5 text-[var(--ink)] hover:bg-[var(--cream)]">匯出 Excel</a></span></div>
-        {showTest ? <div className="mb-3 rounded-xl border border-[var(--line)] bg-[var(--card)] px-4 py-3 text-sm">正在查看測試記錄（不計入正式發票）。<Link href="/services" className="ml-2 text-[var(--gold)] hover:underline">返回正式記錄</Link></div> : testCount > 0 && <div className="mb-3 rounded-xl border border-[var(--line)] bg-[var(--card)] px-4 py-3 text-sm text-[var(--soft)]">另有 {testCount} 筆測試記錄已隱藏。<Link href="/services?test=1" className="ml-2 text-[var(--gold)] hover:underline">查看測試記錄</Link></div>}<div className="overflow-x-auto rounded-2xl border border-[var(--line)] bg-[var(--card)]"><table className="w-full min-w-[900px] text-sm"><thead><tr className="bg-[var(--head)] text-left text-[var(--soft)]">{["發票／單號", "服務類型", "寵物", "客戶", "電話", "金額", "狀態", "建立時間", "功能"].map((h) => <th key={h} className="px-4 py-3 font-medium">{h}</th>)}</tr></thead><tbody>{invoiceRows.map((row) => <tr key={row.id} className={"border-t border-[var(--line)]" + (isCancelled(row) ? " bg-red-50/40" : "")}><td className="px-4 py-3 font-medium text-[var(--gold)]">#{invoiceLabel(row.invoice_no, row.order_type)}</td><td className="px-4 py-3"><Link href={serviceQueryHref(typeLabel[row.order_type] || row.order_type, row.invoice_no)} className="text-[var(--gold)] hover:underline">{typeLabel[row.order_type] || row.order_type}{row.extra || ""} ↗</Link></td><td className="px-4 py-3">{row.pet || "—"}</td><td className="px-4 py-3">{row.customer_name || "—"}</td><td className="px-4 py-3">{displayPhone(row.phone) || "—"}</td><td className="px-4 py-3">{row.amount > 0 ? `HK$ ${Number(row.amount).toLocaleString()}` : row.status === "paid" ? "HK$ 0" : <span className="text-[var(--soft)]">待報價</span>}</td><td className="px-4 py-3">{isCancelled(row) ? <span className="inline-block rounded-full bg-red-100 px-2 py-0.5 text-xs text-red-700">{statusLabel[row.status]}</span> : statusLabel[row.status] || row.status || "—"}{pendingRefund(row) && <span className="ml-1 inline-block rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-800">待退款</span>}{cancelInfo(row)?.refund_status === "refunded" && row.status !== "cancelled_refunded" && <span className="ml-1 inline-block rounded-full bg-gray-200 px-2 py-0.5 text-xs text-gray-700">已退款</span>}</td><td className="px-4 py-3 text-xs text-[var(--soft)]">{String(row.created_at || "").slice(0, 16).replace("T", " ")}</td><td className="px-4 py-3"><div className="flex flex-wrap gap-x-3 gap-y-1"><Link href={`/logistics/${encodeURIComponent(String(row.invoice_no))}`} className="text-[var(--gold)] hover:underline">查看資料</Link>{row.ref && <><a href={`/print/invoices?refs=${encodeURIComponent(row.ref)}`} target="_blank" rel="noopener" className="text-[var(--gold)] hover:underline">發票 PDF</a><a href={`/print/invoices/word?refs=${encodeURIComponent(row.ref)}`} className="text-[var(--gold)] hover:underline">Word</a></>}{row.shopify && <a href={row.shopify} target="_blank" rel="noopener" className="text-[var(--gold)] hover:underline">Shopify ↗</a>}{!isCancelled(row) && canCancel[row.kind] && <CancelButton kind={row.kind} id={row.rawId} label={`單號 ${invoiceLabel(row.invoice_no, row.order_type)}（${typeLabel[row.order_type] || row.order_type}）`} pet={row.pet} />}{pendingRefund(row) && canCancel[row.kind] && <MarkRefundedButton kind={row.kind} id={row.rawId} amount={cancelInfo(row)?.amount == null ? null : Number(cancelInfo(row)?.amount)} />}</div></td></tr>)}</tbody></table>{!invoiceRows.length && <div className="p-8 text-center text-sm text-[var(--soft)]">{q || statusFilter ? "沒有符合的記錄。" : "暫時沒有發票記錄。"}</div>}</div>
+        {showTest ? <div className="mb-3 rounded-xl border border-[var(--line)] bg-[var(--card)] px-4 py-3 text-sm">正在查看測試記錄（不計入正式發票）。<Link href="/services" className="ml-2 text-[var(--gold)] hover:underline">返回正式記錄</Link></div> : testCount > 0 && <div className="mb-3 rounded-xl border border-[var(--line)] bg-[var(--card)] px-4 py-3 text-sm text-[var(--soft)]">另有 {testCount} 筆測試記錄已隱藏。<Link href="/services?test=1" className="ml-2 text-[var(--gold)] hover:underline">查看測試記錄</Link></div>}<div className="overflow-x-auto rounded-2xl border border-[var(--line)] bg-[var(--card)]"><table className="w-full min-w-[900px] text-sm"><thead><tr className="bg-[var(--head)] text-left text-[var(--soft)]">{["發票／單號", "服務類型", "寵物", "客戶", "電話", "應付／實收", "狀態", "建立時間", "功能"].map((h) => <th key={h} className="px-4 py-3 font-medium">{h}</th>)}</tr></thead><tbody>{invoiceRows.map((row) => <tr key={row.id} className={"border-t border-[var(--line)]" + (isCancelled(row) ? " bg-red-50/40" : "")}><td className="px-4 py-3 font-medium text-[var(--gold)]">#{invoiceLabel(row.invoice_no, row.order_type)}</td><td className="px-4 py-3"><Link href={serviceQueryHref(typeLabel[row.order_type] || row.order_type, row.invoice_no)} className="text-[var(--gold)] hover:underline">{typeLabel[row.order_type] || row.order_type}{row.extra || ""} ↗</Link></td><td className="px-4 py-3">{row.pet || "—"}</td><td className="px-4 py-3">{row.customer_name || "—"}</td><td className="px-4 py-3">{displayPhone(row.phone) || "—"}</td><td className="px-4 py-3">{row.amountText || <span className="text-[var(--soft)]">待報價</span>}</td><td className="px-4 py-3">{isCancelled(row) ? <span className="inline-block rounded-full bg-red-100 px-2 py-0.5 text-xs text-red-700">{statusLabel[row.status]}</span> : statusLabel[row.status] || row.status || "—"}{pendingRefund(row) && <span className="ml-1 inline-block rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-800">待退款</span>}{cancelInfo(row)?.refund_status === "refunded" && row.status !== "cancelled_refunded" && <span className="ml-1 inline-block rounded-full bg-gray-200 px-2 py-0.5 text-xs text-gray-700">已退款</span>}</td><td className="px-4 py-3 text-xs text-[var(--soft)]">{String(row.created_at || "").slice(0, 16).replace("T", " ")}</td><td className="px-4 py-3"><div className="flex flex-wrap gap-x-3 gap-y-1"><Link href={`/logistics/${encodeURIComponent(String(row.invoice_no))}`} className="text-[var(--gold)] hover:underline">查看資料</Link>{row.ref && <><a href={`/print/invoices?refs=${encodeURIComponent(row.ref)}`} target="_blank" rel="noopener" className="text-[var(--gold)] hover:underline">發票 PDF</a><a href={`/print/invoices/word?refs=${encodeURIComponent(row.ref)}`} className="text-[var(--gold)] hover:underline">Word</a></>}{row.shopify && <a href={row.shopify} target="_blank" rel="noopener" className="text-[var(--gold)] hover:underline">Shopify ↗</a>}{!isCancelled(row) && canCancel[row.kind] && <CancelButton kind={row.kind} id={row.rawId} label={`單號 ${invoiceLabel(row.invoice_no, row.order_type)}（${typeLabel[row.order_type] || row.order_type}）`} pet={row.pet} />}{pendingRefund(row) && canCancel[row.kind] && <MarkRefundedButton kind={row.kind} id={row.rawId} amount={cancelInfo(row)?.amount == null ? null : Number(cancelInfo(row)?.amount)} />}</div></td></tr>)}</tbody></table>{!invoiceRows.length && <div className="p-8 text-center text-sm text-[var(--soft)]">{q || statusFilter ? "沒有符合的記錄。" : "暫時沒有發票記錄。"}</div>}</div>
       </section>
     </div>
   );

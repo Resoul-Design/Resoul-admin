@@ -7,7 +7,7 @@ import { ORDER_TYPES, ORDER_TYPE_MAP, PAYMENT_INTENTS, RECEIVED_METHODS, type Or
 import { createOrder, lookupCustomer, type CustomerMatch, type NewOrderLine, type PetProfile } from "./actions";
 import { URN_PICKUP_OPTIONS, invoiceRemarkLines, type UrnPickup } from "@/lib/invoice-remark";
 import { PET_GENDERS } from "@/lib/order-types";
-import { TimePicker, UrnPicker, type UrnProduct } from "../_pickers";
+import { DriverPicker, TimePicker, UrnPicker, type UrnProduct } from "../_pickers";
 
 export type NewOrderCatalog = {
   cremation: DraftCatalogProduct[];
@@ -341,7 +341,7 @@ export function NewOrderForm({ catalog, allowed, prefill, drivers = [] }: { cata
                 <label className={label}>寵物體重 *
                   <select value={variantId} onChange={(e) => setVariantId(e.target.value)} disabled={!plan} className={input + " mt-1 disabled:opacity-60"}>
                     <option value="">{plan ? "請選擇" : "請先選套餐"}</option>
-                    {plan?.variants.map((v) => <option key={v.id} value={v.id}>{v.title} · {hk(price(v))}</option>)}
+                    {plan?.variants.map((v) => <option key={v.id} value={v.id}>{v.title}{v.sku ? ` · ${v.sku}` : ""} · {hk(price(v))}</option>)}
                   </select>
                 </label>
               </>
@@ -410,10 +410,7 @@ export function NewOrderForm({ catalog, allowed, prefill, drivers = [] }: { cata
             )}
             {type === "deposit" && (
               <label className={label}>司機
-                <select value={driver} onChange={(e) => setDriver(e.target.value)} className={input + " mt-1"}>
-                  <option value="">（未選擇）</option>
-                  {drivers.map((d) => <option key={d}>{d}</option>)}
-                </select>
+                <div className="mt-1"><DriverPicker value={driver} drivers={drivers} onChange={setDriver} className={input} /></div>
               </label>
             )}
             {showAddress && (
