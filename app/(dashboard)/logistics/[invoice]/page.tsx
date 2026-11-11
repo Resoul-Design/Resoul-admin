@@ -23,7 +23,7 @@ export default async function LogisticsDetail({ params }: { params: Promise<{ in
   const extraRef = parseExtraRef(invoice);
   if (extraRef) redirect(`/logistics/${extraRef.invoice}#extra-${extraRef.ref}`);
   const admin = createAdminClient();
-  const [logistics, logisticsRows, company, deposits, cremations, products] = await Promise.all([
+  const [logistics, logisticsHistory, company, deposits, cremations, products] = await Promise.all([
     admin.from("logistics_orders").select("*").eq("invoice_no", invoice).maybeSingle(),
     admin.from("logistics_orders").select("driver, urn, urn_cost, driver_or_gogovan_cost").order("updated_at", { ascending: false }).limit(1000),
     // 同一單號可有多筆記錄（同一專案共用單號）
@@ -44,7 +44,7 @@ export default async function LogisticsDetail({ params }: { params: Promise<{ in
   const derived = deriveCustomerData({ deposits: deposits.data || [], cremations: cremations.data || [], company: company.data || [], products: products.data || [], planSku: shopify.planSku });
   const automatic = deriveLogisticsAutoCosts(
     lg || { invoice_no: invoiceNo },
-    (logisticsRows || []) as Record<string, unknown>[],
+    (logisticsHistory.data || []) as unknown as Record<string, unknown>[],
     productLines.ready ? (productLines.lines as unknown as Record<string, unknown>[]) : [],
     (products.data || []) as Record<string, unknown>[],
     (company.data || []) as Record<string, unknown>[],
