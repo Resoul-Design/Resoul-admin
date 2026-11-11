@@ -50,3 +50,12 @@
 - Vercel production：`READY`，正式網址：[resoul-admin-five.vercel.app](https://resoul-admin-five.vercel.app)。
 - 以 `155b0d2` 為基礎的另一個預覽 PR #17 因 main 已有相同檔案的後續修改而產生 merge conflict，已關閉；預覽 build 本身為 READY，未影響 production。
 
+
+
+## 2026-11-11 部署錯誤記錄
+
+- 預覽分支 feature/logistics-auto-costs-from-155 首次 build：TypeScript 報錯，actions.ts 的 delete rest.urn_cost 不符合推斷型別；已改用篩選物件欄位方式移除。
+- 第二次 preview build：TypeScript 報錯，fullRow[k] 對固定欄位物件以字串索引；已將 fullRow 明確標註為 typeof row。
+- 預覽 build 修正後已為 READY。
+- PR #17 合併時 GitHub 回報 merge conflict，原因是 main 已包含同一批物流檔案的後續提交；PR 已關閉，沒有強行覆蓋 main。
+- handoff 更新後的 production deployment dpl_GoUDwYVfR1rWK7azSaCnCGVEKz2i 已為 READY，正式網址仍為 resoul-admin-five.vercel.app。
