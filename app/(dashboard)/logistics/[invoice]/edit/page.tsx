@@ -11,7 +11,7 @@ const fields = [
   ["pickup_type", "接送方式"], ["pickup_from", "接送地點"], ["pickup_surcharge", "接送附加費"],
   ["delivery_cost_to_customer", "客戶送貨費"], ["driver_or_gogovan_cost", "司機／GoGoVan 成本（自動）", true], ["commission", "佣金"],
   ["invoice_amount", "發票金額"], ["deposit_received", "已收訂金"], ["balance_settled", "餘額結清"], ["package_price", "套餐價格"],
-  ["urn", "骨灰龕"], ["memorial_cost", "骨灰龕成本（自動）", true], ["memorial_addon_price", "紀念品及產品總金額（自動）", true],
+  ["urn", "骨灰龕"], ["urn_cost", "骨灰龕成本（自動）", true], ["memorial_addon_price", "紀念品及產品總金額（自動）", true],
   ["endup_profit", "最終利潤"], ["memorial_supplier", "紀念品供應商"],
   ["product_pickup_or_delivery_on", "紀念品取貨／送貨日期"], ["memorial_remarks", "紀念品備註"],
 ] as const;

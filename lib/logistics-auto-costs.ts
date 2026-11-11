@@ -28,7 +28,7 @@ export function deriveLogisticsCosts(currentInput: DataRow, logisticsInput: Data
     ? rows.find((row) => same(row.driver, driver) && money(row.driver_or_gogovan_cost) > 0)
     : undefined;
   const urnMatch = urn
-    ? rows.find((row) => same(row.urn || row.urn_name || row.urn_type, urn) && money(row.memorial_cost || row.urn_cost) > 0)
+    ? rows.find((row) => same(row.urn || row.urn_name || row.urn_type, urn) && money(row.urn_cost) > 0)
     : undefined;
 
   const companyProductTotal = companyOrders
@@ -40,6 +40,6 @@ export function deriveLogisticsCosts(currentInput: DataRow, logisticsInput: Data
   return {
     memorial_addon_price: memorialTotal,
     driver_or_gogovan_cost: money(driverMatch?.driver_or_gogovan_cost) || money(current.driver_or_gogovan_cost),
-    memorial_cost: money(urnMatch?.memorial_cost || urnMatch?.urn_cost) || money(current.memorial_cost || current.urn_cost),
+    urn_cost: money(urnMatch?.urn_cost) || money(current.urn_cost),
   };
 }
