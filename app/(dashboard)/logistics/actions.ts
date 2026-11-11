@@ -58,8 +58,7 @@ export async function updateCustomerData(invoice: string, values: Record<string,
   let { error } = await write(fullRow);
   let urnWarning = "";
   if (error && "urn_cost" in fullRow && /urn_cost/.test(error.message)) {
-    const rest = { ...fullRow };
-    delete rest.urn_cost;
+    const rest = Object.fromEntries(Object.entries(fullRow).filter(([key]) => key !== "urn_cost")) as typeof row;
     ({ error } = await write(rest));
     urnWarning = "骨灰龕成本未能保存：請先於 Supabase 執行 db/migration_20261111_urn_cost.sql。";
   }
