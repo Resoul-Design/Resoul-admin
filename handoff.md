@@ -45,6 +45,8 @@
 - 骨灰龕成本按骨灰龕資料的歷史物流成本自動帶入，寫入 `urn_cost`；紀念品成本保留在 `memorial_cost`。
 - `pickup_fee`（接送費）已從共用編輯畫面隱藏，司機成本不再以接送費作後備值。
 - 儲存動作同時相容新版資料物件及傳統 `FormData` 入口。
-- PR #16 已合併；production commit：`7820e44ce56b0f6c83927f7b072f79812cdce68d`。
+- PR #16 已合併；其後 main 已包含自動成本修正及部署手冊更新。
+- 目前 production commit：`f22de62ebeb5d173a4b9dfe8b1d8d2fdd7739000`。
 - Vercel production：`READY`，正式網址：[resoul-admin-five.vercel.app](https://resoul-admin-five.vercel.app)。
+- 以 `155b0d2` 為基礎的另一個預覽 PR #17 因 main 已有相同檔案的後續修改而產生 merge conflict，已關閉；預覽 build 本身為 READY，未影響 production。
 
