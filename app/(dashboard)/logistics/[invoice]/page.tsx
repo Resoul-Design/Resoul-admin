@@ -23,7 +23,7 @@ export default async function LogisticsDetail({ params }: { params: Promise<{ in
   const extraRef = parseExtraRef(invoice);
   if (extraRef) redirect(`/logistics/${extraRef.invoice}#extra-${extraRef.ref}`);
   const admin = createAdminClient();
-  const [logistics, company, deposits, cremations, products] = await Promise.all([
+  const [logistics, logisticsRows, company, deposits, cremations, products] = await Promise.all([
     admin.from("logistics_orders").select("*").eq("invoice_no", invoice).maybeSingle(),
     admin.from("logistics_orders").select("driver, urn, urn_cost, driver_or_gogovan_cost").order("updated_at", { ascending: false }).limit(1000),
     // 同一單號可有多筆記錄（同一專案共用單號）
@@ -39,6 +39,8 @@ export default async function LogisticsDetail({ params }: { params: Promise<{ in
   const lg = logistics.data as Record<string, unknown> | null;
   // Shopify 實時金額及套餐 SKU（只讀）
   const [shopify, drivers] = await Promise.all([invoiceShopify({ deposits: deposits.data || [], cremations: cremations.data || [], company: company.data || [], products: products.data || [] }), driverOptions()]);
+  const invoiceNo = Number(invoice);
+  const [productLines, catalog] = await Promise.all([loadInvoiceProductLines(invoiceNo), loadCatalog("souvenir")]);
   const derived = deriveCustomerData({ deposits: deposits.data || [], cremations: cremations.data || [], company: company.data || [], products: products.data || [], planSku: shopify.planSku });
   const automatic = deriveLogisticsAutoCosts(
     lg || { invoice_no: invoiceNo },
@@ -59,7 +61,5 @@ export default async function LogisticsDetail({ params }: { params: Promise<{ in
     if (auto != null && String(auto) !== "") { if (!f.hidden) autoKeys.push(f.key); return [f.key, String(auto).slice(0, f.type === "date" ? 10 : 2000)]; }
     return [f.key, ""];
   }));
-  const invoiceNo = Number(invoice);
-  const [productLines, catalog] = await Promise.all([loadInvoiceProductLines(invoiceNo), loadCatalog("souvenir")]);
   return <div><div className="mb-5 flex items-center gap-3"><Link href="/logistics" className="text-sm text-[var(--gold)] hover:underline">← 客戶資料</Link><h1 className="text-2xl font-semibold">{invoice}</h1></div><LogisticsForm invoice={invoice} initial={formInitial} exists={!!logistics.data} isAdmin={staff.role === "admin"} autoKeys={autoKeys} derived={Object.fromEntries(Object.entries(allDerived).map(([k, v]) => [k, String(v)]))} shopify={shopify} drivers={drivers} urnProducts={catalog.products.filter((p) => p.productType.includes("骨灰龕")).map((p) => ({ id: p.id, title: p.title, variants: p.variants.map((v) => ({ id: v.id, title: v.title, sku: v.sku })) }))} lines={productLines.ready ? lineTotals(productLines.lines) : null} memorialItems={productLines.ready ? productLines.lines.filter((l) => l.id && !l.suggested && !l.missing).map((l) => ({ id: String(l.id), name: `${l.product_name}${l.variant_title ? `（${l.variant_title}）` : ""}`, quantity: l.quantity, vendor: l.vendor || "", delivered_to_vendor_on: String(l.delivered_to_vendor_on || "").slice(0, 10), vendor_returned_on: String(l.vendor_returned_on || "").slice(0, 10), completed_on: String(l.completed_on || "").slice(0, 10), cost: l.cost == null ? "" : String(l.cost), remarks: l.remarks || "" })) : []} />{productLines.ready ? <ProductLines invoice={invoiceNo} lines={productLines.lines} catalog={catalog.products} catalogError={catalog.error} showCost cancelled={productLines.cancelled} /> : <p className="mb-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">未啟用紀念品產品表格：請先於 Supabase 執行 db/migration_20261109_memorial_lines_cancel.sql。</p>}<ExtraOrders orders={extraOrders(logistics.data)} isAdmin={staff.role === "admin"} /></div>;
 }
