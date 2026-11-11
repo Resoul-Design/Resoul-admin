@@ -49,7 +49,7 @@ export default async function LogisticsDetail({ params }: { params: Promise<{ in
     (products.data || []) as Record<string, unknown>[],
     (company.data || []) as Record<string, unknown>[],
   );
-  const allDerived = { ...derived, ...automatic };
+  const allDerived: Record<string, string | number> = { ...derived, ...automatic };
   const autoKeys: string[] = [];
   const formInitial: Record<string, string> = Object.fromEntries(LOGISTICS_FIELDS.map((f) => {
     const saved = lg ? lg[f.key] : null;
