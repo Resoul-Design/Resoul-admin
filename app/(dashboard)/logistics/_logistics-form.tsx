@@ -57,7 +57,6 @@ export function LogisticsForm({ invoice, initial, exists, isAdmin, autoKeys = []
     { label: "發票總額", value: hk(calc.invoiceTotal) },
     { label: "尚欠", value: hk(calc.balanceDue) },
     { label: `轉介費${calc.referral.partner ? `（${calc.referral.partner}）` : ""}`, value: calc.referral.fee == null ? "—" : `${hk(calc.referral.fee)}${calc.referral.payable && calc.referral.fee ? "（應付）" : ""}` },
-    { label: "司機費", value: hk(calc.driverCost.value) },
     ...(isAdmin ? [{ label: "毛利", value: hk(calc.grossProfit) }] : []),
   ];
 
