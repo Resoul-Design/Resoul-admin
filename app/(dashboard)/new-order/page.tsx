@@ -7,6 +7,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { ORDER_TYPES, type OrderType } from "@/lib/order-types";
 import { PageHeader } from "../_page-header";
 import { NewOrderForm, type NewOrderPrefill } from "./_form";
+import { driverOptions } from "@/lib/drivers";
 
 export const dynamic = "force-dynamic";
 
@@ -42,6 +43,7 @@ export default async function NewOrderPage({ searchParams }: { searchParams: Pro
       <PageHeader title="開新單" />
       {allowed.length ? (
         <NewOrderForm
+          drivers={await driverOptions()}
           allowed={allowed}
           prefill={prefill}
           catalog={{

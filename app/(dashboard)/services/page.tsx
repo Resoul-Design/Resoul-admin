@@ -78,10 +78,12 @@ export default async function ServicesPage({ searchParams }: { searchParams: Pro
     ...(company.data || []).filter((r) => !r.shopify_order_id && r.shopify_draft_id).map((r) => String(r.shopify_draft_id)),
   ].filter((id) => id.startsWith("gid://shopify/DraftOrder/")))];
   let aliveDrafts: Set<string> | null = new Set();
+  // 未付款付款連結的 Shopify 應付（已扣接送訂金及折扣）
+  const draftPayable = new Map<string, number>();
   try {
     for (let i = 0; i < draftIds.length; i += 100) {
-      const res = await shopifyGraphQL<{ nodes: ({ id: string } | null)[] }>(`query($ids: [ID!]!) { nodes(ids: $ids) { ... on DraftOrder { id } } }`, { ids: draftIds.slice(i, i + 100) });
-      for (const n of res.nodes) if (n?.id) aliveDrafts.add(n.id);
+      const res = await shopifyGraphQL<{ nodes: ({ id: string; totalPriceSet?: { shopMoney: { amount: string } }; status?: string } | null)[] }>(`query($ids: [ID!]!) { nodes(ids: $ids) { ... on DraftOrder { id status totalPriceSet { shopMoney { amount } } } } }`, { ids: draftIds.slice(i, i + 100) });
+      for (const n of res.nodes) if (n?.id) { aliveDrafts.add(n.id); if (n.status !== "COMPLETED" && n.totalPriceSet) draftPayable.set(n.id, Number(n.totalPriceSet.shopMoney.amount)); }
     }
   } catch {
     aliveDrafts = null;
@@ -106,6 +108,9 @@ export default async function ServicesPage({ searchParams }: { searchParams: Pro
     ...(cremations.data || []).map((r) => ({ id: `cremation-${r.id}`, kind: "cremation" as const, rawId: String(r.id), pet: r.pet_name, invoice_no: r.invoice_no, order_type: String(r.source || "").includes("euthanasia") ? "vet" : "cremation", extra: withAddons.has(String(r.id)) || /加購[:：]/.test(String(r.notes || "")) ? "＋紀念品" : "", customer_name: r.owner_name, phone: r.contact, amount: Number(r.payment_amount || 0) - Number(r.deposit_credit || 0), status: bookingStatus(r), created_at: r.created_at, ref: r.payment_status === "paid" && r.shopify_order_name ? `booking:${r.id}` : "", test: !!r.is_test, shopify: shopifyHref(r.shopify_order_id, bookingDraft.get(String(r.id))) })),
     ...(products.data || []).map((r) => ({ id: `product-${r.shopify_order_id}`, kind: "product" as const, rawId: String(r.shopify_order_id), pet: orderPet(r), invoice_no: r.invoice_no, order_type: "product", customer_name: r.customer_name, phone: r.phone, amount: Number(r.total_amount || 0), status: productStatus(r), created_at: r.shopify_created_at, ref: ["paid", "partially_refunded"].includes(productStatus(r)) ? `order:${String(r.shopify_order_id).split("/").pop()}` : "", test: !!r.is_test, shopify: shopifyHref(r.shopify_order_id) })),
   ].filter((r) => r.invoice_no != null);
+  // 未付款行：金額跟 Shopify 付款連結的應付（後台記錄只作後備）
+  const draftForRow = (r: InvoiceRow) => r.kind === "company" ? (company.data || []).find((c) => String(c.id) === r.rawId)?.shopify_draft_id : r.kind === "deposit" ? (deposits.data || []).find((d) => String(d.id) === r.rawId)?.payment_draft_id : r.kind === "cremation" ? bookingDraft.get(r.rawId) : null;
+  for (const r of sourceRows) { if (r.status === "paid" || r.status === "cancelled") continue; const d = draftForRow(r); if (d && draftPayable.has(String(d))) r.amount = draftPayable.get(String(d)) as number; }
   const testCount = sourceRows.filter((r) => r.test).length;
   const cancelInfo = (r: InvoiceRow) => cancelMap.get(`${r.kind}:${r.rawId}`);
   const isCancelled = (r: InvoiceRow) => r.status === "cancelled" || r.status === "cancelled_refunded";

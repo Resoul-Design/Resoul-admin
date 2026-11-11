@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { LOGISTICS_GROUPS } from "@/lib/logistics-fields";
 import { updateCustomerData } from "./actions";
 import { saveProductLineDetails, type LineDetail } from "./_product-lines-actions";
-import { REFERRAL_PARTNERS, computeLogistics, findPartner, type LineTotals } from "@/lib/logistics-calc";
+import { REFERRAL_PARTNERS, computeLogistics, findPartner, type LineTotals, type ShopifySummary } from "@/lib/logistics-calc";
 import { TimePicker, UrnPicker, urnServiceName, type UrnProduct } from "../_pickers";
 
 const hk = (n: number) => `HK$${n.toLocaleString("en-US", { maximumFractionDigits: 2 })}`;
@@ -17,14 +17,14 @@ const readonly = "mt-1 w-full rounded-lg border border-[var(--line)] bg-[var(--h
 // 分 6 組（主人及寵物、接送、火化、費用、骨灰龕、紀念品），預設收起，按組名展開；
 // 收起的組別仍保留已修改的內容，最後按「儲存修改」一次過保存全部。
 // 金額欄：已保存的數與單據即時計算不同時提示（例如開單後再加產品）
-const COMPARE = new Set(["package_price", "memorial_addon_price", "other_surcharge", "deposit_received"]);
+const COMPARE = new Set(["package_price", "memorial_addon_price", "other_surcharge", "package_code"]);
 const differs = (a: string, b: string) => { const x = Number(String(a).replace(/[$,\s]/g, "")), y = Number(String(b).replace(/[$,\s]/g, "")); return Number.isFinite(x) && Number.isFinite(y) ? Math.abs(x - y) > 0.005 : a.trim() !== b.trim(); };
 
 export type MemorialItem = LineDetail & { name: string; quantity: number };
 // 整張單的舊 Excel 紀念品欄（有每件紀念品資料後，只在已有數值時顯示）
 const LEGACY_MEMORIAL = new Set(["delivered_to_supplier_on", "supplier_returned_on", "memorial_cost"]);
 
-export function LogisticsForm({ invoice, initial, exists, isAdmin, autoKeys = [], derived = {}, lines = null, memorialItems = [], urnProducts = [] }: { invoice: string; initial: Record<string, string>; exists: boolean; isAdmin: boolean; autoKeys?: string[]; derived?: Record<string, string>; lines?: LineTotals | null; memorialItems?: MemorialItem[]; urnProducts?: UrnProduct[] }) {
+export function LogisticsForm({ invoice, initial, exists, isAdmin, autoKeys = [], derived = {}, lines = null, memorialItems = [], urnProducts = [], shopify = null, drivers = [] }: { invoice: string; initial: Record<string, string>; exists: boolean; isAdmin: boolean; autoKeys?: string[]; derived?: Record<string, string>; lines?: LineTotals | null; memorialItems?: MemorialItem[]; urnProducts?: UrnProduct[]; shopify?: ShopifySummary | null; drivers?: string[] }) {
   const auto = new Set(autoKeys);
   const router = useRouter();
   const [values, setValues] = useState<Record<string, string>>(initial);
@@ -51,10 +51,13 @@ export function LogisticsForm({ invoice, initial, exists, isAdmin, autoKeys = []
   const setItem = (id: string, patch: Partial<MemorialItem>) => setItems((list) => list.map((x) => (x.id === id ? { ...x, ...patch } : x)));
   // 紀念品成本：有每件紀念品時按目前輸入加總
   const itemCosts = items.filter((x) => x.cost.trim() !== "");
-  const calc = computeLogistics(values, lines ? { ...lines, cost: itemCosts.reduce((n, x) => n + (Number(x.cost) || 0), 0), costCount: itemCosts.length } : null);
+  const calc = computeLogistics(values, lines ? { ...lines, cost: itemCosts.reduce((n, x) => n + (Number(x.cost) || 0), 0), costCount: itemCosts.length } : null, shopify);
   // 計算欄（只顯示，不會保存）：放在「費用與付款」組最前
   const calcFields: { label: string; value: string }[] = [
     { label: "發票總額", value: hk(calc.invoiceTotal) },
+    { label: "已收訂金", value: hk(calc.depositPaid) },
+    { label: "接送訂金抵扣", value: hk(calc.credit) },
+    { label: "折扣金額", value: hk(calc.discount) },
     { label: "尚欠", value: hk(calc.balanceDue) },
     { label: `轉介費${calc.referral.partner ? `（${calc.referral.partner}）` : ""}`, value: calc.referral.fee == null ? "—" : `${hk(calc.referral.fee)}${calc.referral.payable && calc.referral.fee ? "（應付）" : ""}` },
     ...(isAdmin ? [{ label: "毛利", value: hk(calc.grossProfit) }] : []),
@@ -144,7 +147,13 @@ export function LogisticsForm({ invoice, initial, exists, isAdmin, autoKeys = []
                   {group.fields.filter((f) => !(group.title === "紀念品及成本" && items.length > 0 && LEGACY_MEMORIAL.has(f.key) && !(initial[f.key] || "").trim())).map((f) => (
                     <label key={f.key} className={"text-sm" + (f.type === "textarea" ? " sm:col-span-2 lg:col-span-4" : f.key === "urn" ? " sm:col-span-2" : "")}>
                       {f.label}
-                      {f.key === "ceremony_time" ? (
+                      {f.key === "driver" ? (
+                        <select value={values[f.key] || ""} onChange={(e) => setValues((v) => ({ ...v, [f.key]: e.target.value }))} className={input + (auto.has(f.key) && values[f.key] === initial[f.key] ? " !bg-amber-50" : "")}>
+                          <option value="">（未選擇）</option>
+                          {drivers.map((d) => <option key={d}>{d}</option>)}
+                          {values[f.key] && !drivers.includes(values[f.key]) && <option value={values[f.key]}>{values[f.key]}</option>}
+                        </select>
+                      ) : f.key === "ceremony_time" || f.key === "arrival_time" ? (
                         <div className="mt-1"><TimePicker value={values[f.key] || ""} onChange={(val) => setValues((v) => ({ ...v, [f.key]: val }))} className={input.replace("mt-1 ", "") + (auto.has(f.key) && values[f.key] === initial[f.key] ? " !bg-amber-50" : "")} /></div>
                       ) : f.key === "urn" ? (
                         <div className="mt-1">

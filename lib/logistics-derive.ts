@@ -16,7 +16,7 @@ const ROW_STATUS: Record<string, string> = {
   ready: "To collect Urn", returned: "Completed", completed: "Completed",
 };
 
-export function deriveCustomerData(src: { deposits: Row[]; cremations: Row[]; company: Row[]; products: Row[] }): Record<string, string | number> {
+export function deriveCustomerData(src: { deposits: Row[]; cremations: Row[]; company: Row[]; products: Row[]; planSku?: string }): Record<string, string | number> {
   const live = (r: Row) => str(r.status) !== "cancelled" && !r.cancelled_at;
   const deps = src.deposits.filter(live);
   const cres = src.cremations.filter(live);
@@ -49,8 +49,12 @@ export function deriveCustomerData(src: { deposits: Row[]; cremations: Row[]; co
   const planKey = Object.keys(PLAN_CODES).find((k) => plan.includes(k));
   if (planKey) {
     set("package_name", PLAN_CODES[planKey].en.split(" ")[0]);
-    set("package_code", PLAN_CODES[planKey].code);
   } else set("package_name", plan);
+  // 套餐代碼一律用 Shopify 款式 SKU（例如 40 kg 星之旅＝SJ30）
+  const cremDetails = (companies.find((c) => crem && c.linked_id === crem.id)?.details || {}) as { planSku?: string | null; lines?: { sku?: string | null }[] };
+  set("package_code", first(src.planSku, cremDetails.planSku, cremDetails.lines?.[0]?.sku));
+  const depDetails = (companies.find((c) => dep && c.linked_id === dep.id)?.details || {}) as { driver?: string | null };
+  set("driver", first(depDetails.driver));
   const ceremony = str(crem?.service_date);
   set("ceremony_or_order_date", ceremony);
   set("ceremony_time", first(crem?.service_time));

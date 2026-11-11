@@ -21,6 +21,7 @@ import { newCompanyProjectNo } from "@/lib/project-no";
 import { loadSiteContent } from "@/lib/site-content-server";
 import { ORDER_TYPE_MAP, PET_GENDERS, RECEIVED_METHODS, type OrderType, type PaymentIntent } from "@/lib/order-types";
 import { applyFix } from "@/lib/reconcile-fix";
+import { driverOptions } from "@/lib/drivers";
 import { MEMORIAL_REMARK, invoiceRemarkLines, isUrnPickup, type UrnPickup } from "@/lib/invoice-remark";
 import { loadInvoiceProductLines } from "@/lib/memorial-lines";
 import { reapplyDepositCredit } from "@/lib/deposit-credit-repair";
@@ -40,6 +41,7 @@ export type NewOrderInput = {
   serviceDate?: string; // 接送訂金＝接送日期；善終／告別套餐＝火化日期
   ceremonyTime?: string; // 善終／告別套餐的火化時間（HH:MM）
   urn?: { type?: string; pickupDate?: string; remark?: string }; // 骨灰龕類別、取回日期、備註
+  driver?: string; // 接送訂金：司機（只可選試算表司機名單）
   serviceSlot?: string;
   address?: string;
   internalNote?: string;
@@ -68,7 +70,7 @@ export type CustomerMatch = {
 // 同一專案可扣除的接送訂金（已付款、未用、未取消）
 export type DepositCredit = { id: string; invoiceNo: number | null; amount: number; paidAt: string; isTest: boolean };
 
-type Line = { variantId?: string; title?: string; price?: number; quantity: number; label: string };
+type Line = { variantId?: string; title?: string; price?: number; quantity: number; label: string; sku?: string | null };
 type DraftPlan = {
   lineItems: Record<string, unknown>[]; note: string; tags: string[]; attributes: { key: string; value: string }[]; email: string;
   appliedDiscount?: { title: string; description: string; value: number; valueType: "FIXED_AMOUNT" };
@@ -82,9 +84,9 @@ const DRAFT_COMPLETE = `mutation UnifiedDraftComplete($id: ID!) {
 }`;
 const DRAFT_BY_TAG = `query DraftByTag($q: String!) { draftOrders(first: 1, query: $q) { nodes { id name invoiceUrl status order { id } } } }`;
 const VARIANTS = `query UnifiedVariants($ids: [ID!]!) {
-  nodes(ids: $ids) { ... on ProductVariant { id title price product { title productType status } } }
+  nodes(ids: $ids) { ... on ProductVariant { id title sku price product { title productType status } } }
 }`;
-type VariantNode = { id: string; title: string; price: string | null; product: { title: string; productType: string | null; status: string } } | null;
+type VariantNode = { id: string; title: string; sku: string | null; price: string | null; product: { title: string; productType: string | null; status: string } } | null;
 
 const t = (v: unknown, max: number) => String(v ?? "").trim().slice(0, max);
 const hk = (n: number) => `HK$${n.toLocaleString("en-US", { maximumFractionDigits: 2 })}`;
@@ -214,7 +216,9 @@ export async function createOrder(input: NewOrderInput): Promise<{ id?: string; 
   const petName = t(input.petName, 100);
   const petType = t(input.petType, 80);
   const serviceDate = t(input.serviceDate, 10);
-  const slot = input.serviceSlot ? findTimeSlot(t(input.serviceSlot, 60))?.zh || "" : "";
+  // 接送時間：時／分（HH:MM），舊時段文字仍接受
+  const rawSlot = t(input.serviceSlot, 60);
+  const slot = !rawSlot ? "" : /^\d{2}:\d{2}$/.test(rawSlot) ? rawSlot : findTimeSlot(rawSlot)?.zh || "";
   const address = t(input.address, 300);
   const internalNote = t(input.internalNote, 1000);
   const publicNote = t(input.publicNote, 500);
@@ -250,6 +254,8 @@ export async function createOrder(input: NewOrderInput): Promise<{ id?: string; 
     if (!petAge) return { error: "請填寫年齡。" };
     if (input.type === "deposit" && !address) return { error: "請填寫接送地址。" };
   }
+  const driver = input.type === "deposit" ? t(input.driver, 60) : "";
+  if (driver && !(await driverOptions()).includes(driver)) return { error: "司機不在試算表司機名單內，請先在試算表加入並同步。" };
   const petInfo = needPet ? `寵物資料：體重 ${petWeight} 公斤、品種 ${petBreed}、性別 ${petGender}、年齡 ${petAge}` : "";
 
   // 類型細節：金額一律由 Shopify 產品或網站內容計算，不信任瀏覽器提交的價錢
@@ -263,14 +269,14 @@ export async function createOrder(input: NewOrderInput): Promise<{ id?: string; 
       const main = variants.get(ids[0]);
       const allowed = input.type === "deposit" ? DEPOSIT_TYPES : CREMATION_TYPES;
       if (!main || main.product.status !== "ACTIVE" || !allowed.includes((main.product.productType || "").trim())) return { error: "所選產品不可用，請重新選擇。" };
-      lines.push({ variantId: main.id, price: Number(main.price || 0), quantity: 1, label: variantLabel(main) });
+      lines.push({ variantId: main.id, price: Number(main.price || 0), quantity: 1, label: variantLabel(main), sku: main.sku });
       planName = input.type === "cremation" ? Object.keys(PLAN_CODES).find((k) => main.product.title.includes(k)) || main.product.title : "預約接送訂金";
       for (const l of input.type === "cremation" ? input.lines || [] : []) {
         const v = variants.get(l.variantId);
         const qty = Number(l.quantity);
         if (!v || v.product.status !== "ACTIVE" || !Number.isInteger(qty) || qty < 1 || qty > 99) return { error: "加購商品資料無效，請重新選擇。" };
         if ([...CREMATION_TYPES, ...DEPOSIT_TYPES].includes((v.product.productType || "").trim())) return { error: "加購只可選紀念品。" };
-        lines.push({ variantId: v.id, price: Number(v.price || 0), quantity: qty, label: variantLabel(v) });
+        lines.push({ variantId: v.id, price: Number(v.price || 0), quantity: qty, label: variantLabel(v), sku: v.sku });
       }
     } else if (input.type === "product") {
       const list = (input.lines || []).filter((l) => l && l.variantId);
@@ -280,7 +286,7 @@ export async function createOrder(input: NewOrderInput): Promise<{ id?: string; 
       for (const l of list) {
         const v = variants.get(l.variantId);
         if (!v || v.product.status !== "ACTIVE" || [...CREMATION_TYPES, ...DEPOSIT_TYPES].includes((v.product.productType || "").trim())) return { error: "所選商品不可用，請重新選擇。" };
-        lines.push({ variantId: v.id, price: Number(v.price || 0), quantity: Number(l.quantity), label: variantLabel(v) });
+        lines.push({ variantId: v.id, price: Number(v.price || 0), quantity: Number(l.quantity), label: variantLabel(v), sku: v.sku });
       }
     } else if (input.type === "vet") {
       const vet = (await loadSiteContent()).content["prices.vet"];
@@ -299,7 +305,7 @@ export async function createOrder(input: NewOrderInput): Promise<{ id?: string; 
         for (const l of extra) {
           const v = variants.get(l.variantId);
           if (!v || v.product.status !== "ACTIVE" || [...CREMATION_TYPES, ...DEPOSIT_TYPES].includes((v.product.productType || "").trim())) return { error: "加購只可選紀念品。" };
-          lines.push({ variantId: v.id, price: Number(v.price || 0), quantity: Number(l.quantity), label: variantLabel(v) });
+          lines.push({ variantId: v.id, price: Number(v.price || 0), quantity: Number(l.quantity), label: variantLabel(v), sku: v.sku });
         }
       }
     } else {
@@ -353,6 +359,7 @@ export async function createOrder(input: NewOrderInput): Promise<{ id?: string; 
       `付款參考: ${paymentRef}`,
       input.type === "vet" ? "" : `產品: ${lines[0].label}`,
       petInfo,
+      driver ? `司機: ${driver}` : "",
       ceremonyTime ? `火化時間: ${ceremonyTime}` : "",
       urnType || urnPickupDate || urnRemark ? `骨灰龕: ${[urnType, urnPickupDate ? `取回 ${urnPickupDate}` : "", urnRemark].filter(Boolean).join("、")}` : "",
       input.type === "vet" && address ? `地點：${address}` : "",
@@ -424,7 +431,9 @@ export async function createOrder(input: NewOrderInput): Promise<{ id?: string; 
       }
     : basePlan;
   const details = {
-    lines: lines.map((l) => ({ label: l.label, quantity: l.quantity, price: l.price })),
+    lines: lines.map((l) => ({ label: l.label, quantity: l.quantity, price: l.price, sku: l.sku || null })),
+    planSku: input.type === "cremation" ? lines[0]?.sku || null : null,
+    driver: driver || null,
     petType: petType || null, serviceDate: serviceDate || null, ceremonyTime: ceremonyTime || null, urn: urnType || urnPickupDate || urnRemark ? { type: urnType || null, pickupDate: urnPickupDate || null, remark: urnRemark || null } : null, serviceSlot: slot || null, address: address || null,
     pet: needPet ? { weightKg: petWeight, breed: petBreed, gender: petGender, age: petAge } : null,
     internalNote: internalNote || null, publicNote: publicNote || null, receivedMethod: intent === "received" ? method : null,
@@ -456,7 +465,7 @@ export async function createOrder(input: NewOrderInput): Promise<{ id?: string; 
 
   const { error: logisticsError } = await admin.from("logistics_orders").upsert({
     invoice_no: invoiceNo, source: "admin", owner_name: name, phone, email: email || null, pet_name: petName || null, animal: petType || null, ...(needPet ? { breed: petBreed, weight_kg: petWeight } : {}),
-    package_name: planName || def2.label, arrival_date: pickupDate || null, arrival_time: slot || null, pickup_from: address || null, ...(input.type === "cremation" && serviceDate ? { ceremony_or_order_date: serviceDate } : {}), ...(ceremonyTime ? { ceremony_time: ceremonyTime } : {}), ...(input.type === "cremation" && serviceDate ? { shower_date: serviceDate } : {}), ...(urnType ? { urn: urnType } : {}), ...(urnPickupDate ? { urn_pickup_status: urnPickupDate } : {}), ...(urnRemark ? { memorial_remarks: urnRemark } : {}),
+    package_name: planName || def2.label, arrival_date: pickupDate || null, arrival_time: slot || null, pickup_from: address || null, ...(driver ? { driver } : {}), ...(input.type === "cremation" && lines[0]?.sku ? { package_code: lines[0].sku } : {}), ...(input.type === "cremation" && serviceDate ? { ceremony_or_order_date: serviceDate } : {}), ...(ceremonyTime ? { ceremony_time: ceremonyTime } : {}), ...(input.type === "cremation" && serviceDate ? { shower_date: serviceDate } : {}), ...(urnType ? { urn: urnType } : {}), ...(urnPickupDate ? { urn_pickup_status: urnPickupDate } : {}), ...(urnRemark ? { memorial_remarks: urnRemark } : {}),
   }, { onConflict: "invoice_no", ignoreDuplicates: true });
   if (logisticsError) console.error("[new_order_logistics]", logisticsError.message);
 

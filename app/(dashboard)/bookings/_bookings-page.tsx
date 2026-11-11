@@ -1,3 +1,4 @@
+import { bookingDraftIds, payableText, shopifyTotals } from "@/lib/shopify-payable";
 import { TestingNotice } from "../_testing-notice";
 import { bookingFollowUps } from "@/lib/follow-up-server";
 import { PageHeader } from "../_page-header";
@@ -130,7 +131,7 @@ const BASE_SELECT =
 
 const PAYMENT_SELECT =
   BASE_SELECT +
-  ", payment_ref, payment_status, payment_amount, payment_currency, shopify_order_name, shopify_order_id, paid_at, invoice_no";
+  ", payment_ref, payment_status, payment_amount, payment_currency, shopify_order_name, shopify_order_id, paid_at, invoice_no, deposit_credit";
 
 function isVet(source?: string | null) {
   return (source || "").indexOf("euthanasia") >= 0;
@@ -187,6 +188,18 @@ export async function BookingsPage({ mode, query = "", onlyFollow = false, showT
   // 獸醫評估費用固定，跟「網站內容 → 上門安樂死收費」的劃一基本收費
   const vetFee = mode === "vet" ? (await loadSiteContent()).content["prices.vet"].base : undefined;
 
+  // 未付款：讀取 Shopify 付款連結的實時應付；已付款：實收（原價－接送訂金抵扣）
+  const unpaidIds = bookings.filter((b) => (b as { payment_status?: string | null }).payment_status !== "paid" && b.status !== "cancelled").map((b) => b.id);
+  const draftOf = await bookingDraftIds(unpaidIds);
+  const liveTotals = await shopifyTotals([...draftOf.values()]);
+  const amountOf = (b: { id: string; payment_amount?: number | null; payment_status?: string | null; deposit_credit?: number | null; payment_currency?: string | null }) => {
+    const cur = (b.payment_currency || "HKD") + " ";
+    const t = draftOf.has(b.id) ? liveTotals.get(draftOf.get(b.id) as string) : undefined;
+    if (t && t.open) return payableText(t, cur);
+    if (b.payment_amount == null) return null;
+    const credit = Number(b.deposit_credit || 0);
+    return payableText({ gross: Number(b.payment_amount), credit, other: 0, payable: Number(b.payment_amount) - credit }, cur);
+  };
   const tableRows: BookingRow[] = bookings.map((b) => {
     // 專案編號僅限跨服務沿用的 RSL 編號；Shopify 訂單號屬付款發票。
     const notesProject = projectNoFromNotes(b.notes);
@@ -214,7 +227,7 @@ export async function BookingsPage({ mode, query = "", onlyFollow = false, showT
       petName: b.pet_name || "",
       petType: b.pet_type || "",
       plan: b.plan || "",
-      amountText: b.payment_amount != null ? (b.payment_currency || "HKD") + " " + Number(b.payment_amount).toLocaleString() : vet && vetFee != null ? "HKD " + vetFee.toLocaleString() : "—",
+      amountText: amountOf(b as unknown as { id: string; payment_amount?: number | null; payment_status?: string | null; deposit_credit?: number | null; payment_currency?: string | null }) || (vet && vetFee != null ? "HKD " + vetFee.toLocaleString() : "—"),
       sourceKey: vet ? "vet" : "cremation",
       sourceLabel: sourceLabel(b.source),
       statusKey: b.status,

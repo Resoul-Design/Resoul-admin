@@ -10,6 +10,7 @@ import { ConvertToCremation } from "./_convert";
 import { PLAN_CODES } from "@/lib/company";
 import { invoiceLabel } from "@/lib/invoice-label";
 import { ProductLines } from "../../logistics/_product-lines";
+import { shopifyTotals } from "@/lib/shopify-payable";
 import { loadInvoiceProductLines } from "@/lib/memorial-lines";
 import { loadCatalog } from "@/lib/catalog";
 
@@ -82,6 +83,8 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
   const unsynced = !o.shopify_draft_id || !!o.sync_error;
   // 開單後加產品（同一單號多行）；成本只限有「倉存」權限的同事
   const canSeeCost = hasModule(staff, ["inventory"]);
+  // Shopify 實時金額（原價、接送訂金抵扣、其他折扣、應付）
+  const live = (await shopifyTotals([o.shopify_order_id ? (String(o.shopify_order_id).startsWith("gid://") ? o.shopify_order_id : `gid://shopify/Order/${o.shopify_order_id}`) : null, draftGone ? null : o.shopify_draft_id])).values().next().value;
   const [productLines, catalog] = await Promise.all([loadInvoiceProductLines(o.invoice_no), loadCatalog("souvenir")]);
   const visibleLines = canSeeCost ? productLines.lines : productLines.lines.map((l) => ({ ...l, cost: null }));
 
@@ -114,7 +117,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
           {o.pet_name && <><dt className="text-[var(--soft)]">寵物</dt><dd>{o.pet_name}</dd></>}
           <dt className="text-[var(--soft)]">內容</dt>
           <dd>{(d.lines || []).map((l, i) => <div key={i}>{l.label}{l.quantity > 1 ? ` × ${l.quantity}` : ""}</div>)}</dd>
-          <dt className="text-[var(--soft)]">金額</dt><dd className="font-medium">{hk(Number(o.amount || 0))}</dd>
+          <dt className="text-[var(--soft)]">金額</dt><dd className="font-medium">{live && (live.credit || live.other) ? <>原價 {hk(live.gross)}{live.credit ? `　接送訂金抵扣 −${hk(live.credit)}` : ""}{live.other ? `　折扣 −${hk(live.other)}` : ""}　{live.open ? "應付" : "實收"} {hk(live.open ? live.payable : live.received || live.gross - live.credit - live.other)}</> : hk(live ? (live.open ? live.payable : live.gross) : Number(o.amount || 0))}</dd>
           <dt className="text-[var(--soft)]">狀態</dt><dd>{ORDER_STATUS_LABEL[status] || status}{payment && payment !== ORDER_STATUS_LABEL[status] ? ` · ${payment}` : ""}{d.receivedMethod ? ` · 開單時已收（${d.receivedMethod}）` : ""}</dd>
           {(d.serviceDate || d.serviceSlot) && <><dt className="text-[var(--soft)]">日期／時段</dt><dd>{[d.serviceDate, d.serviceSlot].filter(Boolean).join(" ")}</dd></>}
           {d.address && <><dt className="text-[var(--soft)]">地址</dt><dd>{d.address}</dd></>}

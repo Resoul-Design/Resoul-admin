@@ -88,7 +88,7 @@ function LinePicker({ products, lines, onChange }: { products: DraftCatalogProdu
   );
 }
 
-export function NewOrderForm({ catalog, allowed, prefill }: { catalog: NewOrderCatalog; allowed: OrderType[]; prefill: NewOrderPrefill }) {
+export function NewOrderForm({ catalog, allowed, prefill, drivers = [] }: { catalog: NewOrderCatalog; allowed: OrderType[]; prefill: NewOrderPrefill; drivers?: string[] }) {
   const router = useRouter();
   const [clientToken] = useState(() => crypto.randomUUID());
   const [pending, start] = useTransition();
@@ -138,6 +138,7 @@ export function NewOrderForm({ catalog, allowed, prefill }: { catalog: NewOrderC
   const [urnRemark, setUrnRemark] = useState("");
   const urnProducts: UrnProduct[] = useMemo(() => catalog.souvenir.filter((p) => p.productType.includes("骨灰龕")).map((p) => ({ id: p.id, title: p.title, variants: p.variants.map((v) => ({ id: v.id, title: v.title, sku: v.sku })) })), [catalog.souvenir]);
   const [slot, setSlot] = useState("");
+  const [driver, setDriver] = useState("");
   const [address, setAddress] = useState(prefill.pet?.address || "");
   function fillPet(p: PetProfile) {
     setPetWeight((v) => v || p.weightKg); setPetBreed((v) => v || p.breed); setPetGender((v) => v || (["公", "母", "不詳"].includes(p.gender) ? p.gender : ""));
@@ -246,6 +247,7 @@ export function NewOrderForm({ catalog, allowed, prefill }: { catalog: NewOrderC
         serviceDate,
         ...(type === "cremation" ? { ceremonyTime, urn: { type: urnType, pickupDate: urnPickupDate, remark: urnRemark } } : {}),
         serviceSlot: slot,
+        ...(type === "deposit" && driver ? { driver } : {}),
         address,
         internalNote,
         publicNote,
@@ -395,11 +397,22 @@ export function NewOrderForm({ catalog, allowed, prefill }: { catalog: NewOrderC
                 <label className={label + " sm:col-span-2"}>骨灰龕備註<input value={urnRemark} onChange={(e) => setUrnRemark(e.target.value)} maxLength={500} className={input + " mt-1"} /></label>
               </>
             )}
-            {showDate && type !== "cremation" && (
-              <label className={label}>{needPet ? "接送時間" : "時段"}
+            {showDate && type === "deposit" && (
+              <label className={label}>接送時間<div className="mt-1"><TimePicker value={slot} onChange={setSlot} className={input} /></div></label>
+            )}
+            {showDate && type === "vet" && (
+              <label className={label}>時段
                 <select value={slot} onChange={(e) => setSlot(e.target.value)} className={input + " mt-1"}>
                   <option value="">待確認</option>
                   {catalog.slots.map((s) => <option key={s.zh} value={s.zh}>{s.label}</option>)}
+                </select>
+              </label>
+            )}
+            {type === "deposit" && (
+              <label className={label}>司機
+                <select value={driver} onChange={(e) => setDriver(e.target.value)} className={input + " mt-1"}>
+                  <option value="">（未選擇）</option>
+                  {drivers.map((d) => <option key={d}>{d}</option>)}
                 </select>
               </label>
             )}

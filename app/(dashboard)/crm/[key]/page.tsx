@@ -1,3 +1,4 @@
+import { bookingDraftIds, payableText, shopifyTotals } from "@/lib/shopify-payable";
 import { orderMemorialLabel } from "@/lib/memorial-status";
 import { loadSouvenirDrafts } from "@/lib/souvenir-drafts";
 import Link from "next/link";
@@ -113,7 +114,7 @@ export default async function CustomerPage({
   const supabase = await createClient();
   const admin = createAdminClient();
   const [{ data }, { data: pickupData }] = await Promise.all([
-    createAdminClient().from("cremation_bookings").select("id, case_no, owner_name, contact, pet_name, pet_type, plan, status, service_date, service_time, amount, payment_amount, payment_status, payment_ref, shopify_order_name, invoice_no, notes, source, created_at").eq("is_test", false).order("created_at", { ascending: false }).limit(1000),
+    createAdminClient().from("cremation_bookings").select("id, case_no, owner_name, contact, pet_name, pet_type, plan, status, service_date, service_time, amount, payment_amount, deposit_credit, payment_status, payment_ref, shopify_order_name, invoice_no, notes, source, created_at").eq("is_test", false).order("created_at", { ascending: false }).limit(1000),
     admin.from("deposit_bookings").select("id, project_no, owner_name, contact, pet_name, status, service_date, service_time, payment_amount, payment_status, shopify_order_name, invoice_no, notes, created_at").eq("is_test", false).order("created_at", { ascending: false }).limit(1000),
   ]);
 
@@ -129,6 +130,17 @@ export default async function CustomerPage({
   const contact = allBookings.find((b) => b.contact)?.contact || pickups.find((b) => b.contact)?.contact || key;
   const pets = [...new Set([...allBookings, ...pickups].map((b) => b.pet_name).filter(Boolean))];
   const eff = (b: Booking) => b.amount ?? b.payment_amount ?? 0;
+  // 金額欄：未付款讀 Shopify 付款連結的實時應付，已付款為實收（原價－接送訂金抵扣）
+  const unpaid = allBookings.filter((b) => b.payment_status !== "paid" && b.status !== "cancelled").map((b) => (b as unknown as { id: string }).id);
+  const draftOf = await bookingDraftIds(unpaid);
+  const liveTotals = await shopifyTotals([...draftOf.values()]);
+  const amountText = (b: Booking) => {
+    const id = (b as unknown as { id: string }).id;
+    const t = draftOf.has(id) ? liveTotals.get(draftOf.get(id) as string) : undefined;
+    if (t && t.open) return payableText(t, "$");
+    const credit = Number((b as unknown as { deposit_credit?: number | null }).deposit_credit || 0);
+    return credit ? payableText({ gross: Number(eff(b)), credit, other: 0, payable: Number(eff(b)) - credit }, "$") : money(eff(b));
+  };
 
   // 火化：已付款預約金額
   const cremPaid = bookings
@@ -195,7 +207,7 @@ export default async function CustomerPage({
     content: `${label} · ${petText(b.pet_name, b.pet_type)}`,
     status: STATUS_LABEL[b.status] || b.status,
     payment: PAY_LABEL[b.payment_status || ""] || b.payment_status || "—",
-    amount: money(eff(b)),
+    amount: amountText(b),
   });
   const vetRows = vetBookings.map((b) => bookingRow(b, "上門獸醫評估"));
   const cremationRows = bookings.map((b) => bookingRow(b, b.plan || "火化"));
