@@ -51,7 +51,7 @@ export async function updateCustomerData(invoice: string, values: Record<string,
     (productOrders || []) as Record<string, unknown>[],
     (companyOrders || []) as Record<string, unknown>[],
   );
-  const fullRow = { ...row, ...automatic };
+  const fullRow: typeof row = { ...row, ...automatic };
   const write = (r: typeof row) => existing
     ? admin.from("logistics_orders").update({ ...r, updated_at: new Date().toISOString() }).eq("invoice_no", invoiceNo)
     : admin.from("logistics_orders").insert({ invoice_no: invoiceNo, source: "admin", ...r });
