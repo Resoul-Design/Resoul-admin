@@ -156,3 +156,10 @@
 - 「骨灰龕」組新增「骨灰龕供應商」（`urn_supplier`）：按價目設定骨灰龕成本的供應商（`price_settings.vendor`，`urnVendors`）自動填入；價目設定骨灰龕表加「供應商」欄；`productPricing` 未有紀念品供應商時亦用骨灰龕供應商。未加欄位時保存其他欄並提示。
 - SQL：結構 `db/migration_20261113_urn_supplier.sql`；供應商初始資料在 OneDrive `SQL/data_20261113_urn_suppliers.sql`（已包括結構），**待用戶執行**。
 - 毛利規則收窄：Excel 匯入的單只在「紀念品成本」剛好等於骨灰龕成本（即只是骨灰龕）時不另扣骨灰龕成本；其他情況（包括後台改過紀念品成本）顯示的成本全部扣除。
+
+## 2026-11-13 紀念品成本與骨灰龕成本分開
+
+- 用戶要求：紀念品成本只計紀念品（不含骨灰龕），骨灰龕成本只計骨灰龕；毛利＝發票總額－折扣－紀念品成本－骨灰龕成本－客戶送貨費－司機費－佣金，不設例外（移除 `memorialIncludesUrn`）。
+- 欄位名稱改為「紀念品成本（不含骨灰龕）」（舊名「紀念品成本」仍可 CSV 匯入）。
+- 匯入 Excel CSV（`plan.excel`）時，Excel「Memorial Product Cost」減去骨灰龕成本（按價目設定）才存入 memorial_cost。
+- 已匯入的舊單：OneDrive `SQL/fix_20261113_memorial_cost_excl_urn.sql`（只改仍是 Excel 原值的單，含成本不入 repo），**待用戶執行**。

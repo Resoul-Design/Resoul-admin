@@ -27,7 +27,7 @@ export type MemorialItem = LineDetail & { name: string; quantity: number };
 // 整張單的舊 Excel 紀念品欄（有每件紀念品資料後不再顯示，以每件紀念品為準）
 const LEGACY_MEMORIAL = new Set(["memorial_supplier", "delivered_to_supplier_on", "supplier_returned_on"]);
 
-export function LogisticsForm({ invoice, initial, exists, isAdmin, autoKeys = [], derived = {}, lines = null, memorialItems = [], urnProducts = [], packageProducts = [], legacy = false, shopify = null, drivers = [], driverFees = {}, urnCosts, partners = REFERRAL_PARTNERS }: { invoice: string; initial: Record<string, string>; exists: boolean; isAdmin: boolean; autoKeys?: string[]; derived?: Record<string, string>; lines?: LineTotals | null; memorialItems?: MemorialItem[]; urnProducts?: UrnProduct[]; packageProducts?: PackageProduct[]; legacy?: boolean; shopify?: ShopifySummary | null; drivers?: string[]; driverFees?: Record<string, number>; urnCosts?: Record<string, number>; partners?: ReferralPartner[] }) {
+export function LogisticsForm({ invoice, initial, exists, isAdmin, autoKeys = [], derived = {}, lines = null, memorialItems = [], urnProducts = [], packageProducts = [], shopify = null, drivers = [], driverFees = {}, urnCosts, partners = REFERRAL_PARTNERS }: { invoice: string; initial: Record<string, string>; exists: boolean; isAdmin: boolean; autoKeys?: string[]; derived?: Record<string, string>; lines?: LineTotals | null; memorialItems?: MemorialItem[]; urnProducts?: UrnProduct[]; packageProducts?: PackageProduct[]; shopify?: ShopifySummary | null; drivers?: string[]; driverFees?: Record<string, number>; urnCosts?: Record<string, number>; partners?: ReferralPartner[] }) {
   const auto = new Set(autoKeys);
   const router = useRouter();
   const [values, setValues] = useState<Record<string, string>>(initial);
@@ -59,7 +59,6 @@ export function LogisticsForm({ invoice, initial, exists, isAdmin, autoKeys = []
     driverCost: values.driver && (values.driver !== initial.driver || !(initial.driver_or_gogovan_cost || "").trim()) ? driverFees[canonicalDriver(values.driver)] ?? null : null,
     urnCost: values.urn && (values.urn !== initial.urn || !(initial.urn_cost || "").trim()) ? urnCost(values.urn, urnCosts) : null,
     partners,
-    memorialIncludesUrn: legacy,
   });
   // 「費用與付款」：收入、收款、成本及利潤三段；計算欄只顯示，不會保存
   type FeeItem = { kind: "calc"; label: string; value: string; strong?: boolean } | { kind: "field"; key: string };
@@ -69,7 +68,7 @@ export function LogisticsForm({ invoice, initial, exists, isAdmin, autoKeys = []
     { title: "收款", items: [{ kind: "calc", label: "已收訂金", value: hk(calc.depositPaid) }, { kind: "calc", label: "接送訂金抵扣", value: hk(calc.credit) }, { kind: "calc", label: "折扣金額", value: hk(calc.discount) }, fld("discount_code"), { kind: "calc", label: "尚欠", value: hk(calc.balanceDue), strong: true }] },
     { title: "成本及利潤", items: [
       // 紀念品成本：有每件紀念品成本時按「5. 紀念品」加總，否則可直接填寫
-      calc.memorialCost.from === "lines" ? { kind: "calc", label: "紀念品成本", value: hk(calc.memorialCost.value) } : fld("memorial_cost"),
+      calc.memorialCost.from === "lines" ? { kind: "calc", label: "紀念品成本（不含骨灰龕）", value: hk(calc.memorialCost.value) } : fld("memorial_cost"),
       { kind: "calc", label: "骨灰龕成本", value: hk(calc.urnCost) },
       { kind: "calc", label: "司機／GoGoVan 費用", value: hk(calc.driverCost.value) },
       fld("delivery_cost_to_customer"), fld("commission"), fld("referral"),

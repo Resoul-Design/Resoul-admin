@@ -4,6 +4,8 @@ import { logAudit } from "@/lib/audit";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { planImport, templateCsv } from "@/lib/logistics-import";
 import { extraOrders, type ExtraOrder } from "@/lib/logistics-extra";
+import { loadPriceSettings } from "@/lib/price-settings";
+import { urnCost } from "@/lib/urn-costs";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -29,6 +31,15 @@ export async function POST(request: Request) {
   if (!plan.rows.length && !plan.extras.length) return NextResponse.json({ updated: 0, created: 0, errors: plan.errors, unknownColumns: plan.unknownColumns });
 
   const admin = createAdminClient();
+  // Excel 的「Memorial Product Cost」包括骨灰龕；後台分開記：紀念品成本（不含骨灰龕）＋骨灰龕成本
+  if (plan.excel) {
+    const prices = await loadPriceSettings();
+    for (const r of [...plan.rows, ...plan.extras]) {
+      const urn = r.values.urn ? urnCost(String(r.values.urn), prices.urnCosts) : null;
+      const mc = typeof r.values.memorial_cost === "number" ? r.values.memorial_cost : null;
+      if (urn && mc != null && mc >= urn) r.values.memorial_cost = Math.round((mc - urn) * 100) / 100;
+    }
+  }
   const ids = [...new Set(plan.rows.map((r) => r.invoiceNo))];
   const existing = new Set<number>();
   for (let i = 0; i < ids.length; i += 500) {

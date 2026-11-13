@@ -97,15 +97,16 @@ export type ImportPlan = {
   extras: { line: number; invoiceNo: number; ref: string; values: Record<string, string | number> }[];
   errors: string[];
   unknownColumns: string[];
+  excel: boolean; // Excel「Basic Info Logistic」英文欄名
 };
 
 export function planImport(text: string, opts: { isAdmin: boolean }): ImportPlan {
   const table = parseCsv(text);
   const errors: string[] = [];
-  if (table.length < 2) return { rows: [], extras: [], errors: ["CSV 沒有資料（第一行須為欄位名稱）。"], unknownColumns: [] };
+  if (table.length < 2) return { rows: [], extras: [], errors: ["CSV 沒有資料（第一行須為欄位名稱）。"], unknownColumns: [], excel: false };
   const headers = table[0];
   const invoiceCol = headers.findIndex((h) => INVOICE_HEADERS.includes(norm(h)));
-  if (invoiceCol < 0) return { rows: [], extras: [], errors: ["找不到「單號」欄（可用：單號、發票編號、invoice_no、Order No.）。"], unknownColumns: [] };
+  if (invoiceCol < 0) return { rows: [], extras: [], errors: ["找不到「單號」欄（可用：單號、發票編號、invoice_no、Order No.）。"], unknownColumns: [], excel: false };
   const statusField = LOGISTICS_FIELDS.find((f) => f.key === "row_status") || null;
   // Excel 匯出：第一欄沒有欄名，內容是訂單狀態（Appointment Made、Completed…）
   const cols = headers.map((h, i) => (i === invoiceCol ? null : BY_HEADER.get(norm(h)) || (i === 0 && !h.trim() && invoiceCol > 0 ? statusField : null)));
@@ -148,7 +149,8 @@ export function planImport(text: string, opts: { isAdmin: boolean }): ImportPlan
     if (extra) extras.push({ line, invoiceNo: extra.invoice, ref: extra.ref, values });
     else rows.push({ line, invoiceNo, values });
   }
-  return { rows, extras, errors, unknownColumns };
+  const excel = headers.some((h) => norm(h) === norm("Memorial Product Cost") || norm(h) === norm("Package Price"));
+  return { rows, extras, errors, unknownColumns, excel };
 }
 
 // 範本：單號＋全部欄位（中文標籤），加 BOM 方便 Excel 以 UTF-8 開啟
