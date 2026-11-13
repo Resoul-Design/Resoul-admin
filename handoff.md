@@ -1,6 +1,6 @@
 # Resoul Admin Handoff
 
-更新日期：2026-11-11（香港時間）
+更新日期：2026-11-13（香港時間）
 
 ## 已完成
 
@@ -59,3 +59,16 @@
 - 預覽 build 修正後已為 READY。
 - PR #17 合併時 GitHub 回報 merge conflict，原因是 main 已包含同一批物流檔案的後續提交；PR 已關閉，沒有強行覆蓋 main。
 - handoff 更新後的 production deployment dpl_GoUDwYVfR1rWK7azSaCnCGVEKz2i 已為 READY，正式網址仍為 resoul-admin-five.vercel.app。
+
+## 2026-11-13 自動成本統一（與 PR #15 合併，commit 3911ef0）
+
+- 另一工作階段（Claude Code，jovial worktree）同時做了客戶資料自動成本；本次在 main（b7fe0a6）之上合併，沒有覆蓋上列提交。
+- 計算來源統一放在 `lib/logistics-auto-costs.ts`，顯示（客戶資料「費用與付款」唯讀欄）與保存（`logistics/actions.ts`）用同一套：
+  - 紀念品加購＝已保存的紀念品產品行總額（不計淡黃色建議行及 Shopify 已刪除的行）；沒有產品行時用未取消的紀念品訂單／開單記錄，再後備已存值。
+  - 司機／GoGoVan 費用＝司機標準收費：`lib/drivers.ts` `driverFees()` 取試算表匯入記錄（source=basic_info_logistic）每位司機最常見金額（Ricky 320、豪仔 / Ho Jai 300、V's Dad 350、Yeah O2 400、Tony／Gary／Louis 300、Joe／JH／Vivian／Jason 0、O2 Team 400）；沒有對照才用最近一筆同司機記錄。
+  - 骨灰龕成本＝`lib/urn-costs.ts` 對照 Drive「Resoul Memorial Product Pricing for Admin（2026-11-10）」numeric_cost（例如 URN02SP 35、URN04L 50、URN08 200）；By Package／No Urn／Pending 等非產品代碼才用最近一筆同骨灰龕記錄。
+- 保存規則（保護舊資料）：自動值只在資料庫原本未有數值，或今次保存改了司機／骨灰龕時寫入；不會覆蓋舊單已存的紀念品加購、司機費、骨灰龕成本。
+- 欄位：接送費（pickup_fee）、紀念品加購、骨灰龕成本、司機／GoGoVan 費用在表格隱藏（資料保留），改為唯讀計算欄；毛利扣除骨灰龕成本及司機費，沒有司機費時為 0（不再以接送費作後備）。
+- 司機名稱：`lib/driver-names.ts`（瀏覽器可用）合併同一人寫法：豪仔、Ho Jai → 豪仔 / Ho Jai；V's dad、Vivian's dad → V's Dad；YEAH O2 → Yeah O2。只合併顯示，資料原文不變。
+- `db/migration_20261111_urn_cost.sql`（新增 urn_cost 欄）仍待用戶於 Supabase 執行；未執行時其他欄照常保存並提示。
+- 營運手冊（網頁、Word、PDF、public/manual）已同步，最後更新 2026-11-13。
