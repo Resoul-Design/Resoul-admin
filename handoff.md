@@ -128,4 +128,4 @@
 - 「火化與儀式」隱藏告別日期；「骨灰龕」隱藏取貨／送貨日期，骨灰龕存放到期日由「費用與付款」移到「骨灰龕」；骨灰龕選單下不再顯示服務名稱。
 - 訂單狀態（row_status）改為選單（LOGISTICS_STATUSES），未有已存值時按單據自動填入（invoiceLogisticsStatus，淡黃色，採用自動填入才保存）。
 - CSV 匯入（`lib/logistics-import.ts`）支援 Excel「Basic Info Logistic」英文欄名（`EXCEL_FIELD_LABELS`），第一欄無欄名＝訂單狀態；日期「9 November 2026」「11 Nov 2026」、時間「6:30 PM」→ 18:30、取回日期「Pending」→ 待定、#REF! 等公式錯誤當空白、重量去掉 kg。原因：用戶 2026-11-13 以 Excel CSV 匯入 220 張單時大部分英文欄名未能對應（#276、#277 等沒有套餐價、狀態），重新匯入同一 CSV 即可補回（只寫有值的格）。
-- 本次改動提交在已清除成本數字的新歷史（scratchpad rewrite clone），待用戶執行 push-rewrite.sh 一併推上。
+- 用戶決定不再處理 GitHub 舊歷史（不改寫歷史、不 force push），本次改動照常推上 main（6635dbd）。舊 commit 及 PR 仍含 11-10 至 11-13 的成本數字；之後不可再把成本寫入 repo。
