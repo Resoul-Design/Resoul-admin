@@ -34,7 +34,7 @@ export function PriceEditor({ kind, title, rows: initial, canSave }: { kind: Kin
     });
   };
 
-  const head = kind === "urn" ? ["產品代碼", "名稱", "成本（HK$）", ""] : kind === "product" ? ["產品代碼（SKU）", "名稱", "供應商", "單位成本（HK$）", ""] : kind === "driver" ? ["司機", "標準收費（HK$）", "記錄最常見金額", ""] : ["夥伴", "其他寫法", "計算方式", "比例／金額", "須有套餐代碼", ""];
+  const head = kind === "urn" ? ["產品代碼", "名稱", "供應商", "成本（HK$）", ""] : kind === "product" ? ["產品代碼（SKU）", "名稱", "供應商", "單位成本（HK$）", ""] : kind === "driver" ? ["司機", "標準收費（HK$）", "記錄最常見金額", ""] : ["夥伴", "其他寫法", "計算方式", "比例／金額", "須有套餐代碼", ""];
 
   return (
     <section className="mb-5 rounded-2xl border border-[var(--line)] bg-[var(--card)]">
@@ -53,6 +53,7 @@ export function PriceEditor({ kind, title, rows: initial, canSave }: { kind: Kin
                     {kind === "urn" && <>
                       <td className={td}><input value={r.key} onChange={(e) => set(r._id, { key: e.target.value })} className={input} aria-label="產品代碼" /></td>
                       <td className={td + " text-[var(--soft)]"}>{r.name || "—"}</td>
+                      <td className={td}><input value={r.vendor || ""} onChange={(e) => set(r._id, { vendor: e.target.value })} className={input} aria-label="供應商" /></td>
                       <td className={td}><input inputMode="decimal" value={r.amount || ""} onChange={(e) => set(r._id, { amount: e.target.value })} className={input} aria-label="成本" /></td>
                     </>}
                     {kind === "product" && <>

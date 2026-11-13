@@ -73,6 +73,11 @@ export async function updateCustomerData(invoice: string, values: Record<string,
     ({ error } = await write(rest));
     urnWarning = "骨灰龕成本未能保存：請先於 Supabase 執行 db/migration_20261111_urn_cost.sql。";
   }
+  if (error && "urn_supplier" in fullRow && /urn_supplier/.test(error.message)) {
+    const rest = Object.fromEntries(Object.entries(fullRow).filter(([key]) => key !== "urn_supplier" && !(urnWarning && key === "urn_cost"))) as typeof row;
+    ({ error } = await write(rest));
+    urnWarning = [urnWarning, "骨灰龕供應商未能保存：請先於 Supabase 執行 db/migration_20261113_urn_supplier.sql。"].filter(Boolean).join(" ");
+  }
   if (error) {
     console.error("[logistics_update]", error.message);
     return { error: "未能保存，請稍後再試。" };

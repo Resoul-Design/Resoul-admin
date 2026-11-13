@@ -68,7 +68,7 @@ export function computeLogistics(values: Record<string, unknown>, lines?: LineTo
   const depositPaid = shopify?.depositPaid ?? 0;
   const discount = shopify?.other ?? 0;
   const credit = shopify?.credit ?? 0;
-  const invoiceTotal = shopify?.hasDocs ? shopify.gross : round2(v("package_price") + memorial.value + v("urn_storage_rental_price") + v("back_to_nature_price"));
+  const invoiceTotal = shopify?.hasDocs ? shopify.gross : round2(v("package_price") + memorial.value + v("urn_storage_rental_price") + v("back_to_nature_price") + v("other_surcharge"));
   const balanceDue = shopify?.hasDocs ? shopify.payable : round2(invoiceTotal - depositPaid - discount);
   const savedDriver = num(values.driver_or_gogovan_cost);
   const driverCost = auto?.driverCost != null ? { value: auto.driverCost, from: "default" as const } : savedDriver != null ? { value: savedDriver, from: "saved" as const } : { value: 0, from: "default" as const };

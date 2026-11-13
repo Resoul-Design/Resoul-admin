@@ -50,7 +50,8 @@ export async function savePriceSettings(kind: Kind, input: PriceRowInput[]): Pro
       const value = money(r.amount);
       if (value == null) { if (kind === "driver") continue; return { error: `「${key}」須填寫成本。` }; }
       if (Number.isNaN(value)) return { error: `「${key}」金額不正確。` };
-      rows.push({ ...base, amount: value, rate_type: null, rate: null, needs_package_code: false, aliases: [] });
+      const vendor = kind === "urn" ? String(r.vendor || "").trim().slice(0, 120) : "";
+      rows.push({ ...base, amount: value, rate_type: null, rate: null, needs_package_code: false, aliases: [], ...(vendor ? { vendor } : {}) });
     }
   }
 

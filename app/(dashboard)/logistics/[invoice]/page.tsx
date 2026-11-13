@@ -64,6 +64,8 @@ export default async function LogisticsDetail({ params }: { params: Promise<{ in
   if (costs.length) memorialAuto.memorial_cost = Math.round(costs.reduce((a, b) => a + b, 0) * 100) / 100;
   const state = invoiceLogisticsStatus({ rowStatus: null, deposits: deposits.data || [], cremations: cremations.data || [], company: (company.data || []).filter((c) => !c.linked_id), products: products.data || [], memorialStatuses: savedLines.filter((l) => l.id).map((l) => String(l.status)) });
   if (state && state.key !== "Cancelled") memorialAuto.row_status = state.key;
+  const urnCode = String(lg?.urn || derived.urn || "").trim().toUpperCase();
+  if (urnCode && prices.urnVendors[urnCode]) memorialAuto.urn_supplier = prices.urnVendors[urnCode];
   const allDerived: Record<string, string | number> = { ...derived, ...memorialAuto, ...automatic };
   const autoKeys: string[] = [];
   const formInitial: Record<string, string> = Object.fromEntries(LOGISTICS_FIELDS.map((f) => {

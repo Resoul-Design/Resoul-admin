@@ -21,7 +21,7 @@ export default async function PriceSettingsPage() {
   for (const p of catalog.products) {
     for (const v of p.variants) if (v.sku) urnNames.set(v.sku.toUpperCase(), v.title === "Default Title" ? p.title : `${p.title}（${v.title}）`);
   }
-  const urnRows: EditorRow[] = Object.entries(settings.urnCosts).map(([key, amount]) => ({ key, amount: num(amount), name: urnNames.get(key) }));
+  const urnRows: EditorRow[] = Object.entries(settings.urnCosts).map(([key, amount]) => ({ key, amount: num(amount), vendor: settings.urnVendors[key] || "", name: urnNames.get(key) }));
   const productRows: EditorRow[] = Object.entries(settings.productCosts).map(([key, p]) => ({ key, amount: p.cost == null ? "" : num(p.cost), vendor: p.vendor || "", name: urnNames.get(key) }));
   const referralRows: EditorRow[] = settings.partners.map((p) => ({
     key: p.key,
