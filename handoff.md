@@ -101,3 +101,9 @@
 - 讀取：`lib/price-settings.ts` `loadPriceSettings()`（unstable_cache 5 分鐘，保存後 revalidateTag）。某類別未有資料時沿用預設；司機未設定時沿用試算表記錄最常見金額。客戶資料詳細頁、列表轉介費、保存自動成本都改用價目設定（`findPartner`／`referralFee`／`urnCost`／`deriveLogisticsAutoCosts` 加可選參數）。
 - **資料核對**（`/data-check`，導覽「系統」；與同步狀態共用 `sync` 權限）：按「開始核對」列出套餐代碼與 Shopify 不同（可一鍵按 Shopify 更新後台 package_code，只在仍為舊值時更新）、轉介夥伴不在價目設定、司機未設定標準收費、骨灰龕代碼未有成本、已存成本與現行價目不同（只列出）、紀念品產品行在 Shopify 已刪除、紀念品產品未入表格。`lib/data-check.ts`；Shopify 一次過讀取（`shopify-payable.ts` 拆出 `looseCremationIds`／`invoiceDocIds`／`summarizeInvoice`，`invoiceShopify` 行為不變）。訂單付款／金額對帳仍在「同步狀態」。
 - 因業務資料表目前幾乎是空的，兩頁只做了 build 及部分函數測試，未用真資料驗證。
+
+## 2026-11-13 業務資料表清空：用戶自行刪除
+
+- 用戶確認：當日約 15:00 業務資料表（接送、火化、紀念品訂單、紀念品產品行、客戶資料、開單記錄、company_invoices）是用戶自行刪除，並非系統問題；之前「原因未明」的記錄作廢。
+- 影響：`db/fix_20261113_package_codes.sql`（#339／#334）已無資料可改，毋須執行；試算表匯入的司機記錄已刪，司機標準收費現只來自價目設定（price_settings 已建立並寫入初始值）。
+- 價目設定：快取若仍為「未建立」會即時重讀（cffaffc），執行 SQL 後即時生效。
