@@ -396,6 +396,9 @@ export function NewOrderForm({ catalog, allowed, prefill, drivers = [] }: { cata
                 <label className={label + " sm:col-span-2"}>骨灰龕備註<input value={urnRemark} onChange={(e) => setUrnRemark(e.target.value)} maxLength={500} className={input + " mt-1"} /></label>
               </>
             )}
+            {type === "cremation" && (
+              <div className="sm:col-span-2"><div className="mb-1 text-sm">加購紀念品</div><LinePicker products={catalog.souvenir} lines={lines} onChange={setLines} /></div>
+            )}
             {showDate && type === "deposit" && (
               <label className={label}>接送時間<div className="mt-1"><TimePicker value={slot} onChange={setSlot} className={input} /></div></label>
             )}
@@ -454,9 +457,6 @@ export function NewOrderForm({ catalog, allowed, prefill, drivers = [] }: { cata
             <button type="button" onClick={() => setMore((v) => !v)} className="text-sm text-[var(--gold)]" aria-expanded={more}>{more ? "▾" : "▸"} 更多選項</button>
             {more && (
               <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                {type === "cremation" && (
-                  <div className="sm:col-span-2"><div className="mb-1 text-sm">加購紀念品</div><LinePicker products={catalog.souvenir} lines={lines} onChange={setLines} /></div>
-                )}
                 {type === "vet" && catalog.vet.surcharges.length > 0 && (
                   <div className="sm:col-span-2 text-sm">
                     <div className="mb-1">附加費</div>

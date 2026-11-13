@@ -13,7 +13,7 @@ import { loadCatalog } from "@/lib/catalog";
 import { lineTotals } from "@/lib/logistics-calc";
 import { invoiceShopify } from "@/lib/shopify-payable";
 import { canonicalDriver, driverOptions } from "@/lib/drivers";
-import { loadPriceSettings } from "@/lib/price-settings";
+import { loadPriceSettings, productPricing } from "@/lib/price-settings";
 import { deriveLogisticsAutoCosts } from "@/lib/logistics-auto-costs";
 
 export const dynamic = "force-dynamic";
@@ -52,7 +52,16 @@ export default async function LogisticsDetail({ params }: { params: Promise<{ in
     prices.driverFees,
     prices.urnCosts,
   );
-  const allDerived: Record<string, string | number> = { ...derived, ...automatic };
+  // 紀念品供應商及成本：按已保存的產品行（未填時按價目設定）
+  const savedLines = productLines.ready ? productLines.lines.filter((l) => l.id && !l.suggested && !l.missing) : [];
+  const lineVendor = (l: (typeof savedLines)[number]) => l.vendor || productPricing(l.product_code, prices).vendor || "";
+  const lineCost = (l: (typeof savedLines)[number]) => { if (l.cost != null) return l.cost; const c = productPricing(l.product_code, prices).cost; return c == null ? null : Math.round(c * (l.quantity || 1) * 100) / 100; };
+  const memorialAuto: Record<string, string | number> = {};
+  const vendors = [...new Set(savedLines.map(lineVendor).filter(Boolean))];
+  if (vendors.length) memorialAuto.memorial_supplier = vendors.join("、");
+  const costs = savedLines.map(lineCost).filter((c): c is number => c != null);
+  if (costs.length) memorialAuto.memorial_cost = Math.round(costs.reduce((a, b) => a + b, 0) * 100) / 100;
+  const allDerived: Record<string, string | number> = { ...derived, ...memorialAuto, ...automatic };
   const autoKeys: string[] = [];
   const formInitial: Record<string, string> = Object.fromEntries(LOGISTICS_FIELDS.map((f) => {
     const saved = lg ? lg[f.key] : null;
@@ -64,5 +73,5 @@ export default async function LogisticsDetail({ params }: { params: Promise<{ in
     if (auto != null && String(auto) !== "") { if (!f.hidden) autoKeys.push(f.key); return [f.key, String(auto).slice(0, f.type === "date" ? 10 : 2000)]; }
     return [f.key, ""];
   }));
-  return <div><div className="mb-5 flex items-center gap-3"><Link href="/logistics" className="text-sm text-[var(--gold)] hover:underline">← 客戶資料</Link><h1 className="text-2xl font-semibold">{invoice}</h1></div><LogisticsForm invoice={invoice} initial={formInitial} exists={!!logistics.data} isAdmin={staff.role === "admin"} autoKeys={autoKeys} derived={Object.fromEntries(Object.entries(allDerived).map(([k, v]) => [k, String(v)]))} shopify={shopify} drivers={drivers} driverFees={prices.driverFees} urnCosts={prices.urnCosts} partners={prices.partners} urnProducts={catalog.products.filter((p) => p.productType.includes("骨灰龕")).map((p) => ({ id: p.id, title: p.title, variants: p.variants.map((v) => ({ id: v.id, title: v.title, sku: v.sku })) }))} lines={productLines.ready ? lineTotals(productLines.lines) : null} memorialItems={productLines.ready ? productLines.lines.filter((l) => l.id && !l.suggested && !l.missing).map((l) => ({ id: String(l.id), name: `${l.product_name}${l.variant_title ? `（${l.variant_title}）` : ""}`, quantity: l.quantity, vendor: l.vendor || "", delivered_to_vendor_on: String(l.delivered_to_vendor_on || "").slice(0, 10), vendor_returned_on: String(l.vendor_returned_on || "").slice(0, 10), completed_on: String(l.completed_on || "").slice(0, 10), cost: l.cost == null ? "" : String(l.cost), remarks: l.remarks || "" })) : []} />{productLines.ready ? <ProductLines invoice={invoiceNo} lines={productLines.lines} catalog={catalog.products} catalogError={catalog.error} showCost cancelled={productLines.cancelled} /> : <p className="mb-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">未啟用紀念品產品表格：請先於 Supabase 執行 db/migration_20261109_memorial_lines_cancel.sql。</p>}<ExtraOrders orders={extraOrders(logistics.data)} isAdmin={staff.role === "admin"} /></div>;
+  return <div><div className="mb-5 flex items-center gap-3"><Link href="/logistics" className="text-sm text-[var(--gold)] hover:underline">← 客戶資料</Link><h1 className="text-2xl font-semibold">{invoice}</h1></div><LogisticsForm invoice={invoice} initial={formInitial} exists={!!logistics.data} isAdmin={staff.role === "admin"} autoKeys={autoKeys} derived={Object.fromEntries(Object.entries(allDerived).map(([k, v]) => [k, String(v)]))} shopify={shopify} drivers={drivers} driverFees={prices.driverFees} urnCosts={prices.urnCosts} partners={prices.partners} urnProducts={catalog.products.filter((p) => p.productType.includes("骨灰龕")).map((p) => ({ id: p.id, title: p.title, variants: p.variants.map((v) => ({ id: v.id, title: v.title, sku: v.sku })) }))} lines={productLines.ready ? lineTotals(productLines.lines) : null} memorialItems={productLines.ready ? productLines.lines.filter((l) => l.id && !l.suggested && !l.missing).map((l) => ({ id: String(l.id), name: `${l.product_name}${l.variant_title ? `（${l.variant_title}）` : ""}`, quantity: l.quantity, vendor: lineVendor(l), delivered_to_vendor_on: String(l.delivered_to_vendor_on || "").slice(0, 10), vendor_returned_on: String(l.vendor_returned_on || "").slice(0, 10), completed_on: String(l.completed_on || "").slice(0, 10), cost: lineCost(l) == null ? "" : String(lineCost(l)), remarks: l.remarks || "" })) : []} />{productLines.ready ? <ProductLines invoice={invoiceNo} lines={productLines.lines} catalog={catalog.products} catalogError={catalog.error} showCost cancelled={productLines.cancelled} /> : <p className="mb-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">未啟用紀念品產品表格：請先於 Supabase 執行 db/migration_20261109_memorial_lines_cancel.sql。</p>}<ExtraOrders orders={extraOrders(logistics.data)} isAdmin={staff.role === "admin"} /></div>;
 }

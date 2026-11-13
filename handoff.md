@@ -107,3 +107,12 @@
 - 用戶確認：當日約 15:00 業務資料表（接送、火化、紀念品訂單、紀念品產品行、客戶資料、開單記錄、company_invoices）是用戶自行刪除，並非系統問題；之前「原因未明」的記錄作廢。
 - 影響：`db/fix_20261113_package_codes.sql`（#339／#334）已無資料可改，毋須執行；試算表匯入的司機記錄已刪，司機標準收費現只來自價目設定（price_settings 已建立並寫入初始值）。
 - 價目設定：快取若仍為「未建立」會即時重讀（cffaffc），執行 SQL 後即時生效。
+
+## 2026-11-13 紀念品成本及供應商
+
+- 價目設定新增第四類「紀念品成本及供應商」（kind `product`，key＝Shopify SKU，`amount`＝單位成本，新欄 `vendor`）。結構：`db/migration_20261113_price_product.sql`；初始 164 項資料（Drive「Resoul Memorial Product Pricing for Admin（2026-11-10）」，排除套餐、骨灰龕、紀念館等）含成本，**不入公開 repo**，放 OneDrive `Resoul 寵物善終/SQL/data_20261113_product_costs.sql`（已包括結構改動），**待用戶執行**。
+- `lib/price-settings.ts` `productPricing(code)`：按 SKU 取供應商及單位成本，骨灰龕代碼的成本沿用骨灰龕成本。
+- 紀念品產品行保存（`_product-lines-actions.ts`）：未填供應商／成本時按價目設定填入（成本＝單位成本 × 數量；看不到成本的同事新增行時亦會寫入自動成本）。
+- 客戶資料：「供應商」（memorial_supplier）由「骨灰龕」組移到「紀念品及成本」；供應商（各行供應商以「、」合併）及紀念品成本（各行成本合計）按已保存產品行自動填入（淡黃色）；產品卡未填時顯示價目設定的供應商及成本。
+- 開新單：善終／告別套餐「加購紀念品」移出「更多選項」。#278 火化單（#D127）只有 SJ1，後台及 Shopify 都沒有紀念品，所以紀念品表格是 0 行。
+- 留意：骨灰龕成本及司機收費之前已寫在公開 repo（`lib/urn-costs.ts`、`migration_20261113_price_settings.sql`）。

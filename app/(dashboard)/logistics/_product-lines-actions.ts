@@ -1,6 +1,7 @@
 "use server";
 
 // 紀念品產品列：保存（同一單號多行）。同步 Shopify 見 new-order/actions.ts 的 syncInvoiceProducts。
+import { loadPriceSettings, productPricing } from "@/lib/price-settings";
 import { revalidatePath } from "next/cache";
 import { getStaff, hasModule } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
@@ -55,7 +56,8 @@ export async function saveProductLines(invoiceNo: number, rows: SaveLine[], dele
   const admin = createAdminClient();
   const who = staff.name || staff.email;
 
-  const existing = await admin.from("memorial_product_lines").select("id, sync_status, status, source_ref").eq("invoice_no", invoiceNo);
+  const prices = await loadPriceSettings();
+  const existing = await admin.from("memorial_product_lines").select("id, sync_status, status, source_ref, vendor, cost").eq("invoice_no", invoiceNo);
   if (existing.error) return { error: NOT_READY };
   const byId = new Map((existing.data || []).map((r) => [String(r.id), r]));
 
@@ -80,10 +82,13 @@ export async function saveProductLines(invoiceNo: number, rows: SaveLine[], dele
     if (r.to_sync && qty.value && !Number.isInteger(qty.value)) return { error: `第 ${n} 行要同步 Shopify，數量必須為整數。` };
     if (r.to_sync && price.value == null) return { error: `第 ${n} 行要同步 Shopify，請填寫單價。` };
 
+    // 供應商及成本：未填時按價目設定（Memorial Product Pricing，成本＝單位成本 × 數量）
+    const pricing = productPricing(r.product_code, prices);
+    const autoCost = cost.value == null && pricing.cost != null ? Math.round(pricing.cost * qty.value * 100) / 100 : null;
     const common: Record<string, unknown> = {
-      product_code: text(r.product_code, 120), vendor: text(r.vendor, 120), status: r.status, customer_order_date: d1.value, completed_on: d2.value,
+      product_code: text(r.product_code, 120), vendor: text(r.vendor, 120) || pricing.vendor, status: r.status, customer_order_date: d1.value, completed_on: d2.value,
       delivered_to_vendor_on: d3.value, vendor_returned_on: d4.value, remarks: text(r.remarks, 2000), updated_at: now,
-      ...(showCost ? { cost: cost.value } : {}),
+      ...(showCost ? { cost: cost.value ?? autoCost } : !cur && autoCost != null ? { cost: autoCost } : {}),
     };
     const content: Record<string, unknown> = {
       product_name: name, variant_title: text(r.variant_title, 200), variant_id: /^gid:\/\/shopify\/ProductVariant\/\d+$/.test(String(r.variant_id || "")) ? r.variant_id : null,

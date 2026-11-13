@@ -15,20 +15,22 @@ export type PriceSettings = {
   urnCosts: Record<string, number>;
   partners: ReferralPartner[];
   driverFees: Record<string, number>; // 已合併：設定值優先，其餘按記錄
+  productCosts: Record<string, { cost: number | null; vendor: string | null }>; // 紀念品成本及供應商（按 SKU）
   savedDrivers: Record<string, number>; // 只限已設定
   historyFees: Record<string, number>; // 試算表記錄最常見金額
 };
 
-type Row = { kind: string; key: string; amount: number | null; rate_type: string | null; rate: number | null; needs_package_code: boolean | null; aliases: string[] | null; sort: number | null };
+type Row = { kind: string; key: string; amount: number | null; rate_type: string | null; rate: number | null; needs_package_code: boolean | null; aliases: string[] | null; sort: number | null; vendor?: string | null };
 
 async function load(): Promise<PriceSettings> {
   const [res, history] = await Promise.all([
-    createAdminClient().from("price_settings").select("kind, key, amount, rate_type, rate, needs_package_code, aliases, sort").order("sort").order("key"),
+    createAdminClient().from("price_settings").select("*").order("sort").order("key"),
     historyDriverFees(),
   ]);
   const rows = (res.error ? [] : res.data || []) as Row[];
   const of = (kind: string) => rows.filter((r) => r.kind === kind);
-  const urnRows = of("urn"), refRows = of("referral"), drvRows = of("driver");
+  const urnRows = of("urn"), refRows = of("referral"), drvRows = of("driver"), prodRows = of("product");
+  const productCosts = Object.fromEntries(prodRows.map((r) => [r.key.toUpperCase(), { cost: r.amount == null ? null : Number(r.amount), vendor: r.vendor || null }]));
   const urnCosts = urnRows.length ? Object.fromEntries(urnRows.map((r) => [r.key.toUpperCase(), Number(r.amount || 0)])) : { ...URN_COSTS };
   const partners: ReferralPartner[] = refRows.length
     ? refRows.map((r) => {
@@ -37,12 +39,20 @@ async function load(): Promise<PriceSettings> {
       })
     : REFERRAL_PARTNERS;
   const savedDrivers = Object.fromEntries(drvRows.filter((r) => r.amount != null).map((r) => [canonicalDriver(r.key), Number(r.amount)]));
-  return { ready: !res.error, urnCosts, partners, driverFees: { ...history, ...savedDrivers }, savedDrivers, historyFees: history };
+  return { ready: !res.error, urnCosts, partners, driverFees: { ...history, ...savedDrivers }, productCosts, savedDrivers, historyFees: history };
 }
 
 const cached = unstable_cache(load, ["price-settings-v1"], { tags: [PRICE_SETTINGS_TAG], revalidate: 300 });
 
 // 讀取（快取 5 分鐘；價目設定保存後即時更新）。快取內仍是「未建立」時直接重讀，執行 SQL 後即時生效
+// 紀念品產品的供應商及單位成本（按產品代碼／SKU；骨灰龕代碼沿用骨灰龕成本）
+export function productPricing(code: unknown, s: Pick<PriceSettings, "productCosts" | "urnCosts">): { vendor: string | null; cost: number | null } {
+  const c = String(code ?? "").trim().toUpperCase();
+  if (!c) return { vendor: null, cost: null };
+  const p = s.productCosts[c];
+  return { vendor: p?.vendor || null, cost: p?.cost ?? (c in s.urnCosts ? s.urnCosts[c] : null) };
+}
+
 export async function loadPriceSettings(): Promise<PriceSettings> {
   const result = await cached();
   return result.ready ? result : load();

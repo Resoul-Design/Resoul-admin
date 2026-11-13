@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { savePriceSettings, type PriceRowInput } from "./actions";
 
-type Kind = "urn" | "referral" | "driver";
+type Kind = "urn" | "referral" | "driver" | "product";
 export type EditorRow = PriceRowInput & { name?: string; history?: string };
 
 const input = "w-full min-w-0 rounded-lg border border-[var(--line)] bg-white px-2 py-1.5 outline-none focus:border-[var(--gold)]";
@@ -29,12 +29,12 @@ export function PriceEditor({ kind, title, rows: initial, canSave }: { kind: Kin
   const save = () => {
     setMsg("");
     start(async () => {
-      const r = await savePriceSettings(kind, rows.map(({ key, amount, rateType, rate, aliases, needsPackageCode }) => ({ key, amount, rateType, rate, aliases, needsPackageCode })));
+      const r = await savePriceSettings(kind, rows.map(({ key, amount, rateType, rate, aliases, needsPackageCode, vendor }) => ({ key, amount, rateType, rate, aliases, needsPackageCode, vendor })));
       setMsg(r.error ? `⚠️ ${r.error}` : `✅ ${r.done}`);
     });
   };
 
-  const head = kind === "urn" ? ["產品代碼", "名稱", "成本（HK$）", ""] : kind === "driver" ? ["司機", "標準收費（HK$）", "記錄最常見金額", ""] : ["夥伴", "其他寫法", "計算方式", "比例／金額", "須有套餐代碼", ""];
+  const head = kind === "urn" ? ["產品代碼", "名稱", "成本（HK$）", ""] : kind === "product" ? ["產品代碼（SKU）", "名稱", "供應商", "單位成本（HK$）", ""] : kind === "driver" ? ["司機", "標準收費（HK$）", "記錄最常見金額", ""] : ["夥伴", "其他寫法", "計算方式", "比例／金額", "須有套餐代碼", ""];
 
   return (
     <section className="mb-5 rounded-2xl border border-[var(--line)] bg-[var(--card)]">
@@ -54,6 +54,12 @@ export function PriceEditor({ kind, title, rows: initial, canSave }: { kind: Kin
                       <td className={td}><input value={r.key} onChange={(e) => set(r._id, { key: e.target.value })} className={input} aria-label="產品代碼" /></td>
                       <td className={td + " text-[var(--soft)]"}>{r.name || "—"}</td>
                       <td className={td}><input inputMode="decimal" value={r.amount || ""} onChange={(e) => set(r._id, { amount: e.target.value })} className={input} aria-label="成本" /></td>
+                    </>}
+                    {kind === "product" && <>
+                      <td className={td}><input value={r.key} onChange={(e) => set(r._id, { key: e.target.value })} className={input} aria-label="產品代碼" /></td>
+                      <td className={td + " text-[var(--soft)]"}>{r.name || "—"}</td>
+                      <td className={td}><input value={r.vendor || ""} onChange={(e) => set(r._id, { vendor: e.target.value })} className={input} aria-label="供應商" /></td>
+                      <td className={td}><input inputMode="decimal" value={r.amount || ""} onChange={(e) => set(r._id, { amount: e.target.value })} className={input} aria-label="單位成本" /></td>
                     </>}
                     {kind === "driver" && <>
                       <td className={td}><input value={r.key} onChange={(e) => set(r._id, { key: e.target.value })} className={input} aria-label="司機" /></td>

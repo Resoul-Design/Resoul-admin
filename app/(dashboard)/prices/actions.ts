@@ -9,9 +9,9 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { canonicalDriver } from "@/lib/driver-names";
 import { PRICE_SETTINGS_MISSING, PRICE_SETTINGS_TAG } from "@/lib/price-settings";
 
-export type PriceRowInput = { key: string; amount?: string; rateType?: string; rate?: string; aliases?: string; needsPackageCode?: boolean };
-type Kind = "urn" | "referral" | "driver";
-const LABEL: Record<Kind, string> = { urn: "骨灰龕成本", referral: "轉介夥伴", driver: "司機標準收費" };
+export type PriceRowInput = { key: string; amount?: string; rateType?: string; rate?: string; aliases?: string; needsPackageCode?: boolean; vendor?: string };
+type Kind = "urn" | "referral" | "driver" | "product";
+const LABEL: Record<Kind, string> = { urn: "骨灰龕成本", referral: "轉介夥伴", driver: "司機標準收費", product: "紀念品成本及供應商" };
 
 const money = (v: unknown): number | null => {
   const s = String(v ?? "").replace(/[$,\s]/g, "");
@@ -28,7 +28,7 @@ export async function savePriceSettings(kind: Kind, input: PriceRowInput[]): Pro
   for (const [i, r] of input.entries()) {
     const raw = String(r.key || "").trim();
     if (!raw) continue;
-    const key = kind === "urn" ? raw.toUpperCase() : kind === "driver" ? canonicalDriver(raw) : raw;
+    const key = kind === "urn" || kind === "product" ? raw.toUpperCase() : kind === "driver" ? canonicalDriver(raw) : raw;
     const dup = key.toLowerCase();
     if (seen.has(dup)) return { error: `「${key}」重複，請刪除其中一項。` };
     seen.add(dup);
@@ -40,6 +40,12 @@ export async function savePriceSettings(kind: Kind, input: PriceRowInput[]): Pro
       if (type === "percent" && value > 100) return { error: `「${key}」百分比不可大於 100。` };
       const aliases = [...new Set(String(r.aliases || "").split(/[,，、]/).map((x) => x.trim()).filter((x) => x && x !== key))];
       rows.push({ ...base, rate_type: type, rate: type === "percent" ? value / 100 : value, amount: null, needs_package_code: !!r.needsPackageCode, aliases });
+    } else if (kind === "product") {
+      const value = money(r.amount);
+      const vendor = String(r.vendor || "").trim().slice(0, 120);
+      if (Number.isNaN(value)) return { error: `「${key}」成本不正確。` };
+      if (value == null && !vendor) continue;
+      rows.push({ ...base, amount: value, vendor: vendor || null, rate_type: null, rate: null, needs_package_code: false, aliases: [] });
     } else {
       const value = money(r.amount);
       if (value == null) { if (kind === "driver") continue; return { error: `「${key}」須填寫成本。` }; }
@@ -51,11 +57,15 @@ export async function savePriceSettings(kind: Kind, input: PriceRowInput[]): Pro
   const db = createAdminClient();
   const existing = await db.from("price_settings").select("key").eq("kind", kind);
   if (existing.error) return { error: PRICE_SETTINGS_MISSING };
+  if (kind === "product") {
+    const probe = await db.from("price_settings").select("vendor").limit(1);
+    if (probe.error) return { error: "未啟用紀念品成本：請先於 Supabase 執行 data_20261113_product_costs.sql。" };
+  }
   const keep = new Set(rows.map((r) => String(r.key)));
   const remove = (existing.data || []).map((r) => String(r.key)).filter((k) => !keep.has(k));
   if (rows.length) {
     const { error } = await db.from("price_settings").upsert(rows, { onConflict: "kind,key" });
-    if (error) return { error: "未能保存，請稍後再試。" };
+    if (error) return { error: kind === "product" && /check constraint|kind_check/.test(error.message) ? "未啟用紀念品成本：請先於 Supabase 執行 data_20261113_product_costs.sql。" : "未能保存，請稍後再試。" };
   }
   if (remove.length) {
     const { error } = await db.from("price_settings").delete().eq("kind", kind).in("key", remove);
