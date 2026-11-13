@@ -40,5 +40,10 @@ async function load(): Promise<PriceSettings> {
   return { ready: !res.error, urnCosts, partners, driverFees: { ...history, ...savedDrivers }, savedDrivers, historyFees: history };
 }
 
-// 讀取（快取 5 分鐘；價目設定保存後即時更新）
-export const loadPriceSettings = unstable_cache(load, ["price-settings-v1"], { tags: [PRICE_SETTINGS_TAG], revalidate: 300 });
+const cached = unstable_cache(load, ["price-settings-v1"], { tags: [PRICE_SETTINGS_TAG], revalidate: 300 });
+
+// 讀取（快取 5 分鐘；價目設定保存後即時更新）。快取內仍是「未建立」時直接重讀，執行 SQL 後即時生效
+export async function loadPriceSettings(): Promise<PriceSettings> {
+  const result = await cached();
+  return result.ready ? result : load();
+}
