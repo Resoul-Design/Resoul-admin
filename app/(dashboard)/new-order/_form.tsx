@@ -505,9 +505,6 @@ export function NewOrderForm({ catalog, allowed, prefill, drivers = [] }: { cata
             <dt className="text-[var(--soft)]">類型</dt><dd>{ORDER_TYPE_MAP[type].icon} {ORDER_TYPE_MAP[type].label}</dd>
             <dt className="text-[var(--soft)]">內容</dt><dd>{summary.items.join("、") || "—"}</dd>
             <dt className="text-[var(--soft)]">金額</dt><dd className="font-medium">{hk(summary.total)}{creditAmount > 0 && ` − 接送訂金 ${hk(creditAmount)} ＝ 應付 ${hk(summary.total - creditAmount)}`}</dd>
-            <dt className="text-[var(--soft)]">專案</dt><dd>{projectNo && projectNo !== "new" ? `沿用 ${projectNo}（同一單號）` : "新專案（確認後編配單號，專案編號與單號相同）"}</dd>
-            <dt className="text-[var(--soft)]">會做</dt>
-            <dd>建立後台記錄及公司單號 → {intent === "received" ? "Shopify 訂單直接標記已付款" : "建立 Shopify 付款連結"}（Shopify 標籤只含類型）</dd>
           </dl>
           {missing.length > 0 && <p className="mt-3 text-sm text-amber-700">尚欠：{missing.join("、")}</p>}
           {error && <p className="mt-3 text-sm text-red-700" role="alert">{error}</p>}

@@ -87,3 +87,10 @@
 - 骨灰龕取回日期可選「待定」（`_pickers.tsx` DateOrPending，值為「待定」；開新單及客戶資料 `urn_pickup_status` 共用）；舊資料的其他文字保留為文字欄。
 - 發票備註按骨灰龕取回日期自動建議（`lib/invoice-remark.ts` suggestUrnPickup）：取回日期＝火化日期 → 今日取回；其他日期或待定 → 另日取回；骨灰龕「不需要」→ 不適用；同事可再更改。另日取回並有日期時，備註寫出日期（Urn to be picked up on 20 Nov 2026.）。
 - **注意（2026-11-13 約 15:00 起）**：唯讀檢查發現 Supabase 業務資料表（deposit_bookings、cremation_bookings、product_orders、memorial_product_lines、logistics_orders、company_orders）筆數為 0，staff（4）及 audit_log（634，最後一筆 2026-11-12 01:48 UTC）仍在；後台當時沒有請求。原因未明，已請用戶在 Supabase 查 Postgres 記錄及備份；此期間未有任何資料庫寫入。價目設定及資料核對頁暫停（草稿在 scratchpad，未 commit）。
+
+## 2026-11-13 開單確認步驟、單號 350 → 278
+
+- 開新單「4. 確認」不再顯示「專案」及「會做」兩行（`new-order/_form.tsx`）。
+- 管理員修改單號（`changeInvoiceNo`）：資料庫函數 `set_company_invoice_no` 沒有更新 `logistics_orders`，改由 action 另行跟隨。
+- 用戶要求把 15:54 新開的預約接送訂金單號 350 改為 278，之後新單由 279 開始：`db/fix_20261113_invoice_278.sql`（同時改 project_no、logistics_orders，並把 company_invoice_no_seq 設為 278）**待用戶執行**。Shopify 付款連結草稿備註仍寫「單據編號：350」，未經確認不改。
+- 資料表狀況：15:54 後各業務表只有這一張新單（company_invoices 亦只剩 350），之前的資料仍未見；序號沒有重設，所以新單拿到 350。

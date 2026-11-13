@@ -597,6 +597,8 @@ export async function changeInvoiceNo(oldNo: number, newNoText: string, reason: 
   if (!note) return { error: "請填寫修改原因。" };
   const { error } = await createAdminClient().rpc("set_company_invoice_no", { p_old: oldNo, p_new: newNo, p_note: `${note}（${staff.name || staff.email}）` });
   if (error) return { error: /already used|23505/.test(error.message) ? `單號 ${newNo} 已被使用。` : "未能修改單號。" };
+  // 客戶資料（logistics_orders）不在資料庫函數之內，另行跟隨
+  await createAdminClient().from("logistics_orders").update({ invoice_no: newNo }).eq("invoice_no", oldNo);
   await logAudit("change_invoice_no", "company_invoices", String(newNo), `${oldNo} → ${newNo}｜${note}`);
   revalidateAll();
   return {};
