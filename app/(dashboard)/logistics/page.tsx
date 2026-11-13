@@ -5,6 +5,7 @@ import { LogisticsTable, type LogisticsRow } from "./_table";
 import { invoiceLogisticsStatus } from "@/lib/logistics-status";
 import { extraOrders } from "@/lib/logistics-extra";
 import { referralFee } from "@/lib/logistics-calc";
+import { loadPriceSettings } from "@/lib/price-settings";
 
 export const dynamic = "force-dynamic";
 
@@ -26,6 +27,7 @@ export default async function LogisticsPage() {
   if (!staff) redirect("/login");
   if (!hasModule(staff, ["inventory"])) notFound();
   const admin = createAdminClient();
+  const prices = await loadPriceSettings();
   const [logistics, company, deposits, cremations, products, productLines] = await Promise.all([
     admin.from("logistics_orders").select("*").order("invoice_no", { ascending: false }).order("created_at", { ascending: false }),
     admin.from("company_orders").select("*").order("created_at", { ascending: false }).limit(500),
@@ -75,7 +77,7 @@ export default async function LogisticsPage() {
     status: text(row, "status", "logistics_status") || "—",
     updated: hkTime(text(row, "updated_at", "synced_at", "created_at")),
     extraRefs: extraOrders(row).map((x) => x.ref),
-    referral: referralFee(row.referral, row.package_price, row.package_code),
+    referral: referralFee(row.referral, row.package_price, row.package_code, prices.partners),
     state: invoiceLogisticsStatus({ rowStatus: rowStatus.get(String(row.invoice_no)), deposits: depBy.get(String(row.invoice_no)) || [], cremations: creBy.get(String(row.invoice_no)) || [], company: coBy.get(String(row.invoice_no)) || [], products: proBy.get(String(row.invoice_no)) || [], memorialStatuses: lineBy.get(String(row.invoice_no)) || [] }),
   }));
   const errors = [logistics, company, deposits, cremations, products].map((result) => result.error?.message).filter(Boolean);

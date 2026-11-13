@@ -47,6 +47,7 @@ export const GROUPS: Group[] = [
     children: [
       { label: "員工管理", href: "/staff" },
       { label: "財務管理", href: "/finance" },
+      { label: "價目設定", href: "/prices" },
       { label: "專案管理", href: "/projects" },
       { label: "客戶檔案", href: "/crm" },
     ],
@@ -58,6 +59,7 @@ export const GROUPS: Group[] = [
       { label: "報表與匯出", href: "/reports" },
       { label: "審計記錄", href: "/audit" },
       { label: "同步狀態", href: "/sync" },
+      { label: "資料核對", href: "/data-check" },
       { label: "使用教學", href: "/guide" },
     ],
   },

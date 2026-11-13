@@ -35,17 +35,17 @@ const num = (v: unknown): number | null => {
 };
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
-export function findPartner(referral: unknown): ReferralPartner | null {
+export function findPartner(referral: unknown, partners: ReferralPartner[] = REFERRAL_PARTNERS): ReferralPartner | null {
   const s = String(referral ?? "").trim();
   if (!s) return null;
-  return REFERRAL_PARTNERS.find((p) => p.key === s || (p.aliases || []).includes(s)) || null;
+  return partners.find((p) => p.key === s || (p.aliases || []).includes(s)) || null;
 }
 
 // 轉介費：完全跟 Sheet 公式次序；對照表以外的文字（Others、N/A 等）＝ 0，不計費
-export function referralFee(referral: unknown, packagePrice: unknown, packageCode: unknown): { fee: number | null; type: ReferralType; payable: boolean; partner: string; note: string } {
+export function referralFee(referral: unknown, packagePrice: unknown, packageCode: unknown, partners: ReferralPartner[] = REFERRAL_PARTNERS): { fee: number | null; type: ReferralType; payable: boolean; partner: string; note: string } {
   const raw = String(referral ?? "").trim();
   if (!raw) return { fee: null, type: "blank", payable: false, partner: "", note: "沒有轉介" };
-  const p = findPartner(raw);
+  const p = findPartner(raw, partners);
   if (!p) return { fee: 0, type: "unmapped", payable: false, partner: raw, note: "對照表以外的轉介，不計費" };
   if (p.type === "zero") return { fee: 0, type: "zero", payable: false, partner: p.key, note: "此夥伴不收轉介費" };
   if (p.type === "fixed") return { fee: p.rate, type: "fixed", payable: true, partner: p.key, note: `固定 HK$${p.rate}` };
@@ -76,7 +76,7 @@ export type LogisticsCalc = {
 
 // values：表格目前的值（已存值或正在編輯的值）；lines：紀念品產品行加總
 // 有 Shopify 單據時：發票總額＝Shopify 原價、尚欠＝Shopify 應付、折扣＝Shopify 折扣；已收訂金只計 Shopify 已付款的接送訂金（沒有＝0）
-export function computeLogistics(values: Record<string, unknown>, lines?: LineTotals | null, shopify?: ShopifySummary | null, auto?: { driverCost?: number | null; urnCost?: number | null }): LogisticsCalc {
+export function computeLogistics(values: Record<string, unknown>, lines?: LineTotals | null, shopify?: ShopifySummary | null, auto?: { driverCost?: number | null; urnCost?: number | null; partners?: ReferralPartner[] }): LogisticsCalc {
   const v = (k: string) => num(values[k]) ?? 0;
   const memorial = lines && lines.count > 0 ? { value: round2(lines.amount), from: "lines" as const } : { value: v("memorial_addon_price"), from: "saved" as const };
   const depositPaid = shopify?.depositPaid ?? 0;
@@ -89,7 +89,7 @@ export function computeLogistics(values: Record<string, unknown>, lines?: LineTo
   const urnCostValue = auto?.urnCost != null ? auto.urnCost : v("urn_cost");
   const memorialCost = lines && lines.costCount > 0 ? { value: round2(lines.cost), from: "lines" as const } : { value: v("memorial_cost"), from: "saved" as const };
   const grossProfit = round2(invoiceTotal - discount - memorialCost.value - urnCostValue - v("delivery_cost_to_customer") - driverCost.value - v("commission"));
-  return { urnCost: urnCostValue, memorial, invoiceTotal, depositPaid, credit, discount, balanceDue, driverCost, referral: referralFee(values.referral, values.package_price, values.package_code), memorialCost, grossProfit };
+  return { urnCost: urnCostValue, memorial, invoiceTotal, depositPaid, credit, discount, balanceDue, driverCost, referral: referralFee(values.referral, values.package_price, values.package_code, auto?.partners), memorialCost, grossProfit };
 }
 
 // 紀念品產品行加總（只計已存的行；淡黃色建議行未保存，不計）

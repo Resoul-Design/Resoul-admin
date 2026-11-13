@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { LOGISTICS_GROUPS } from "@/lib/logistics-fields";
 import { updateCustomerData } from "./actions";
 import { saveProductLineDetails, type LineDetail } from "./_product-lines-actions";
-import { REFERRAL_PARTNERS, computeLogistics, findPartner, type LineTotals, type ShopifySummary } from "@/lib/logistics-calc";
+import { REFERRAL_PARTNERS, computeLogistics, findPartner, type LineTotals, type ReferralPartner, type ShopifySummary } from "@/lib/logistics-calc";
 import { DateOrPending, TimePicker, UrnPicker, urnServiceName, type UrnProduct } from "../_pickers";
 import { canonicalDriver } from "@/lib/driver-names";
 import { urnCost } from "@/lib/urn-costs";
@@ -26,7 +26,7 @@ export type MemorialItem = LineDetail & { name: string; quantity: number };
 // 整張單的舊 Excel 紀念品欄（有每件紀念品資料後，只在已有數值時顯示）
 const LEGACY_MEMORIAL = new Set(["delivered_to_supplier_on", "supplier_returned_on", "memorial_cost"]);
 
-export function LogisticsForm({ invoice, initial, exists, isAdmin, autoKeys = [], derived = {}, lines = null, memorialItems = [], urnProducts = [], shopify = null, drivers = [], driverFees = {} }: { invoice: string; initial: Record<string, string>; exists: boolean; isAdmin: boolean; autoKeys?: string[]; derived?: Record<string, string>; lines?: LineTotals | null; memorialItems?: MemorialItem[]; urnProducts?: UrnProduct[]; shopify?: ShopifySummary | null; drivers?: string[]; driverFees?: Record<string, number> }) {
+export function LogisticsForm({ invoice, initial, exists, isAdmin, autoKeys = [], derived = {}, lines = null, memorialItems = [], urnProducts = [], shopify = null, drivers = [], driverFees = {}, urnCosts, partners = REFERRAL_PARTNERS }: { invoice: string; initial: Record<string, string>; exists: boolean; isAdmin: boolean; autoKeys?: string[]; derived?: Record<string, string>; lines?: LineTotals | null; memorialItems?: MemorialItem[]; urnProducts?: UrnProduct[]; shopify?: ShopifySummary | null; drivers?: string[]; driverFees?: Record<string, number>; urnCosts?: Record<string, number>; partners?: ReferralPartner[] }) {
   const auto = new Set(autoKeys);
   const router = useRouter();
   const [values, setValues] = useState<Record<string, string>>(initial);
@@ -56,7 +56,8 @@ export function LogisticsForm({ invoice, initial, exists, isAdmin, autoKeys = []
   const calc = computeLogistics(values, lines ? { ...lines, cost: itemCosts.reduce((n, x) => n + (Number(x.cost) || 0), 0), costCount: itemCosts.length } : null, shopify, {
     // 司機費：改了司機或未有已存值時，按司機的標準收費；骨灰龕成本：改了骨灰龕或未有已存值時，按成本表
     driverCost: values.driver && (values.driver !== initial.driver || !(initial.driver_or_gogovan_cost || "").trim()) ? driverFees[canonicalDriver(values.driver)] ?? null : null,
-    urnCost: values.urn && (values.urn !== initial.urn || !(initial.urn_cost || "").trim()) ? urnCost(values.urn) : null,
+    urnCost: values.urn && (values.urn !== initial.urn || !(initial.urn_cost || "").trim()) ? urnCost(values.urn, urnCosts) : null,
+    partners,
   });
   // 計算欄（只顯示，不會保存）：放在「費用與付款」組最前
   const calcFields: { label: string; value: string }[] = [
@@ -175,9 +176,9 @@ export function LogisticsForm({ invoice, initial, exists, isAdmin, autoKeys = []
                         // 轉介夥伴：對照表選項；舊資料的其他文字保留為選項，不會自動改寫
                         <select value={values[f.key] || ""} onChange={(e) => setValues((v) => ({ ...v, [f.key]: e.target.value }))} className={input + (auto.has(f.key) && values[f.key] === initial[f.key] ? " !bg-amber-50" : "")}>
                           <option value="">（沒有轉介）</option>
-                          {REFERRAL_PARTNERS.map((p) => <option key={p.key} value={p.key}>{p.key}{p.payable ? "" : "（不收費）"}</option>)}
-                          {values[f.key] && !findPartner(values[f.key]) && <option value={values[f.key]}>{values[f.key]}（對照表以外，不計費）</option>}
-                          {values[f.key] && findPartner(values[f.key]) && findPartner(values[f.key])?.key !== values[f.key] && <option value={values[f.key]}>{values[f.key]}</option>}
+                          {partners.map((p) => <option key={p.key} value={p.key}>{p.key}{p.payable ? "" : "（不收費）"}</option>)}
+                          {values[f.key] && !findPartner(values[f.key], partners) && <option value={values[f.key]}>{values[f.key]}（對照表以外，不計費）</option>}
+                          {values[f.key] && findPartner(values[f.key], partners) && findPartner(values[f.key], partners)?.key !== values[f.key] && <option value={values[f.key]}>{values[f.key]}</option>}
                         </select>
                       ) : f.type === "textarea" ? (
                         <textarea value={values[f.key] || ""} onChange={(e) => setValues((v) => ({ ...v, [f.key]: e.target.value }))} rows={2} maxLength={2000} className={input + (auto.has(f.key) && values[f.key] === initial[f.key] ? " !bg-amber-50" : "")} />

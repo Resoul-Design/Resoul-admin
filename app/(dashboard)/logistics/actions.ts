@@ -5,7 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { logAudit } from "@/lib/audit";
 import { LOGISTICS_FIELDS } from "@/lib/logistics-fields";
 import { deriveLogisticsAutoCosts } from "@/lib/logistics-auto-costs";
-import { driverFees } from "@/lib/drivers";
+import { loadPriceSettings } from "@/lib/price-settings";
 import { updateServiceRecord, type RecordKind, type RecordValues } from "./_record-actions";
 
 // 保存客戶資料（Excel 欄位）：只更新表格內有的欄位；此單號未有客戶資料時建立一筆（來源：後台）。
@@ -45,13 +45,15 @@ export async function updateCustomerData(invoice: string, values: Record<string,
     admin.from("company_orders").select("order_type, status, amount").eq("invoice_no", invoiceNo),
   ]);
   if (existing && !Object.keys(row).length) return {}; // 沒有修改：不寫入
+  const prices = await loadPriceSettings();
   const automatic = deriveLogisticsAutoCosts(
     { ...(current || {}), ...row },
     (logisticsRows || []) as Record<string, unknown>[],
     (productLines || []) as Record<string, unknown>[],
     (productOrders || []) as Record<string, unknown>[],
     (companyOrders || []) as Record<string, unknown>[],
-    await driverFees(),
+    prices.driverFees,
+    prices.urnCosts,
   );
   const cur = (current || {}) as Record<string, unknown>;
   const empty = (k: string) => cur[k] == null || String(cur[k]).trim() === "";

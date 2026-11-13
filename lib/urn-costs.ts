@@ -12,7 +12,7 @@ export const URN_COSTS: Record<string, number> = {
   URNW: 0,
 };
 // 骨灰龕成本；By Package、No Urn、Pending 等不是產品代碼時為 null
-export function urnCost(code: string | null | undefined): number | null {
+export function urnCost(code: string | null | undefined, table: Record<string, number> = URN_COSTS): number | null {
   const c = String(code || "").trim().toUpperCase();
-  return c in URN_COSTS ? URN_COSTS[c] : null;
+  return c in table ? table[c] : null;
 }

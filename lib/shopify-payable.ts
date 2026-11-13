@@ -82,8 +82,15 @@ export function payableText(t: { gross: number; credit: number; other: number; p
 
 // 一張單號在 Shopify 的金額（客戶資料用）：已收接送訂金、原價、訂金抵扣、其他折扣、應付
 export type InvoiceShopify = { hasDocs: boolean; depositPaid: number; gross: number; credit: number; other: number; payable: number; planSku: string };
-export async function invoiceShopify(rows: { deposits: Record<string, unknown>[]; cremations: Record<string, unknown>[]; company: Record<string, unknown>[]; products: Record<string, unknown>[] }): Promise<InvoiceShopify> {
-  const live = (r: Record<string, unknown>) => String(r.status || "") !== "cancelled" && !r.cancelled_at && !r.is_test;
+export type InvoiceRows = { deposits: Record<string, unknown>[]; cremations: Record<string, unknown>[]; company: Record<string, unknown>[]; products: Record<string, unknown>[] };
+const live = (r: Record<string, unknown>) => String(r.status || "") !== "cancelled" && !r.cancelled_at && !r.is_test;
+// 未連結開單記錄的火化／獸醫預約（需另找付款連結草稿）
+export function looseCremationIds(rows: InvoiceRows): string[] {
+  const linked = new Set(rows.company.filter((x) => live(x) && x.order_type !== "deposit" && x.linked_id).map((c) => String(c.linked_id)));
+  return rows.cremations.filter((r) => live(r) && !linked.has(String(r.id)) && !r.shopify_order_id).map((r) => String(r.id));
+}
+// 一張單號的 Shopify 單據：已付款接送訂金及其他單據（草稿或訂單）
+export function invoiceDocIds(rows: InvoiceRows, drafts: Map<string, string>): { depIds: string[]; docs: string[] } {
   const depIds = rows.deposits.filter((r) => live(r) && r.payment_status === "paid").map((r) => String(r.shopify_order_id || "")).map((id) => (/^\d+$/.test(id) ? `gid://shopify/Order/${id}` : id));
   const docs = new Set<string>();
   const linked = new Set<string>();
@@ -93,12 +100,14 @@ export async function invoiceShopify(rows: { deposits: Record<string, unknown>[]
     if (id) docs.add(/^\d+$/.test(id) ? `gid://shopify/Order/${id}` : id);
   }
   const loose = rows.cremations.filter((r) => live(r) && !linked.has(String(r.id)));
-  const drafts = await bookingDraftIds(loose.filter((r) => !r.shopify_order_id).map((r) => String(r.id)));
   for (const r of loose) { const id = String(r.shopify_order_id || drafts.get(String(r.id)) || ""); if (id) docs.add(/^\d+$/.test(id) ? `gid://shopify/Order/${id}` : id); }
   for (const p of rows.products.filter(live)) if (p.shopify_order_id) docs.add(String(p.shopify_order_id));
-  const totals = await shopifyTotals([...depIds, ...docs]);
+  return { depIds, docs: [...docs] };
+}
+// 按已讀取的 Shopify 金額計算一張單號
+export function summarizeInvoice(depIds: string[], docs: string[], totals: Map<string, ShopifyTotals>): InvoiceShopify {
   // 已付款的草稿以其訂單計算
-  const list = [...docs].map((id) => totals.get(id)).filter((t): t is ShopifyTotals => !!t && !t.cancelled && (t.kind === "order" || t.open));
+  const list = docs.map((id) => totals.get(id)).filter((t): t is ShopifyTotals => !!t && !t.cancelled && (t.kind === "order" || t.open));
   const sum = (k: "gross" | "credit" | "other" | "payable") => Math.round(list.reduce((n, t) => n + t[k], 0) * 100) / 100;
   const planSku = list.flatMap((t) => t.skus).find((s) => /^(BJ|CJ|SJ)\d+$/i.test(s)) || "";
   return {
@@ -106,4 +115,10 @@ export async function invoiceShopify(rows: { deposits: Record<string, unknown>[]
     depositPaid: depIds.reduce((n, id) => { const t = totals.get(id); return n + (t && t.paid && !t.cancelled ? t.received : 0); }, 0),
     gross: sum("gross"), credit: sum("credit"), other: sum("other"), payable: sum("payable"), planSku,
   };
+}
+
+export async function invoiceShopify(rows: InvoiceRows): Promise<InvoiceShopify> {
+  const drafts = await bookingDraftIds(looseCremationIds(rows));
+  const { depIds, docs } = invoiceDocIds(rows, drafts);
+  return summarizeInvoice(depIds, docs, await shopifyTotals([...depIds, ...docs]));
 }

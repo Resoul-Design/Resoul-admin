@@ -17,11 +17,14 @@ export const MODULES: ModuleDef[] = [
   { key: "roster", label: "排更表", href: "/staff/roster" },
   { key: "tasks", label: "任務指派", href: "/staff/tasks" },
   { key: "finance", label: "財務管理", href: "/finance" },
+  { key: "prices", label: "價目設定", href: "/prices" },
   { key: "projects", label: "專案管理", href: "/projects" },
   { key: "crm", label: "客戶檔案", href: "/crm" },
   { key: "reports", label: "報表與匯出", href: "/reports" },
   { key: "audit", label: "審計記錄", href: "/audit" },
   { key: "sync", label: "同步狀態", href: "/sync" },
+  // 資料核對與同步狀態共用同一組權限
+  { key: "sync", label: "資料核對", href: "/data-check" },
   { key: "guide", label: "使用教學", href: "/guide" },
 ];
 

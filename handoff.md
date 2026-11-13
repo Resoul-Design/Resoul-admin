@@ -94,3 +94,10 @@
 - 管理員修改單號（`changeInvoiceNo`）：資料庫函數 `set_company_invoice_no` 沒有更新 `logistics_orders`，改由 action 另行跟隨。
 - 用戶要求把 15:54 新開的預約接送訂金單號 350 改為 278，之後新單由 279 開始：`db/fix_20261113_invoice_278.sql`（同時改 project_no、logistics_orders，並把 company_invoice_no_seq 設為 278）**待用戶執行**。Shopify 付款連結草稿備註仍寫「單據編號：350」，未經確認不改。
 - 資料表狀況：15:54 後各業務表只有這一張新單（company_invoices 亦只剩 350），之前的資料仍未見；序號沒有重設，所以新單拿到 350。
+
+## 2026-11-13 價目設定、資料核對
+
+- **價目設定**（`/prices`，導覽「人事財務」；新模組 key `prices`，預設只限管理員）：骨灰龕成本、轉介夥伴（按套餐價百分比／固定金額／不收費、其他寫法、須有套餐代碼）、司機標準收費，每類一個表格、按「儲存」整類保存（`prices/actions.ts`，留審計記錄）。資料表 `price_settings`（kind＋key），`db/migration_20261113_price_settings.sql` 建表並寫入現時預設值，**待用戶執行**；未執行前頁面唯讀、計算沿用程式預設（`lib/urn-costs.ts`、`REFERRAL_PARTNERS`、試算表最常見司機費）。
+- 讀取：`lib/price-settings.ts` `loadPriceSettings()`（unstable_cache 5 分鐘，保存後 revalidateTag）。某類別未有資料時沿用預設；司機未設定時沿用試算表記錄最常見金額。客戶資料詳細頁、列表轉介費、保存自動成本都改用價目設定（`findPartner`／`referralFee`／`urnCost`／`deriveLogisticsAutoCosts` 加可選參數）。
+- **資料核對**（`/data-check`，導覽「系統」；與同步狀態共用 `sync` 權限）：按「開始核對」列出套餐代碼與 Shopify 不同（可一鍵按 Shopify 更新後台 package_code，只在仍為舊值時更新）、轉介夥伴不在價目設定、司機未設定標準收費、骨灰龕代碼未有成本、已存成本與現行價目不同（只列出）、紀念品產品行在 Shopify 已刪除、紀念品產品未入表格。`lib/data-check.ts`；Shopify 一次過讀取（`shopify-payable.ts` 拆出 `looseCremationIds`／`invoiceDocIds`／`summarizeInvoice`，`invoiceShopify` 行為不變）。訂單付款／金額對帳仍在「同步狀態」。
+- 因業務資料表目前幾乎是空的，兩頁只做了 build 及部分函數測試，未用真資料驗證。

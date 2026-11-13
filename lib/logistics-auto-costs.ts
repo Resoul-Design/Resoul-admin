@@ -1,7 +1,7 @@
 // 客戶資料自動成本（顯示及保存共用，兩邊數字一致）：
 //   紀念品加購＝已保存的紀念品產品行加總（不含淡黃色建議行及 Shopify 已刪除的行）；沒有產品行時用已付款紀念品訂單或開單記錄
-//   司機／GoGoVan 費用＝該司機的標準收費（試算表匯入記錄最常見的金額，lib/drivers.ts driverFees）；沒有對照時用最近一筆同司機記錄
-//   骨灰龕成本＝骨灰龕產品代碼對照成本表（lib/urn-costs.ts）；不是產品代碼時用最近一筆同骨灰龕記錄
+//   司機／GoGoVan 費用＝該司機的標準收費（價目設定；未設定時按試算表記錄最常見的金額）；沒有對照時用最近一筆同司機記錄
+//   骨灰龕成本＝骨灰龕產品代碼對照價目設定的成本表（未設定時用 lib/urn-costs.ts）；不是產品代碼時用最近一筆同骨灰龕記錄
 import { canonicalDriver } from "@/lib/driver-names";
 import { urnCost } from "@/lib/urn-costs";
 
@@ -21,6 +21,7 @@ export function deriveLogisticsAutoCosts(
   productOrders: Row[] = [],
   companyOrders: Row[] = [],
   driverFees: Record<string, number> = {},
+  urnCosts?: Record<string, number>,
 ) {
   const current = currentInput;
   const driver = text(current.driver);
@@ -29,7 +30,7 @@ export function deriveLogisticsAutoCosts(
   const driverRow = driver && standardFee == null
     ? logisticsRows.find((row) => same(canonicalDriver(text(row.driver)), canonicalDriver(driver)) && money(row.driver_or_gogovan_cost) > 0)
     : undefined;
-  const tableUrnCost = urn ? urnCost(urn) : null;
+  const tableUrnCost = urn ? urnCost(urn, urnCosts) : null;
   const urnRow = urn && tableUrnCost == null
     ? logisticsRows.find((row) => same(row.urn || row.urn_name || row.urn_type, urn) && money(row.urn_cost) > 0)
     : undefined;
