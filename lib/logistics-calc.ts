@@ -74,8 +74,9 @@ export function computeLogistics(values: Record<string, unknown>, lines?: LineTo
   const driverCost = auto?.driverCost != null ? { value: auto.driverCost, from: "default" as const } : savedDriver != null ? { value: savedDriver, from: "saved" as const } : { value: 0, from: "default" as const };
   const urnCostValue = auto?.urnCost != null ? auto.urnCost : v("urn_cost");
   const memorialCost = lines && lines.costCount > 0 ? { value: round2(lines.cost), from: "lines" as const } : { value: v("memorial_cost"), from: "saved" as const };
-  // Excel 匯入的單：「紀念品成本」已包括骨灰龕，毛利不再另扣骨灰龕成本（避免重複）
-  const urnInProfit = auto?.memorialIncludesUrn && memorialCost.from === "saved" ? 0 : urnCostValue;
+  // Excel 匯入的單：沒有骨灰龕成本欄，骨灰龕成本記在「紀念品成本」。只有紀念品成本剛好等於骨灰龕成本（即只是骨灰龕）時，
+  // 毛利不再另扣骨灰龕成本；其他情況（包括在後台改過紀念品成本）顯示的成本全部扣除
+  const urnInProfit = auto?.memorialIncludesUrn && memorialCost.from === "saved" && urnCostValue > 0 && Math.abs(memorialCost.value - urnCostValue) < 0.005 ? 0 : urnCostValue;
   const grossProfit = round2(invoiceTotal - discount - memorialCost.value - urnInProfit - v("delivery_cost_to_customer") - driverCost.value - v("commission"));
   return { urnCost: urnCostValue, memorial, invoiceTotal, depositPaid, credit, discount, balanceDue, driverCost, referral: referralFee(values.referral, values.package_price, values.package_code, auto?.partners), memorialCost, grossProfit };
 }
