@@ -75,7 +75,7 @@ export function LogisticsForm({ invoice, initial, exists, isAdmin, autoKeys = []
       calc.memorialCost.from === "lines" ? { kind: "calc", label: "紀念品成本（不含骨灰龕）", value: hk(calc.memorialCost.value) } : fld("memorial_cost"),
       { kind: "calc", label: "骨灰龕成本", value: hk(calc.urnCost) },
       { kind: "calc", label: "司機／GoGoVan 費用", value: hk(calc.driverCost.value) },
-      fld("delivery_cost_to_customer"), fld("commission"), fld("referral"),
+      fld("delivery_cost_to_customer"), fld("commission"), fld("other_cost"), fld("other_cost_note"), fld("referral"),
       { kind: "calc", label: `轉介費${calc.referral.partner ? `（${calc.referral.partner}）` : ""}`, value: calc.referral.fee == null ? "—" : `${hk(calc.referral.fee)}${calc.referral.payable && calc.referral.fee ? "（應付）" : ""}` },
       ...(isAdmin ? [{ kind: "calc" as const, label: "毛利", value: hk(calc.grossProfit), strong: true }] : []),
     ] },

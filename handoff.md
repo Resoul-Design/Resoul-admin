@@ -175,3 +175,8 @@
 - 原因：#258 的 PRC Diamond、平安伴扣掛飾在 11-09 之後才加入 Excel，舊的紀念品產品行 SQL 沒有；Shopify 紀念品訂單亦未重新同步。
 - 「由 Excel 匯入」頁（`/logistics/sync`，`app/api/logistics/sync/route.ts`）自動辨認 Tracking CSV（有 Customer Number、Product Code、Product Status 欄，`lib/memorial-import.ts`）：每行一件紀念品寫入 memorial_product_lines（source excel），按單號＋產品代碼（沒有時用名稱）及第幾件比對，已有的略過，可重複匯入；狀態 done／complete→已完成、pending→待交付、其他→已訂購；66B 等寫入 extra_ref。
 - 一次性補漏 SQL（同一邏輯）：OneDrive `SQL/data_20261114_memorial_lines_missing.sql`（含客人資料，不入 repo）；之後可改用匯入頁。
+
+## 2026-11-14 其他費用
+
+- 「成本及利潤」新增「其他費用」（other_cost，數字）及「其他費用說明」（other_cost_note）；毛利＝發票總額－折扣－紀念品成本（不含骨灰龕）－骨灰龕成本－司機費－客戶送貨費－佣金－轉介費（應付）－其他費用。
+- `db/migration_20261114_other_cost.sql` **待用戶執行**。保存時未有的可選欄位（urn_cost、urn_supplier、other_cost、other_cost_note）改為通用處理：略過該欄、其他照存並提示要執行的 SQL（`logistics/actions.ts` OPTIONAL）。

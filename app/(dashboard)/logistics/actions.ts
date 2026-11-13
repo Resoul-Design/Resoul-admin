@@ -67,17 +67,22 @@ export async function updateCustomerData(invoice: string, values: Record<string,
     ? admin.from("logistics_orders").update({ ...r, updated_at: new Date().toISOString() }).eq("invoice_no", invoiceNo)
     : admin.from("logistics_orders").insert({ invoice_no: invoiceNo, source: "admin", ...r });
   let { error } = await write(fullRow);
-  let urnWarning = "";
-  if (error && "urn_cost" in fullRow && /urn_cost/.test(error.message)) {
-    const rest = Object.fromEntries(Object.entries(fullRow).filter(([key]) => key !== "urn_cost")) as typeof row;
-    ({ error } = await write(rest));
-    urnWarning = "骨灰龕成本未能保存：請先於 Supabase 執行 db/migration_20261111_urn_cost.sql。";
+  // 未執行遷移的欄位：其他欄照存，並提示要執行的 SQL
+  const OPTIONAL: Record<string, string> = {
+    urn_cost: "骨灰龕成本未能保存：請先於 Supabase 執行 db/migration_20261111_urn_cost.sql。",
+    urn_supplier: "骨灰龕供應商未能保存：請先於 Supabase 執行 db/migration_20261113_urn_supplier.sql。",
+    other_cost: "其他費用未能保存：請先於 Supabase 執行 db/migration_20261114_other_cost.sql。",
+    other_cost_note: "其他費用說明未能保存：請先於 Supabase 執行 db/migration_20261114_other_cost.sql。",
+  };
+  const dropped = new Set<string>();
+  for (let tries = 0; error && tries < 4; tries++) {
+    const col = Object.keys(OPTIONAL).find((k) => k in fullRow && !dropped.has(k) && new RegExp(k + "\\b").test(error!.message));
+    if (!col) break;
+    dropped.add(col);
+    if (col === "other_cost") dropped.add("other_cost_note");
+    ({ error } = await write(Object.fromEntries(Object.entries(fullRow).filter(([key]) => !dropped.has(key))) as typeof row));
   }
-  if (error && "urn_supplier" in fullRow && /urn_supplier/.test(error.message)) {
-    const rest = Object.fromEntries(Object.entries(fullRow).filter(([key]) => key !== "urn_supplier" && !(urnWarning && key === "urn_cost"))) as typeof row;
-    ({ error } = await write(rest));
-    urnWarning = [urnWarning, "骨灰龕供應商未能保存：請先於 Supabase 執行 db/migration_20261113_urn_supplier.sql。"].filter(Boolean).join(" ");
-  }
+  const urnWarning = [...new Set([...dropped].map((k) => OPTIONAL[k]))].join(" ");
   if (error) {
     console.error("[logistics_update]", error.message);
     return { error: "未能保存，請稍後再試。" };
