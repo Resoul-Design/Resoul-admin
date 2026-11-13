@@ -169,3 +169,9 @@
 - 毛利再扣「轉介費」（只限應付夥伴，`computeLogistics` 內 referralCost），與 Excel 最終利潤一致。
 - 紀念品表格中產品代碼 URN… 的行（Excel「Memorial Product Order Tracking」會把套餐骨灰龕記成一行）：成本計入骨灰龕成本，不計入紀念品成本；卡片標示「骨灰龕」。骨灰龕欄沒有成本表對照時，以這些行的成本作骨灰龕成本。詳細頁自動填入的紀念品成本亦不含這些行。
 - 以 #259 核對：計算結果與 Excel「Endup Balance/ Profit」相同。
+
+## 2026-11-14 匯入 Excel「Memorial Product Order Tracking」
+
+- 原因：#258 的 PRC Diamond、平安伴扣掛飾在 11-09 之後才加入 Excel，舊的紀念品產品行 SQL 沒有；Shopify 紀念品訂單亦未重新同步。
+- 「由 Excel 匯入」頁（`/logistics/sync`，`app/api/logistics/sync/route.ts`）自動辨認 Tracking CSV（有 Customer Number、Product Code、Product Status 欄，`lib/memorial-import.ts`）：每行一件紀念品寫入 memorial_product_lines（source excel），按單號＋產品代碼（沒有時用名稱）及第幾件比對，已有的略過，可重複匯入；狀態 done／complete→已完成、pending→待交付、其他→已訂購；66B 等寫入 extra_ref。
+- 一次性補漏 SQL（同一邏輯）：OneDrive `SQL/data_20261114_memorial_lines_missing.sql`（含客人資料，不入 repo）；之後可改用匯入頁。

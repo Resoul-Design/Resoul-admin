@@ -59,7 +59,7 @@ function ymd(y: number, mo: number, d: number): string | null {
   return `${y}-${String(mo).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
 }
 
-function toDate(raw: string): string | null {
+export function toDate(raw: string): string | null {
   // 日期後面的括號備註（例如「24 Feb 2026 (Urn)」）不計
   const s = raw.trim().replace(/\s*[(（].*$/, "").trim();
   let m = s.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})/);

@@ -6,6 +6,7 @@ import { planImport, templateCsv } from "@/lib/logistics-import";
 import { extraOrders, type ExtraOrder } from "@/lib/logistics-extra";
 import { loadPriceSettings } from "@/lib/price-settings";
 import { urnCost } from "@/lib/urn-costs";
+import { isMemorialTracking, planMemorialImport } from "@/lib/memorial-import";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -27,7 +28,34 @@ export async function POST(request: Request) {
   const file = form.get("file");
   if (!(file instanceof File)) return NextResponse.json({ error: "請上傳 CSV 檔。" }, { status: 400 });
   if (file.size > 5 * 1024 * 1024) return NextResponse.json({ error: "檔案太大（上限 5MB）。" }, { status: 400 });
-  const plan = planImport(await file.text(), { isAdmin: staff.role === "admin" });
+  const csv = await file.text();
+  // Excel「Memorial Product Order Tracking」：寫入紀念品產品行（只加入未有的行）
+  if (isMemorialTracking(csv)) {
+    const mp = planMemorialImport(csv);
+    const admin = createAdminClient();
+    const invoices = [...new Set(mp.rows.map((r) => r.invoiceNo))];
+    const have = new Map<string, number>();
+    for (let i = 0; i < invoices.length; i += 300) {
+      const { data, error } = await admin.from("memorial_product_lines").select("invoice_no, product_code, product_name").in("invoice_no", invoices.slice(i, i + 300));
+      if (error) return NextResponse.json({ error: "未啟用紀念品產品表格：請先於 Supabase 執行 db/migration_20261109_memorial_lines_cancel.sql。" }, { status: 400 });
+      for (const r of data || []) { const k = `${r.invoice_no}|${String(r.product_code || r.product_name).toUpperCase()}`; have.set(k, (have.get(k) || 0) + 1); }
+    }
+    const who = staff.name || staff.email;
+    const inserts = mp.rows.filter((r) => { const [k, n] = r.key.split("#"); return (have.get(k) || 0) < Number(n); }).map((r) => ({
+      ...r.values, invoice_no: r.invoiceNo, extra_ref: r.extraRef, source: "excel", sync_status: "none", sort_order: Number(r.key.split("#")[1]), created_by: `Excel 匯入（${who}）`,
+    }));
+    const errors = [...mp.errors];
+    let added = 0;
+    for (let i = 0; i < inserts.length; i += 200) {
+      const batch = inserts.slice(i, i + 200);
+      const { error } = await admin.from("memorial_product_lines").insert(batch);
+      if (error) errors.push(`第 ${i + 1}–${i + batch.length} 件未能保存（${error.message.slice(0, 80)}）`);
+      else added += batch.length;
+    }
+    await logAudit("import_memorial_csv", "memorial_product_lines", null, `紀念品 CSV 匯入：新增 ${added} 行、已有略過 ${mp.rows.length - inserts.length} 行${errors.length ? `、${errors.length} 項提示` : ""}`);
+    return NextResponse.json({ memorialAdded: added, memorialSkipped: mp.rows.length - inserts.length, errors });
+  }
+  const plan = planImport(csv, { isAdmin: staff.role === "admin" });
   if (!plan.rows.length && !plan.extras.length) return NextResponse.json({ updated: 0, created: 0, errors: plan.errors, unknownColumns: plan.unknownColumns });
 
   const admin = createAdminClient();
