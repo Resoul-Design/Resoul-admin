@@ -72,3 +72,10 @@
 - 司機名稱：`lib/driver-names.ts`（瀏覽器可用）合併同一人寫法：豪仔、Ho Jai → 豪仔 / Ho Jai；V's dad、Vivian's dad → V's Dad；YEAH O2 → Yeah O2。只合併顯示，資料原文不變。
 - `db/migration_20261111_urn_cost.sql`（新增 urn_cost 欄）仍待用戶於 Supabase 執行；未執行時其他欄照常保存並提示。
 - 營運手冊（網頁、Word、PDF、public/manual）已同步，最後更新 2026-11-13。
+
+## 2026-11-13 訂金單時間選擇器、套餐代碼對齊、半山貓醫院轉介
+
+- 接送服務列表「操作 → 編輯資料」：原本的「預約時段」四段選單改為「接送時間」時、分選擇（`app/(dashboard)/deposits/_edit.tsx`，用 `_pickers.tsx` TimePicker，與開單及客戶資料一致）。舊單已存的時段文字（例如「上午（08:00–12:00）」）保留不改，除非同事重新選擇；網站預約表格仍為四段時段，沒有改動。
+- 轉介對照表（`lib/logistics-calc.ts` REFERRAL_PARTNERS）加入「半山貓醫院」：套餐價 × 10%，應付。比例按 #233 已存記錄（套餐價 4,800、轉介費 480）。
+- #339、#334 已存套餐代碼對齊 Shopify 草稿 SKU（用戶 2026-11-13 確認）：`db/fix_20261113_package_codes.sql`（339 SJ1 → SJ30；334 BJ1 → BJ0，只在仍為舊值時更新），待用戶於 Supabase 執行。只改後台已存代碼，沒有改 Shopify 草稿。
+- 營運手冊（網頁、Word、PDF、public/manual）已同步。

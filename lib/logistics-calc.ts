@@ -18,6 +18,7 @@ export const REFERRAL_PARTNERS: ReferralPartner[] = [
   { key: "Joyee", type: "fixed", rate: 180, payable: true },
   { key: "Buddy's", type: "percent", rate: 0.1, payable: true },
   { key: "Small animal", type: "percent", rate: 0.1, payable: true },
+  { key: "半山貓醫院", type: "percent", rate: 0.1, payable: true },
   { key: "HKDR(ALC)", type: "zero", rate: 0, payable: false },
   { key: "Royal Pet 0-20", type: "percent", rate: 0.1, payable: true },
   { key: "Royal Pet 21-40", type: "percent", rate: 0.15, payable: true },
@@ -40,7 +41,7 @@ export function findPartner(referral: unknown): ReferralPartner | null {
   return REFERRAL_PARTNERS.find((p) => p.key === s || (p.aliases || []).includes(s)) || null;
 }
 
-// 轉介費：完全跟 Sheet 公式次序；對照表以外的文字（Others、N/A、半山貓醫院等）＝ 0，不計費
+// 轉介費：完全跟 Sheet 公式次序；對照表以外的文字（Others、N/A 等）＝ 0，不計費
 export function referralFee(referral: unknown, packagePrice: unknown, packageCode: unknown): { fee: number | null; type: ReferralType; payable: boolean; partner: string; note: string } {
   const raw = String(referral ?? "").trim();
   if (!raw) return { fee: null, type: "blank", payable: false, partner: "", note: "沒有轉介" };
