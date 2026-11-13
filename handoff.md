@@ -79,3 +79,11 @@
 - 轉介對照表（`lib/logistics-calc.ts` REFERRAL_PARTNERS）加入「半山貓醫院」：套餐價 × 10%，應付。比例按 #233 已存記錄（套餐價 4,800、轉介費 480）。
 - #339、#334 已存套餐代碼對齊 Shopify 草稿 SKU（用戶 2026-11-13 確認）：`db/fix_20261113_package_codes.sql`（339 SJ1 → SJ30；334 BJ1 → BJ0，只在仍為舊值時更新），待用戶於 Supabase 執行。只改後台已存代碼，沒有改 Shopify 草稿。
 - 營運手冊（網頁、Word、PDF、public/manual）已同步。
+
+## 2026-11-13 開單表格調整（寵物資料、骨灰龕、發票備註）
+
+- 開新單（接送訂金、善終／告別套餐）：性別、年齡改為非必填（`new-order/actions.ts` 及 `_form.tsx`）；寵物資料備註只列有填的項目。寵物種類由「更多選項」移回基本資料（寵物姓名之後）。
+- 骨灰龕類別選單不再提供「套餐包括（By Package）」（`lib/order-types.ts` URN_BASIC_OPTIONS `legacy: true`）；舊單已存 By Package 仍可辨認及顯示。
+- 骨灰龕取回日期可選「待定」（`_pickers.tsx` DateOrPending，值為「待定」；開新單及客戶資料 `urn_pickup_status` 共用）；舊資料的其他文字保留為文字欄。
+- 發票備註按骨灰龕取回日期自動建議（`lib/invoice-remark.ts` suggestUrnPickup）：取回日期＝火化日期 → 今日取回；其他日期或待定 → 另日取回；骨灰龕「不需要」→ 不適用；同事可再更改。另日取回並有日期時，備註寫出日期（Urn to be picked up on 20 Nov 2026.）。
+- **注意（2026-11-13 約 15:00 起）**：唯讀檢查發現 Supabase 業務資料表（deposit_bookings、cremation_bookings、product_orders、memorial_product_lines、logistics_orders、company_orders）筆數為 0，staff（4）及 audit_log（634，最後一筆 2026-11-12 01:48 UTC）仍在；後台當時沒有請求。原因未明，已請用戶在 Supabase 查 Postgres 記錄及備份；此期間未有任何資料庫寫入。價目設定及資料核對頁暫停（草稿在 scratchpad，未 commit）。

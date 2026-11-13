@@ -5,9 +5,9 @@ import { useRouter } from "next/navigation";
 import type { DraftCatalogProduct } from "@/lib/catalog";
 import { ORDER_TYPES, ORDER_TYPE_MAP, PAYMENT_INTENTS, RECEIVED_METHODS, type OrderType, type PaymentIntent } from "@/lib/order-types";
 import { createOrder, lookupCustomer, type CustomerMatch, type NewOrderLine, type PetProfile } from "./actions";
-import { URN_PICKUP_OPTIONS, invoiceRemarkLines, type UrnPickup } from "@/lib/invoice-remark";
+import { URN_PICKUP_OPTIONS, invoiceRemarkLines, suggestUrnPickup, type UrnPickup } from "@/lib/invoice-remark";
 import { PET_GENDERS } from "@/lib/order-types";
-import { TimePicker, UrnPicker, type UrnProduct } from "../_pickers";
+import { DateOrPending, TimePicker, UrnPicker, type UrnProduct } from "../_pickers";
 
 export type NewOrderCatalog = {
   cremation: DraftCatalogProduct[];
@@ -226,8 +226,6 @@ export function NewOrderForm({ catalog, allowed, prefill, drivers = [] }: { cata
     needPet && !petName.trim() && "寵物姓名",
     needPet && !(Number(petWeight) > 0) && "體重",
     needPet && !petBreed.trim() && "品種",
-    needPet && !petGender && "性別",
-    needPet && !petAge.trim() && "年齡",
     type === "deposit" && !address.trim() && "接送地址",
     type && type !== "deposit" && !urnPickup && "發票備註（骨灰取回）",
   ].filter(Boolean) as string[];
@@ -371,29 +369,30 @@ export function NewOrderForm({ catalog, allowed, prefill, drivers = [] }: { cata
               </>
             )}
             <label className={label}>{needPet ? "寵物姓名 *" : "寵物名稱"}<input value={petName} onChange={(e) => setPetName(e.target.value)} maxLength={100} className={input + " mt-1"} /></label>
+            {needPet && <label className={label}>寵物種類<input value={petType} onChange={(e) => setPetType(e.target.value)} maxLength={80} placeholder="例如：貓、狗" className={input + " mt-1"} /></label>}
             {needPet && (
               <>
                 <label className={label}>體重（公斤）*<input value={petWeight} onChange={(e) => setPetWeight(e.target.value.replace(/[^\d.]/g, ""))} inputMode="decimal" className={input + " mt-1"} /></label>
                 <label className={label}>品種 *<input value={petBreed} onChange={(e) => setPetBreed(e.target.value)} maxLength={80} className={input + " mt-1"} /></label>
-                <label className={label}>性別 *
+                <label className={label}>性別
                   <select value={petGender} onChange={(e) => setPetGender(e.target.value)} className={input + " mt-1"}>
                     <option value="">請選擇</option>
                     {PET_GENDERS.map((g) => <option key={g}>{g}</option>)}
                   </select>
                 </label>
-                <label className={label}>年齡 *<input value={petAge} onChange={(e) => setPetAge(e.target.value)} maxLength={40} placeholder="例如：12 歲" className={input + " mt-1"} /></label>
+                <label className={label}>年齡<input value={petAge} onChange={(e) => setPetAge(e.target.value)} maxLength={40} placeholder="例如：12 歲" className={input + " mt-1"} /></label>
               </>
             )}
             {showDate && (
-              <label className={label}>{type === "deposit" ? "接送日期" : type === "cremation" ? "火化日期" : "服務日期"}<input type="date" value={serviceDate} onChange={(e) => setServiceDate(e.target.value)} className={input + " mt-1"} /></label>
+              <label className={label}>{type === "deposit" ? "接送日期" : type === "cremation" ? "火化日期" : "服務日期"}<input type="date" value={serviceDate} onChange={(e) => { setServiceDate(e.target.value); if (type === "cremation") { const sg = suggestUrnPickup(urnPickupDate, e.target.value, urnType); if (sg) setUrnPickup(sg); } }} className={input + " mt-1"} /></label>
             )}
             {type === "cremation" && (
               <label className={label}>火化時間<div className="mt-1"><TimePicker value={ceremonyTime} onChange={setCeremonyTime} className={input} /></div></label>
             )}
             {type === "cremation" && (
               <>
-                <div className={label + " sm:col-span-2"}>骨灰龕類別<div className="mt-1"><UrnPicker value={urnType} onChange={setUrnType} products={urnProducts} className={input} /></div></div>
-                <label className={label}>骨灰龕取回日期<input type="date" value={urnPickupDate} onChange={(e) => setUrnPickupDate(e.target.value)} className={input + " mt-1"} /></label>
+                <div className={label + " sm:col-span-2"}>骨灰龕類別<div className="mt-1"><UrnPicker value={urnType} onChange={(v) => { setUrnType(v); const s = suggestUrnPickup(urnPickupDate, serviceDate, v); if (s) setUrnPickup(s); }} products={urnProducts} className={input} /></div></div>
+                <div className={label}>骨灰龕取回日期<div className="mt-1"><DateOrPending value={urnPickupDate} onChange={(v) => { setUrnPickupDate(v); const s = suggestUrnPickup(v, serviceDate, urnType); if (s) setUrnPickup(s); }} className={input} /></div></div>
                 <label className={label + " sm:col-span-2"}>骨灰龕備註<input value={urnRemark} onChange={(e) => setUrnRemark(e.target.value)} maxLength={500} className={input + " mt-1"} /></label>
               </>
             )}
@@ -455,9 +454,6 @@ export function NewOrderForm({ catalog, allowed, prefill, drivers = [] }: { cata
             <button type="button" onClick={() => setMore((v) => !v)} className="text-sm text-[var(--gold)]" aria-expanded={more}>{more ? "▾" : "▸"} 更多選項</button>
             {more && (
               <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                {(type === "cremation" || type === "deposit") && (
-                  <label className={label}>寵物種類<input value={petType} onChange={(e) => setPetType(e.target.value)} maxLength={80} placeholder="例如：貓、狗" className={input + " mt-1"} /></label>
-                )}
                 {type === "cremation" && (
                   <div className="sm:col-span-2"><div className="mb-1 text-sm">加購紀念品</div><LinePicker products={catalog.souvenir} lines={lines} onChange={setLines} /></div>
                 )}
@@ -486,7 +482,7 @@ export function NewOrderForm({ catalog, allowed, prefill, drivers = [] }: { cata
                       ))}
                     </div>
                     {urnPickup && (() => {
-                      const preview = invoiceRemarkLines(urnPickup, type === "product" ? lines.length > 0 : (type === "cremation" || type === "vet") && lines.length > 0);
+                      const preview = invoiceRemarkLines(urnPickup, type === "product" ? lines.length > 0 : (type === "cremation" || type === "vet") && lines.length > 0, type === "cremation" ? urnPickupDate : "");
                       return <p className="mt-1 text-xs text-[var(--soft)]">發票顯示：{preview.length ? preview.join(" ") : "（不加備註）"}{type === "product" || type === "cremation" || type === "vet" ? "　有紀念品時自動加「約 90 個工作天完成」。" : ""}</p>;
                     })()}
                   </fieldset>

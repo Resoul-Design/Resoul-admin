@@ -34,11 +34,15 @@ export const PET_GENDERS = ["公", "母", "不詳"];
 export const CREMATION_TIMES = Array.from({ length: 22 }, (_, i) => `${String(9 + Math.floor(i / 2)).padStart(2, "0")}:${i % 2 ? "30" : "00"}`);
 
 // 骨灰龕類別（跟 logistics Excel）：另加 Shopify「骨灰龕 URN」產品代碼
-export const URN_BASIC_OPTIONS = [
-  { value: "By Package", label: "套餐包括（By Package）" },
+// legacy：舊資料的值，只用於辨認及顯示，不在選單提供
+export const URN_BASIC_OPTIONS: { value: string; label: string; legacy?: boolean }[] = [
+  { value: "By Package", label: "套餐包括（By Package）", legacy: true },
   { value: "No Urn", label: "不需要（No Urn）" },
   { value: "Pending", label: "待定（Pending）" },
 ];
+
+// 骨灰龕取回日期：可填日期或「待定」
+export const URN_PICKUP_PENDING = "待定";
 
 export const RECEIVED_METHODS = ["現金", "FPS 轉數快", "PayMe", "信用卡", "銀行轉帳", "其他"];
 

@@ -19,7 +19,7 @@ import { invoiceLabel } from "@/lib/invoice-label";
 import { depositCreditValue } from "@/lib/deposit-amount";
 import { newCompanyProjectNo } from "@/lib/project-no";
 import { loadSiteContent } from "@/lib/site-content-server";
-import { ORDER_TYPE_MAP, PET_GENDERS, RECEIVED_METHODS, type OrderType, type PaymentIntent } from "@/lib/order-types";
+import { ORDER_TYPE_MAP, PET_GENDERS, RECEIVED_METHODS, type OrderType, type PaymentIntent, URN_PICKUP_PENDING } from "@/lib/order-types";
 import { applyFix } from "@/lib/reconcile-fix";
 import { driverOptions } from "@/lib/drivers";
 import { MEMORIAL_REMARK, invoiceRemarkLines, isUrnPickup, type UrnPickup } from "@/lib/invoice-remark";
@@ -237,7 +237,7 @@ export async function createOrder(input: NewOrderInput): Promise<{ id?: string; 
   const urnType = input.type === "cremation" ? t(input.urn?.type, 120) : "";
   const urnPickupDate = input.type === "cremation" ? t(input.urn?.pickupDate, 10) : "";
   const urnRemark = input.type === "cremation" ? t(input.urn?.remark, 500) : "";
-  if (urnPickupDate && !/^\d{4}-\d{2}-\d{2}$/.test(urnPickupDate)) return { error: "骨灰龕取回日期格式無效。" };
+  if (urnPickupDate && urnPickupDate !== URN_PICKUP_PENDING && !/^\d{4}-\d{2}-\d{2}$/.test(urnPickupDate)) return { error: "骨灰龕取回日期格式無效。" };
   if (intent === "received" && !RECEIVED_METHODS.includes(method)) return { error: "請選擇收款方式。" };
   if (input.type !== "deposit" && !isUrnPickup(input.urnPickup)) return { error: "請選擇發票備註：骨灰取回安排。" };
   // 接送訂金及善終／告別套餐：寵物及接送資料必填
@@ -250,13 +250,11 @@ export async function createOrder(input: NewOrderInput): Promise<{ id?: string; 
     if (!petName) return { error: "請填寫寵物姓名。" };
     if (!Number.isFinite(petWeight) || petWeight <= 0 || petWeight > 300) return { error: "請填寫寵物體重（公斤）。" };
     if (!petBreed) return { error: "請填寫品種。" };
-    if (!petGender) return { error: "請選擇性別。" };
-    if (!petAge) return { error: "請填寫年齡。" };
     if (input.type === "deposit" && !address) return { error: "請填寫接送地址。" };
   }
   const driver = input.type === "deposit" ? t(input.driver, 60) : "";
   if (driver && !(await driverOptions()).includes(driver)) return { error: "司機不在試算表司機名單內，請先在試算表加入並同步。" };
-  const petInfo = needPet ? `寵物資料：體重 ${petWeight} 公斤、品種 ${petBreed}、性別 ${petGender}、年齡 ${petAge}` : "";
+  const petInfo = needPet ? `寵物資料：${[`體重 ${petWeight} 公斤`, `品種 ${petBreed}`, petGender ? `性別 ${petGender}` : "", petAge ? `年齡 ${petAge}` : ""].filter(Boolean).join("、")}` : "";
 
   // 類型細節：金額一律由 Shopify 產品或網站內容計算，不信任瀏覽器提交的價錢
   const lines: Line[] = [];
@@ -322,7 +320,7 @@ export async function createOrder(input: NewOrderInput): Promise<{ id?: string; 
   const amount = lines.reduce((n, l) => n + (l.price || 0) * l.quantity, 0);
   // 發票預設備註：骨灰取回＋（有紀念品時）約 90 個工作天完成
   const hasMemorial = input.type === "product" || ((input.type === "cremation" || input.type === "vet") && lines.some((l, i) => i > 0 && !!l.variantId));
-  const remarkLines = input.type === "deposit" ? [] : invoiceRemarkLines(input.urnPickup, hasMemorial);
+  const remarkLines = input.type === "deposit" ? [] : invoiceRemarkLines(input.urnPickup, hasMemorial, urnPickupDate);
 
   // 新專案：專案編號＝單號（例如 290）；沿用舊專案則保留原編號
   const projectNo = enteredProject || (await newCompanyProjectNo(admin));

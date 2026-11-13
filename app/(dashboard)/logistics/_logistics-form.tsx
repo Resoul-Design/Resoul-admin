@@ -6,7 +6,7 @@ import { LOGISTICS_GROUPS } from "@/lib/logistics-fields";
 import { updateCustomerData } from "./actions";
 import { saveProductLineDetails, type LineDetail } from "./_product-lines-actions";
 import { REFERRAL_PARTNERS, computeLogistics, findPartner, type LineTotals, type ShopifySummary } from "@/lib/logistics-calc";
-import { TimePicker, UrnPicker, urnServiceName, type UrnProduct } from "../_pickers";
+import { DateOrPending, TimePicker, UrnPicker, urnServiceName, type UrnProduct } from "../_pickers";
 import { canonicalDriver } from "@/lib/driver-names";
 import { urnCost } from "@/lib/urn-costs";
 
@@ -162,6 +162,8 @@ export function LogisticsForm({ invoice, initial, exists, isAdmin, autoKeys = []
                           {drivers.map((d) => <option key={d}>{d}</option>)}
                           {values[f.key] && !drivers.includes(values[f.key]) && <option value={values[f.key]}>{values[f.key]}</option>}
                         </select>
+                      ) : f.key === "urn_pickup_status" ? (
+                        <div className="mt-1"><DateOrPending value={values[f.key] || ""} onChange={(val) => setValues((v) => ({ ...v, [f.key]: val }))} className={input.replace("mt-1 ", "") + (auto.has(f.key) && values[f.key] === initial[f.key] ? " !bg-amber-50" : "")} /></div>
                       ) : f.key === "ceremony_time" || f.key === "arrival_time" ? (
                         <div className="mt-1"><TimePicker value={values[f.key] || ""} onChange={(val) => setValues((v) => ({ ...v, [f.key]: val }))} className={input.replace("mt-1 ", "") + (auto.has(f.key) && values[f.key] === initial[f.key] ? " !bg-amber-50" : "")} /></div>
                       ) : f.key === "urn" ? (

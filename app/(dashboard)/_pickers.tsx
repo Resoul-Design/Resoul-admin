@@ -1,6 +1,6 @@
 "use client";
 
-import { URN_BASIC_OPTIONS } from "@/lib/order-types";
+import { URN_BASIC_OPTIONS, URN_PICKUP_PENDING } from "@/lib/order-types";
 
 export type UrnProduct = { id: string; title: string; variants: { id: string; title: string; sku: string | null }[] };
 
@@ -15,7 +15,7 @@ export function urnServiceName(value: string, products: UrnProduct[]): string {
   return "";
 }
 
-// 骨灰龕：先選大類別（套餐包括／不需要／待定，或 Shopify 骨灰龕款式），再選尺寸／升級
+// 骨灰龕：先選大類別（不需要／待定，或 Shopify 骨灰龕款式），再選尺寸／升級
 export function UrnPicker({ value, onChange, products, className }: { value: string; onChange: (v: string) => void; products: UrnProduct[]; className: string }) {
   const product = products.find((p) => p.variants.some((v) => urnValue(p, v) === value));
   const basic = URN_BASIC_OPTIONS.some((o) => o.value === value);
@@ -34,7 +34,7 @@ export function UrnPicker({ value, onChange, products, className }: { value: str
         aria-label="骨灰龕類別"
       >
         <option value="">請選擇</option>
-        {URN_BASIC_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+        {URN_BASIC_OPTIONS.filter((o) => !o.legacy || o.value === value).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
         {products.map((p) => <option key={p.id} value={p.id}>{p.title}</option>)}
         {category === "__other" && <option value="__other">{value}</option>}
       </select>
@@ -43,6 +43,20 @@ export function UrnPicker({ value, onChange, products, className }: { value: str
           {product.variants.map((v) => <option key={v.id} value={urnValue(product, v)}>{variantName(product, v)}{v.sku ? `（${v.sku}）` : ""}</option>)}
         </select>
       )}
+    </div>
+  );
+}
+
+// 骨灰龕取回日期：日期或「待定」；舊資料的其他文字保留為文字欄
+export function DateOrPending({ value, onChange, className }: { value: string; onChange: (v: string) => void; className: string }) {
+  const pending = value === URN_PICKUP_PENDING;
+  const legacy = !!value && !pending && !/^\d{4}-\d{2}-\d{2}$/.test(value);
+  return (
+    <div className="flex items-center gap-3">
+      {legacy
+        ? <input value={value} onChange={(e) => onChange(e.target.value)} className={className} />
+        : <input type="date" value={pending ? "" : value} disabled={pending} onChange={(e) => onChange(e.target.value)} className={className + (pending ? " opacity-50" : "")} />}
+      <label className="flex shrink-0 items-center gap-1.5 text-sm"><input type="checkbox" checked={pending} onChange={(e) => onChange(e.target.checked ? URN_PICKUP_PENDING : "")} />待定</label>
     </div>
   );
 }
