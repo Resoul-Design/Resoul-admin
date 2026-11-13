@@ -143,3 +143,9 @@
 - 紀念品表格「加產品」的產品及款式選單顯示產品代碼（SKU）。
 - 毛利：Excel 匯入的單（source csv／basic_info_logistic）「紀念品成本」已包括骨灰龕，`computeLogistics` 的 `memorialIncludesUrn` 令毛利不再另扣骨灰龕成本（之前重複扣減，現與 Excel 最終利潤一致）。新單照扣。
 - 紀念品產品行：CSV 匯入只處理「Basic Info Logistic」；產品行來自 Excel「Memorial Product Order Tracking」，資料清空後要再執行 OneDrive 的紀念品產品行 SQL（不入 repo）；Shopify 紀念品訂單要按「全部同步」重新匯入。
+
+## 2026-11-13 客戶資料表格整理：收入及成本集中「費用與付款」
+
+- 組 5 改名「紀念品」：只有每件紀念品卡（供應商、交供應商日期、供應商交回日期、完成日期、成本、備註）；沒有逐件紀念品的舊單才顯示整張單的供應商及日期（LEGACY_MEMORIAL）。移除「紀念品成本合計」及重複的整張單供應商。
+- 組 6「費用與付款」分三段（`feeSections`）：收入（套餐價格、紀念品加購、回歸自然費、骨灰龕存放費、其他附加費、發票總額）、收款（已收訂金、接送訂金抵扣、折扣金額、優惠碼、尚欠）、成本及利潤（紀念品成本〔有逐件成本時唯讀加總，否則可填 memorial_cost〕、骨灰龕成本、司機費、客戶送貨費、佣金、推薦來源、轉介費、毛利〔只限管理員〕）。memorial_cost、delivery_cost_to_customer、commission 由組 5 移到組 6（`lib/logistics-fields.ts`）。
+- 欄位 JSX 抽成 `fieldEl`，費用組按段落排列；其他組照舊。

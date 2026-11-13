@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { LOGISTICS_GROUPS } from "@/lib/logistics-fields";
+import { LOGISTICS_GROUPS, type LogisticsField } from "@/lib/logistics-fields";
 import { updateCustomerData } from "./actions";
 import { saveProductLineDetails, type LineDetail } from "./_product-lines-actions";
 import { REFERRAL_PARTNERS, computeLogistics, findPartner, type LineTotals, type ReferralPartner, type ShopifySummary } from "@/lib/logistics-calc";
@@ -24,8 +24,8 @@ const COMPARE = new Set(["package_price", "memorial_addon_price", "other_surchar
 const differs = (a: string, b: string) => { const x = Number(String(a).replace(/[$,\s]/g, "")), y = Number(String(b).replace(/[$,\s]/g, "")); return Number.isFinite(x) && Number.isFinite(y) ? Math.abs(x - y) > 0.005 : a.trim() !== b.trim(); };
 
 export type MemorialItem = LineDetail & { name: string; quantity: number };
-// 整張單的舊 Excel 紀念品欄（有每件紀念品資料後，只在已有數值時顯示）
-const LEGACY_MEMORIAL = new Set(["delivered_to_supplier_on", "supplier_returned_on", "memorial_cost"]);
+// 整張單的舊 Excel 紀念品欄（有每件紀念品資料後不再顯示，以每件紀念品為準）
+const LEGACY_MEMORIAL = new Set(["memorial_supplier", "delivered_to_supplier_on", "supplier_returned_on"]);
 
 export function LogisticsForm({ invoice, initial, exists, isAdmin, autoKeys = [], derived = {}, lines = null, memorialItems = [], urnProducts = [], packageProducts = [], legacy = false, shopify = null, drivers = [], driverFees = {}, urnCosts, partners = REFERRAL_PARTNERS }: { invoice: string; initial: Record<string, string>; exists: boolean; isAdmin: boolean; autoKeys?: string[]; derived?: Record<string, string>; lines?: LineTotals | null; memorialItems?: MemorialItem[]; urnProducts?: UrnProduct[]; packageProducts?: PackageProduct[]; legacy?: boolean; shopify?: ShopifySummary | null; drivers?: string[]; driverFees?: Record<string, number>; urnCosts?: Record<string, number>; partners?: ReferralPartner[] }) {
   const auto = new Set(autoKeys);
@@ -61,19 +61,24 @@ export function LogisticsForm({ invoice, initial, exists, isAdmin, autoKeys = []
     partners,
     memorialIncludesUrn: legacy,
   });
-  // 計算欄（只顯示，不會保存）：放在「費用與付款」組最前
-  const calcFields: { label: string; value: string }[] = [
-    { label: "發票總額", value: hk(calc.invoiceTotal) },
-    { label: "紀念品加購", value: hk(calc.memorial.value) },
-    { label: "骨灰龕成本", value: hk(calc.urnCost) },
-    { label: "司機／GoGoVan 費用", value: hk(calc.driverCost.value) },
-    { label: "已收訂金", value: hk(calc.depositPaid) },
-    { label: "接送訂金抵扣", value: hk(calc.credit) },
-    { label: "折扣金額", value: hk(calc.discount) },
-    { label: "尚欠", value: hk(calc.balanceDue) },
-    { label: `轉介費${calc.referral.partner ? `（${calc.referral.partner}）` : ""}`, value: calc.referral.fee == null ? "—" : `${hk(calc.referral.fee)}${calc.referral.payable && calc.referral.fee ? "（應付）" : ""}` },
-    ...(isAdmin ? [{ label: "毛利", value: hk(calc.grossProfit) }] : []),
+  // 「費用與付款」：收入、收款、成本及利潤三段；計算欄只顯示，不會保存
+  type FeeItem = { kind: "calc"; label: string; value: string; strong?: boolean } | { kind: "field"; key: string };
+  const fld = (key: string): FeeItem => ({ kind: "field", key });
+  const feeSections: { title: string; items: FeeItem[] }[] = [
+    { title: "收入", items: [fld("package_price"), { kind: "calc", label: "紀念品加購", value: hk(calc.memorial.value) }, fld("back_to_nature_price"), fld("urn_storage_rental_price"), fld("other_surcharge"), { kind: "calc", label: "發票總額", value: hk(calc.invoiceTotal), strong: true }] },
+    { title: "收款", items: [{ kind: "calc", label: "已收訂金", value: hk(calc.depositPaid) }, { kind: "calc", label: "接送訂金抵扣", value: hk(calc.credit) }, { kind: "calc", label: "折扣金額", value: hk(calc.discount) }, fld("discount_code"), { kind: "calc", label: "尚欠", value: hk(calc.balanceDue), strong: true }] },
+    { title: "成本及利潤", items: [
+      // 紀念品成本：有每件紀念品成本時按「5. 紀念品」加總，否則可直接填寫
+      calc.memorialCost.from === "lines" ? { kind: "calc", label: "紀念品成本", value: hk(calc.memorialCost.value) } : fld("memorial_cost"),
+      { kind: "calc", label: "骨灰龕成本", value: hk(calc.urnCost) },
+      { kind: "calc", label: "司機／GoGoVan 費用", value: hk(calc.driverCost.value) },
+      fld("delivery_cost_to_customer"), fld("commission"), fld("referral"),
+      { kind: "calc", label: `轉介費${calc.referral.partner ? `（${calc.referral.partner}）` : ""}`, value: calc.referral.fee == null ? "—" : `${hk(calc.referral.fee)}${calc.referral.payable && calc.referral.fee ? "（應付）" : ""}` },
+      ...(isAdmin ? [{ kind: "calc" as const, label: "毛利", value: hk(calc.grossProfit), strong: true }] : []),
+    ] },
   ];
+  const feeFields = groups.find((g) => g.title === "費用與付款")?.fields || [];
+  const fieldOf = (key: string) => feeFields.find((f) => f.key === key);
 
   function save() {
     setMsg(null);
@@ -96,67 +101,7 @@ export function LogisticsForm({ invoice, initial, exists, isAdmin, autoKeys = []
   const toggle = (t: string) => setClosed((s) => { const n = new Set(s); if (n.has(t)) n.delete(t); else n.add(t); return n; });
   const allClosed = closed.size === groups.length;
 
-  return (
-    <section className="mb-6">
-      <div className="mb-3 flex flex-wrap items-center gap-2">
-        <h2 className="text-lg font-semibold">編輯客戶資料（Excel 欄位）</h2>
-        {!exists && <span className="text-sm text-[var(--soft)]">此單號未有客戶資料，保存後建立</span>}
-        <button type="button" onClick={() => setClosed(allClosed ? new Set() : new Set(groups.map((g) => g.title)))} className="ml-auto text-sm text-[var(--gold)] hover:underline">{allClosed ? "全部展開" : "全部收起"}</button>
-      </div>
-      <nav className="mb-3 flex flex-wrap gap-2" aria-label="客戶資料分組">
-        {groups.map((g, i) => (
-          <a key={g.title} href={`#lg-${i + 1}`} onClick={() => setClosed((s) => { const n = new Set(s); n.delete(g.title); return n; })} className="rounded-full border border-[var(--line)] bg-white px-3 py-1 text-xs hover:border-[var(--gold)]">
-            {i + 1}. {g.title}
-          </a>
-        ))}
-      </nav>
-      {staleCount > 0 && <p className="mb-3 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">有 {staleCount} 個金額與單據最新計算不同（例如開單後加減了產品），請在「費用與付款」核對，按「用單據金額」更新後儲存。</p>}
-      {autoKeys.length > 0 && (
-        <p className="mb-3 flex flex-wrap items-center gap-2 text-xs text-[var(--soft)]">
-          <span><span className="mr-1 inline-block h-3 w-3 rounded border border-amber-300 bg-amber-50 align-middle" />淡黃色欄位按單據資料自動填入（{autoKeys.length} 項），只作參考；修改後或按「採用自動填入」才會保存。</span>
-          <label className="flex items-center gap-1 text-[var(--ink)]"><input type="checkbox" checked={acceptAuto} onChange={(e) => setAcceptAuto(e.target.checked)} />採用自動填入</label>
-        </p>
-      )}
-      <div className="space-y-3">
-        {groups.map((group, i) => {
-          const open = !closed.has(group.title);
-          const filled = group.fields.filter((f) => (values[f.key] || "").trim() !== "").length;
-          const edited = group.fields.filter((f) => changed(f.key)).length;
-          return (
-            <div key={group.title} id={`lg-${i + 1}`} className="scroll-mt-20 rounded-2xl border border-[var(--line)] bg-white">
-              <button type="button" onClick={() => toggle(group.title)} aria-expanded={open} className="flex w-full items-center gap-2 px-4 py-3 text-left">
-                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[var(--gold)] text-xs font-semibold text-white">{i + 1}</span>
-                <span className="font-semibold">{group.title}</span>
-                <span className="text-xs text-[var(--soft)]">已填 {filled}／{group.fields.length}</span>
-                {group.fields.some((f) => stale(f.key)) && <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-800">金額待核對</span>}
-                {edited > 0 && <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-800">已修改 {edited} 項</span>}
-                <span className="ml-auto text-[var(--soft)]">{open ? "▾" : "▸"}</span>
-              </button>
-              {open && (
-                <div className="grid gap-3 border-t border-[var(--line)] px-4 pb-4 pt-3 sm:grid-cols-2 lg:grid-cols-4">
-                  {group.title === "費用與付款" && calcFields.map((c) => (
-                    <div key={c.label} className="text-sm">
-                      {c.label}
-                      <div className={readonly}>{c.value}</div>
-                    </div>
-                  ))}
-                  {group.title === "紀念品及成本" && items.map((it, n) => (
-                    <div key={it.id} className="rounded-xl border border-[var(--line)] bg-[var(--card)] p-3 sm:col-span-2 lg:col-span-4">
-                      <p className="mb-2 text-sm font-semibold">紀念品 {n + 1}：{it.name}{it.quantity !== 1 ? ` × ${it.quantity}` : ""}{itemChanged(it) && <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-normal text-amber-800">已修改</span>}</p>
-                      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                        <label className="text-sm">供應商<input value={it.vendor} onChange={(e) => setItem(it.id, { vendor: e.target.value })} maxLength={120} className={input} /></label>
-                        <label className="text-sm">交供應商日期<input type="date" value={it.delivered_to_vendor_on} onChange={(e) => setItem(it.id, { delivered_to_vendor_on: e.target.value })} className={input} /></label>
-                        <label className="text-sm">供應商交回日期<input type="date" value={it.vendor_returned_on} onChange={(e) => setItem(it.id, { vendor_returned_on: e.target.value })} className={input} /></label>
-                        <label className="text-sm">完成日期<input type="date" value={it.completed_on} onChange={(e) => setItem(it.id, { completed_on: e.target.value })} className={input} /></label>
-                        <label className="text-sm">成本<input value={it.cost} onChange={(e) => setItem(it.id, { cost: e.target.value.replace(/[^\d.]/g, "") })} inputMode="decimal" className={input} /></label>
-                        <label className="text-sm sm:col-span-1 lg:col-span-3">備註<input value={it.remarks} onChange={(e) => setItem(it.id, { remarks: e.target.value })} maxLength={2000} className={input} /></label>
-                      </div>
-                    </div>
-                  ))}
-                  {group.title === "紀念品及成本" && items.length > 0 && (
-                    <div className="text-sm">紀念品成本合計<div className={readonly}>{hk(calc.memorialCost.value)}</div></div>
-                  )}
-                  {group.fields.filter((f) => f.key !== "package_code" && !(group.title === "紀念品及成本" && items.length > 0 && LEGACY_MEMORIAL.has(f.key) && !(initial[f.key] || "").trim())).map((f) => (
+  const fieldEl = (f: LogisticsField) => (
                     <label key={f.key} className={"text-sm" + (f.type === "textarea" ? " sm:col-span-2 lg:col-span-4" : f.key === "urn" || f.key === "package_name" ? " sm:col-span-2" : "")}>
                       {f.label}
                       {f.key === "driver" ? (
@@ -213,7 +158,68 @@ export function LogisticsForm({ invoice, initial, exists, isAdmin, autoKeys = []
                         </span>
                       )}
                     </label>
+  );
+
+  return (
+    <section className="mb-6">
+      <div className="mb-3 flex flex-wrap items-center gap-2">
+        <h2 className="text-lg font-semibold">編輯客戶資料（Excel 欄位）</h2>
+        {!exists && <span className="text-sm text-[var(--soft)]">此單號未有客戶資料，保存後建立</span>}
+        <button type="button" onClick={() => setClosed(allClosed ? new Set() : new Set(groups.map((g) => g.title)))} className="ml-auto text-sm text-[var(--gold)] hover:underline">{allClosed ? "全部展開" : "全部收起"}</button>
+      </div>
+      <nav className="mb-3 flex flex-wrap gap-2" aria-label="客戶資料分組">
+        {groups.map((g, i) => (
+          <a key={g.title} href={`#lg-${i + 1}`} onClick={() => setClosed((s) => { const n = new Set(s); n.delete(g.title); return n; })} className="rounded-full border border-[var(--line)] bg-white px-3 py-1 text-xs hover:border-[var(--gold)]">
+            {i + 1}. {g.title}
+          </a>
+        ))}
+      </nav>
+      {staleCount > 0 && <p className="mb-3 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">有 {staleCount} 個金額與單據最新計算不同（例如開單後加減了產品），請在「費用與付款」核對，按「用單據金額」更新後儲存。</p>}
+      {autoKeys.length > 0 && (
+        <p className="mb-3 flex flex-wrap items-center gap-2 text-xs text-[var(--soft)]">
+          <span><span className="mr-1 inline-block h-3 w-3 rounded border border-amber-300 bg-amber-50 align-middle" />淡黃色欄位按單據資料自動填入（{autoKeys.length} 項），只作參考；修改後或按「採用自動填入」才會保存。</span>
+          <label className="flex items-center gap-1 text-[var(--ink)]"><input type="checkbox" checked={acceptAuto} onChange={(e) => setAcceptAuto(e.target.checked)} />採用自動填入</label>
+        </p>
+      )}
+      <div className="space-y-3">
+        {groups.map((group, i) => {
+          const open = !closed.has(group.title);
+          const filled = group.fields.filter((f) => (values[f.key] || "").trim() !== "").length;
+          const edited = group.fields.filter((f) => changed(f.key)).length;
+          return (
+            <div key={group.title} id={`lg-${i + 1}`} className="scroll-mt-20 rounded-2xl border border-[var(--line)] bg-white">
+              <button type="button" onClick={() => toggle(group.title)} aria-expanded={open} className="flex w-full items-center gap-2 px-4 py-3 text-left">
+                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[var(--gold)] text-xs font-semibold text-white">{i + 1}</span>
+                <span className="font-semibold">{group.title}</span>
+                <span className="text-xs text-[var(--soft)]">已填 {filled}／{group.fields.length}</span>
+                {group.fields.some((f) => stale(f.key)) && <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-800">金額待核對</span>}
+                {edited > 0 && <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-800">已修改 {edited} 項</span>}
+                <span className="ml-auto text-[var(--soft)]">{open ? "▾" : "▸"}</span>
+              </button>
+              {open && (
+                <div className="grid gap-3 border-t border-[var(--line)] px-4 pb-4 pt-3 sm:grid-cols-2 lg:grid-cols-4">
+                  {group.title === "費用與付款" && feeSections.map((sec) => (
+                    <div key={sec.title} className="contents">
+                      <p className="border-b border-[var(--line)] pb-1 pt-2 text-sm font-semibold text-[var(--soft)] sm:col-span-2 lg:col-span-4">{sec.title}</p>
+                      {sec.items.map((x) => x.kind === "calc"
+                        ? <div key={x.label} className="text-sm">{x.label}<div className={readonly + (x.strong ? " font-semibold" : "")}>{x.value}</div></div>
+                        : fieldOf(x.key) ? fieldEl(fieldOf(x.key)!) : null)}
+                    </div>
                   ))}
+                  {group.title === "紀念品" && items.map((it, n) => (
+                    <div key={it.id} className="rounded-xl border border-[var(--line)] bg-[var(--card)] p-3 sm:col-span-2 lg:col-span-4">
+                      <p className="mb-2 text-sm font-semibold">紀念品 {n + 1}：{it.name}{it.quantity !== 1 ? ` × ${it.quantity}` : ""}{itemChanged(it) && <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-normal text-amber-800">已修改</span>}</p>
+                      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                        <label className="text-sm">供應商<input value={it.vendor} onChange={(e) => setItem(it.id, { vendor: e.target.value })} maxLength={120} className={input} /></label>
+                        <label className="text-sm">交供應商日期<input type="date" value={it.delivered_to_vendor_on} onChange={(e) => setItem(it.id, { delivered_to_vendor_on: e.target.value })} className={input} /></label>
+                        <label className="text-sm">供應商交回日期<input type="date" value={it.vendor_returned_on} onChange={(e) => setItem(it.id, { vendor_returned_on: e.target.value })} className={input} /></label>
+                        <label className="text-sm">完成日期<input type="date" value={it.completed_on} onChange={(e) => setItem(it.id, { completed_on: e.target.value })} className={input} /></label>
+                        <label className="text-sm">成本<input value={it.cost} onChange={(e) => setItem(it.id, { cost: e.target.value.replace(/[^\d.]/g, "") })} inputMode="decimal" className={input} /></label>
+                        <label className="text-sm sm:col-span-1 lg:col-span-3">備註<input value={it.remarks} onChange={(e) => setItem(it.id, { remarks: e.target.value })} maxLength={2000} className={input} /></label>
+                      </div>
+                    </div>
+                  ))}
+                  {group.title !== "費用與付款" && group.fields.filter((f) => f.key !== "package_code" && !(group.title === "紀念品" && items.length > 0 && LEGACY_MEMORIAL.has(f.key))).map((f) => fieldEl(f))}
                 </div>
               )}
             </div>
