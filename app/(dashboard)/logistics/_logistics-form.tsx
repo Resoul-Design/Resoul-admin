@@ -7,6 +7,8 @@ import { updateCustomerData } from "./actions";
 import { saveProductLineDetails, type LineDetail } from "./_product-lines-actions";
 import { REFERRAL_PARTNERS, computeLogistics, findPartner, type LineTotals, type ShopifySummary } from "@/lib/logistics-calc";
 import { TimePicker, UrnPicker, urnServiceName, type UrnProduct } from "../_pickers";
+import { canonicalDriver } from "@/lib/driver-names";
+import { urnCost } from "@/lib/urn-costs";
 
 const hk = (n: number) => `HK$${n.toLocaleString("en-US", { maximumFractionDigits: 2 })}`;
 
@@ -24,7 +26,7 @@ export type MemorialItem = LineDetail & { name: string; quantity: number };
 // 整張單的舊 Excel 紀念品欄（有每件紀念品資料後，只在已有數值時顯示）
 const LEGACY_MEMORIAL = new Set(["delivered_to_supplier_on", "supplier_returned_on", "memorial_cost"]);
 
-export function LogisticsForm({ invoice, initial, exists, isAdmin, autoKeys = [], derived = {}, lines = null, memorialItems = [], urnProducts = [], shopify = null, drivers = [] }: { invoice: string; initial: Record<string, string>; exists: boolean; isAdmin: boolean; autoKeys?: string[]; derived?: Record<string, string>; lines?: LineTotals | null; memorialItems?: MemorialItem[]; urnProducts?: UrnProduct[]; shopify?: ShopifySummary | null; drivers?: string[] }) {
+export function LogisticsForm({ invoice, initial, exists, isAdmin, autoKeys = [], derived = {}, lines = null, memorialItems = [], urnProducts = [], shopify = null, drivers = [], driverFees = {} }: { invoice: string; initial: Record<string, string>; exists: boolean; isAdmin: boolean; autoKeys?: string[]; derived?: Record<string, string>; lines?: LineTotals | null; memorialItems?: MemorialItem[]; urnProducts?: UrnProduct[]; shopify?: ShopifySummary | null; drivers?: string[]; driverFees?: Record<string, number> }) {
   const auto = new Set(autoKeys);
   const router = useRouter();
   const [values, setValues] = useState<Record<string, string>>(initial);
@@ -51,10 +53,17 @@ export function LogisticsForm({ invoice, initial, exists, isAdmin, autoKeys = []
   const setItem = (id: string, patch: Partial<MemorialItem>) => setItems((list) => list.map((x) => (x.id === id ? { ...x, ...patch } : x)));
   // 紀念品成本：有每件紀念品時按目前輸入加總
   const itemCosts = items.filter((x) => x.cost.trim() !== "");
-  const calc = computeLogistics(values, lines ? { ...lines, cost: itemCosts.reduce((n, x) => n + (Number(x.cost) || 0), 0), costCount: itemCosts.length } : null, shopify);
+  const calc = computeLogistics(values, lines ? { ...lines, cost: itemCosts.reduce((n, x) => n + (Number(x.cost) || 0), 0), costCount: itemCosts.length } : null, shopify, {
+    // 司機費：改了司機或未有已存值時，按司機的標準收費；骨灰龕成本：改了骨灰龕或未有已存值時，按成本表
+    driverCost: values.driver && (values.driver !== initial.driver || !(initial.driver_or_gogovan_cost || "").trim()) ? driverFees[canonicalDriver(values.driver)] ?? null : null,
+    urnCost: values.urn && (values.urn !== initial.urn || !(initial.urn_cost || "").trim()) ? urnCost(values.urn) : null,
+  });
   // 計算欄（只顯示，不會保存）：放在「費用與付款」組最前
   const calcFields: { label: string; value: string }[] = [
     { label: "發票總額", value: hk(calc.invoiceTotal) },
+    { label: "紀念品加購", value: hk(calc.memorial.value) },
+    { label: "骨灰龕成本", value: hk(calc.urnCost) },
+    { label: "司機／GoGoVan 費用", value: hk(calc.driverCost.value) },
     { label: "已收訂金", value: hk(calc.depositPaid) },
     { label: "接送訂金抵扣", value: hk(calc.credit) },
     { label: "折扣金額", value: hk(calc.discount) },

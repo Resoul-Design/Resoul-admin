@@ -2,7 +2,7 @@
 // 全部純計算、只作顯示：不寫入資料庫，不改任何已存欄位。
 //   發票總額 invoice_total  ＝ 套餐價 ＋ 紀念品加購 ＋ 盅仔租用 ＋ 回歸自然（不含其他附加費）
 //   尚欠 balance_due        ＝ 發票總額 − 訂金 − 折扣額
-//   司機費 driver_cost      ＝ 按司機過往物流記錄自動帶入的「司機／GoGoVan 費用」
+//   司機費 driver_cost      ＝ 已存「司機／GoGoVan 費用」（人手覆寫，可留空）；留空時預設＝接送費
 //   轉介費 referral_fee     ＝ 按轉介夥伴對照表（只限「應付」夥伴）
 //   毛利 gross_profit       ＝ 發票總額 − 折扣額 − 紀念品成本 − 骨灰龕成本 − 運送成本 − 司機費 − 佣金（一律減佣金）
 // 紀念品加購／成本：有紀念品產品行時以產品行加總；沒有產品行時用已存值。
@@ -60,6 +60,7 @@ export type ShopifySummary = { hasDocs: boolean; depositPaid: number; gross: num
 export type LineTotals = { count: number; amount: number; cost: number; costCount: number };
 
 export type LogisticsCalc = {
+  urnCost: number;
   memorial: { value: number; from: "lines" | "saved" };
   invoiceTotal: number;
   depositPaid: number;
@@ -74,7 +75,7 @@ export type LogisticsCalc = {
 
 // values：表格目前的值（已存值或正在編輯的值）；lines：紀念品產品行加總
 // 有 Shopify 單據時：發票總額＝Shopify 原價、尚欠＝Shopify 應付、折扣＝Shopify 折扣；已收訂金只計 Shopify 已付款的接送訂金（沒有＝0）
-export function computeLogistics(values: Record<string, unknown>, lines?: LineTotals | null, shopify?: ShopifySummary | null): LogisticsCalc {
+export function computeLogistics(values: Record<string, unknown>, lines?: LineTotals | null, shopify?: ShopifySummary | null, auto?: { driverCost?: number | null; urnCost?: number | null }): LogisticsCalc {
   const v = (k: string) => num(values[k]) ?? 0;
   const memorial = lines && lines.count > 0 ? { value: round2(lines.amount), from: "lines" as const } : { value: v("memorial_addon_price"), from: "saved" as const };
   const depositPaid = shopify?.depositPaid ?? 0;
@@ -83,10 +84,11 @@ export function computeLogistics(values: Record<string, unknown>, lines?: LineTo
   const invoiceTotal = shopify?.hasDocs ? shopify.gross : round2(v("package_price") + memorial.value + v("urn_storage_rental_price") + v("back_to_nature_price"));
   const balanceDue = shopify?.hasDocs ? shopify.payable : round2(invoiceTotal - depositPaid - discount);
   const savedDriver = num(values.driver_or_gogovan_cost);
-  const driverCost = savedDriver != null ? { value: savedDriver, from: "saved" as const } : { value: 0, from: "default" as const };
+  const driverCost = auto?.driverCost != null ? { value: auto.driverCost, from: "default" as const } : savedDriver != null ? { value: savedDriver, from: "saved" as const } : { value: 0, from: "default" as const };
+  const urnCostValue = auto?.urnCost != null ? auto.urnCost : v("urn_cost");
   const memorialCost = lines && lines.costCount > 0 ? { value: round2(lines.cost), from: "lines" as const } : { value: v("memorial_cost"), from: "saved" as const };
-  const grossProfit = round2(invoiceTotal - discount - memorialCost.value - v("urn_cost") - v("delivery_cost_to_customer") - driverCost.value - v("commission"));
-  return { memorial, invoiceTotal, depositPaid, credit, discount, balanceDue, driverCost, referral: referralFee(values.referral, values.package_price, values.package_code), memorialCost, grossProfit };
+  const grossProfit = round2(invoiceTotal - discount - memorialCost.value - urnCostValue - v("delivery_cost_to_customer") - driverCost.value - v("commission"));
+  return { urnCost: urnCostValue, memorial, invoiceTotal, depositPaid, credit, discount, balanceDue, driverCost, referral: referralFee(values.referral, values.package_price, values.package_code), memorialCost, grossProfit };
 }
 
 // 紀念品產品行加總（只計已存的行；淡黃色建議行未保存，不計）
