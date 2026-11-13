@@ -122,3 +122,10 @@
 - 骨灰龕成本（`lib/urn-costs.ts` URN_COSTS）、轉介比例（`REFERRAL_PARTNERS`）、司機收費、遷移檔內的初始資料及手冊／handoff 內的成本例子已移除；數字只存於 Supabase `price_settings`（後台「價目設定」）。紀念品成本初始資料只在 OneDrive `Resoul 寵物善終/SQL/data_20261113_product_costs.sql`。
 - 注意：舊 commit 歷史仍有這些數字；要徹底清除須改寫 git 歷史並強制 push，未經用戶確認不做。
 - 「5. 紀念品及成本」供應商及紀念品成本：改為連未儲存的建議行一併計算（開單記錄的項目帶 SKU 作產品代碼），未填時按價目設定；須先執行紀念品成本 SQL 才有供應商及成本。
+
+## 2026-11-13 客戶資料欄位調整、Excel CSV 匯入
+
+- 「火化與儀式」隱藏告別日期；「骨灰龕」隱藏取貨／送貨日期，骨灰龕存放到期日由「費用與付款」移到「骨灰龕」；骨灰龕選單下不再顯示服務名稱。
+- 訂單狀態（row_status）改為選單（LOGISTICS_STATUSES），未有已存值時按單據自動填入（invoiceLogisticsStatus，淡黃色，採用自動填入才保存）。
+- CSV 匯入（`lib/logistics-import.ts`）支援 Excel「Basic Info Logistic」英文欄名（`EXCEL_FIELD_LABELS`），第一欄無欄名＝訂單狀態；日期「9 November 2026」「11 Nov 2026」、時間「6:30 PM」→ 18:30、取回日期「Pending」→ 待定、#REF! 等公式錯誤當空白、重量去掉 kg。原因：用戶 2026-11-13 以 Excel CSV 匯入 220 張單時大部分英文欄名未能對應（#276、#277 等沒有套餐價、狀態），重新匯入同一 CSV 即可補回（只寫有值的格）。
+- 本次改動提交在已清除成本數字的新歷史（scratchpad rewrite clone），待用戶執行 push-rewrite.sh 一併推上。

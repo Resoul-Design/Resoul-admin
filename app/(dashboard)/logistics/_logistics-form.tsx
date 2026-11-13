@@ -6,7 +6,8 @@ import { LOGISTICS_GROUPS } from "@/lib/logistics-fields";
 import { updateCustomerData } from "./actions";
 import { saveProductLineDetails, type LineDetail } from "./_product-lines-actions";
 import { REFERRAL_PARTNERS, computeLogistics, findPartner, type LineTotals, type ReferralPartner, type ShopifySummary } from "@/lib/logistics-calc";
-import { DateOrPending, TimePicker, UrnPicker, urnServiceName, type UrnProduct } from "../_pickers";
+import { DateOrPending, TimePicker, UrnPicker, type UrnProduct } from "../_pickers";
+import { LOGISTICS_STATUSES } from "@/lib/logistics-status";
 import { canonicalDriver } from "@/lib/driver-names";
 import { urnCost } from "@/lib/urn-costs";
 
@@ -163,6 +164,12 @@ export function LogisticsForm({ invoice, initial, exists, isAdmin, autoKeys = []
                           {drivers.map((d) => <option key={d}>{d}</option>)}
                           {values[f.key] && !drivers.includes(values[f.key]) && <option value={values[f.key]}>{values[f.key]}</option>}
                         </select>
+                      ) : f.key === "row_status" ? (
+                        <select value={values[f.key] || ""} onChange={(e) => setValues((v) => ({ ...v, [f.key]: e.target.value }))} className={input + (auto.has(f.key) && values[f.key] === initial[f.key] ? " !bg-amber-50" : "")}>
+                          <option value="">（未選擇）</option>
+                          {LOGISTICS_STATUSES.map((s) => <option key={s.key} value={s.key}>{s.label}（{s.key}）</option>)}
+                          {values[f.key] && !LOGISTICS_STATUSES.some((s) => s.key === values[f.key]) && <option value={values[f.key]}>{values[f.key]}</option>}
+                        </select>
                       ) : f.key === "urn_pickup_status" ? (
                         <div className="mt-1"><DateOrPending value={values[f.key] || ""} onChange={(val) => setValues((v) => ({ ...v, [f.key]: val }))} className={input.replace("mt-1 ", "") + (auto.has(f.key) && values[f.key] === initial[f.key] ? " !bg-amber-50" : "")} /></div>
                       ) : f.key === "ceremony_time" || f.key === "arrival_time" ? (
@@ -170,7 +177,6 @@ export function LogisticsForm({ invoice, initial, exists, isAdmin, autoKeys = []
                       ) : f.key === "urn" ? (
                         <div className="mt-1">
                           <UrnPicker value={values[f.key] || ""} onChange={(val) => setValues((v) => ({ ...v, [f.key]: val }))} products={urnProducts} className={input.replace("mt-1 ", "") + (auto.has(f.key) && values[f.key] === initial[f.key] ? " !bg-amber-50" : "")} />
-                          {urnServiceName(values[f.key] || "", urnProducts) && <span className="mt-1 block text-xs text-[var(--soft)]">{urnServiceName(values[f.key] || "", urnProducts)}</span>}
                         </div>
                       ) : f.key === "referral" ? (
                         // 轉介夥伴：對照表選項；舊資料的其他文字保留為選項，不會自動改寫
