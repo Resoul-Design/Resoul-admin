@@ -129,3 +129,10 @@
 - 訂單狀態（row_status）改為選單（LOGISTICS_STATUSES），未有已存值時按單據自動填入（invoiceLogisticsStatus，淡黃色，採用自動填入才保存）。
 - CSV 匯入（`lib/logistics-import.ts`）支援 Excel「Basic Info Logistic」英文欄名（`EXCEL_FIELD_LABELS`），第一欄無欄名＝訂單狀態；日期「9 November 2026」「11 Nov 2026」、時間「6:30 PM」→ 18:30、取回日期「Pending」→ 待定、#REF! 等公式錯誤當空白、重量去掉 kg。原因：用戶 2026-11-13 以 Excel CSV 匯入 220 張單時大部分英文欄名未能對應（#276、#277 等沒有套餐價、狀態），重新匯入同一 CSV 即可補回（只寫有值的格）。
 - 用戶決定不再處理 GitHub 舊歷史（不改寫歷史、不 force push），本次改動照常推上 main（6635dbd）。舊 commit 及 PR 仍含 11-10 至 11-13 的成本數字；之後不可再把成本寫入 repo。
+
+## 2026-11-13 CSV 匯入提示修正
+
+- 用戶匯入 Excel CSV 後有約 160 項提示及 #142 一行保存失敗（「6/13/2026」被當成日/月 → 2026-13-06）。
+- `lib/logistics-import.ts`：日期驗證年月日（ymd），第二個數字大於 12 時當作美式月/日/年；支援「21-Aug-26」；日期後括號備註（「24 Feb 2026 (Urn)」）只取日期；日期欄 Pending／Collected／0、數字欄 Pending 當空白不提示；重量「138g」→ 0.138 公斤（範圍仍提示）。
+- 附加單（66B 等）不再略過：寫入原單號 `extra_orders`（按附加單號合併，只更新有值欄位；找不到原單號時提示）。匯入結果顯示附加單筆數。
+- 用同一份 CSV 預演：220 張單、8 張附加單，剩 9 項提示（7 個重量範圍、1 個沒有年份的日期、1 行單號 NA）。

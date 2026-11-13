@@ -3,6 +3,7 @@ import { getStaff, hasModule } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { planImport, templateCsv } from "@/lib/logistics-import";
+import { extraOrders, type ExtraOrder } from "@/lib/logistics-extra";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -25,7 +26,7 @@ export async function POST(request: Request) {
   if (!(file instanceof File)) return NextResponse.json({ error: "請上傳 CSV 檔。" }, { status: 400 });
   if (file.size > 5 * 1024 * 1024) return NextResponse.json({ error: "檔案太大（上限 5MB）。" }, { status: 400 });
   const plan = planImport(await file.text(), { isAdmin: staff.role === "admin" });
-  if (!plan.rows.length) return NextResponse.json({ updated: 0, created: 0, errors: plan.errors, unknownColumns: plan.unknownColumns });
+  if (!plan.rows.length && !plan.extras.length) return NextResponse.json({ updated: 0, created: 0, errors: plan.errors, unknownColumns: plan.unknownColumns });
 
   const admin = createAdminClient();
   const ids = [...new Set(plan.rows.map((r) => r.invoiceNo))];
@@ -46,6 +47,23 @@ export async function POST(request: Request) {
     else if (existing.has(r.invoiceNo)) updated++;
     else { created++; existing.add(r.invoiceNo); }
   }
-  await logAudit("import_logistics_csv", "logistics_orders", null, `CSV 匯入：更新 ${updated}、新增 ${created}${errors.length ? `、${errors.length} 項提示` : ""}`);
-  return NextResponse.json({ updated, created, errors, unknownColumns: plan.unknownColumns });
+  // 附加單（66B 等）：按附加單號合併到原單號的 extra_orders（只更新 CSV 有填的欄位）
+  let extrasSaved = 0;
+  const byParent = new Map<number, typeof plan.extras>();
+  for (const e of plan.extras) byParent.set(e.invoiceNo, [...(byParent.get(e.invoiceNo) || []), e]);
+  for (const [parent, list] of byParent) {
+    const { data: row, error: readError } = await admin.from("logistics_orders").select("extra_orders").eq("invoice_no", parent).maybeSingle();
+    if (readError || !row) { for (const e of list) errors.push(`第 ${e.line} 行（附加單 ${e.ref}）：找不到原單號 ${parent}，未能保存`); continue; }
+    const current: ExtraOrder[] = extraOrders(row);
+    for (const e of list) {
+      const i = current.findIndex((x) => x.ref.toUpperCase() === e.ref);
+      if (i >= 0) current[i] = { ...current[i], fields: { ...current[i].fields, ...e.values } };
+      else current.push({ ref: e.ref, fields: e.values, source_row: e.line });
+    }
+    const { error } = await admin.from("logistics_orders").update({ extra_orders: current, updated_at: new Date().toISOString() }).eq("invoice_no", parent);
+    if (error) for (const e of list) errors.push(`第 ${e.line} 行（附加單 ${e.ref}）：未能保存（${error.message.slice(0, 80)}）`);
+    else extrasSaved += list.length;
+  }
+  await logAudit("import_logistics_csv", "logistics_orders", null, `CSV 匯入：更新 ${updated}、新增 ${created}${extrasSaved ? `、附加單 ${extrasSaved}` : ""}${errors.length ? `、${errors.length} 項提示` : ""}`);
+  return NextResponse.json({ updated, created, extras: extrasSaved, errors, unknownColumns: plan.unknownColumns });
 }

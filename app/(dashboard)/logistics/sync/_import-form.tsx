@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-type Result = { updated?: number; created?: number; errors?: string[]; unknownColumns?: string[]; error?: string };
+type Result = { updated?: number; created?: number; extras?: number; errors?: string[]; unknownColumns?: string[]; error?: string };
 
 // 上傳 CSV 並顯示結果（逐行提示）
 export function ImportForm() {
@@ -30,7 +30,7 @@ export function ImportForm() {
       </form>
       {result && (
         <div className="mt-4 rounded-xl border border-[var(--line)] bg-white p-4 text-sm" role="status">
-          {result.error ? <p className="text-red-700">{result.error}</p> : <p className="font-medium text-green-800">已更新 {result.updated ?? 0} 筆、新增 {result.created ?? 0} 筆。</p>}
+          {result.error ? <p className="text-red-700">{result.error}</p> : <p className="font-medium text-green-800">已更新 {result.updated ?? 0} 筆、新增 {result.created ?? 0} 筆{result.extras ? `、附加單 ${result.extras} 筆` : ""}。</p>}
           {!!result.unknownColumns?.length && <p className="mt-2 text-amber-700">以下欄位名稱無法對應，已略過：{result.unknownColumns.join("、")}</p>}
           {!!result.errors?.length && (
             <ul className="mt-2 max-h-64 list-disc space-y-0.5 overflow-auto pl-5 text-amber-800">
