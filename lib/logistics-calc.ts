@@ -62,7 +62,7 @@ export type LogisticsCalc = {
 
 // values：表格目前的值（已存值或正在編輯的值）；lines：紀念品產品行加總
 // 有 Shopify 單據時：發票總額＝Shopify 原價、尚欠＝Shopify 應付、折扣＝Shopify 折扣；已收訂金只計 Shopify 已付款的接送訂金（沒有＝0）
-export function computeLogistics(values: Record<string, unknown>, lines?: LineTotals | null, shopify?: ShopifySummary | null, auto?: { driverCost?: number | null; urnCost?: number | null; partners?: ReferralPartner[] }): LogisticsCalc {
+export function computeLogistics(values: Record<string, unknown>, lines?: LineTotals | null, shopify?: ShopifySummary | null, auto?: { driverCost?: number | null; urnCost?: number | null; partners?: ReferralPartner[]; memorialIncludesUrn?: boolean }): LogisticsCalc {
   const v = (k: string) => num(values[k]) ?? 0;
   const memorial = lines && lines.count > 0 ? { value: round2(lines.amount), from: "lines" as const } : { value: v("memorial_addon_price"), from: "saved" as const };
   const depositPaid = shopify?.depositPaid ?? 0;
@@ -74,7 +74,9 @@ export function computeLogistics(values: Record<string, unknown>, lines?: LineTo
   const driverCost = auto?.driverCost != null ? { value: auto.driverCost, from: "default" as const } : savedDriver != null ? { value: savedDriver, from: "saved" as const } : { value: 0, from: "default" as const };
   const urnCostValue = auto?.urnCost != null ? auto.urnCost : v("urn_cost");
   const memorialCost = lines && lines.costCount > 0 ? { value: round2(lines.cost), from: "lines" as const } : { value: v("memorial_cost"), from: "saved" as const };
-  const grossProfit = round2(invoiceTotal - discount - memorialCost.value - urnCostValue - v("delivery_cost_to_customer") - driverCost.value - v("commission"));
+  // Excel 匯入的單：「紀念品成本」已包括骨灰龕，毛利不再另扣骨灰龕成本（避免重複）
+  const urnInProfit = auto?.memorialIncludesUrn && memorialCost.from === "saved" ? 0 : urnCostValue;
+  const grossProfit = round2(invoiceTotal - discount - memorialCost.value - urnInProfit - v("delivery_cost_to_customer") - driverCost.value - v("commission"));
   return { urnCost: urnCostValue, memorial, invoiceTotal, depositPaid, credit, discount, balanceDue, driverCost, referral: referralFee(values.referral, values.package_price, values.package_code, auto?.partners), memorialCost, grossProfit };
 }
 

@@ -61,6 +61,52 @@ export function DateOrPending({ value, onChange, className }: { value: string; o
   );
 }
 
+// 套餐（Excel 用英文簡稱：Breeze、Cloud、Star…）
+export type PackageProduct = { title: string; variants: { title: string; sku: string | null; price: string | null }[] };
+const PACKAGES: [string, string][] = [["Breeze", "風之旅"], ["Cloud", "雲之旅"], ["Star", "星之旅"], ["Charity", "慈善套餐"], ["Back to Nature", "回歸自然"], ["Product only", "只有紀念品"]];
+const packageOf = (text: string) => PACKAGES.find(([en, zh]) => text.toLowerCase().includes(en.toLowerCase()) || text.includes(zh))?.[0] || "";
+
+export function PackagePicker({ name, code, products, onChange, className }: { name: string; code: string; products: PackageProduct[]; onChange: (v: { name: string; code: string; price: string | null }) => void; className: string }) {
+  const byCode = code ? products.find((p) => p.variants.some((v) => (v.sku || "").toUpperCase() === code.toUpperCase())) : undefined;
+  const current = byCode ? packageOf(byCode.title) : packageOf(name) || name;
+  const product = products.find((p) => packageOf(p.title) === current);
+  const known = PACKAGES.some(([en]) => en === current);
+  const label = (v: PackageProduct["variants"][number]) => `${v.title === "Default Title" ? "標準" : v.title}${v.sku ? `（${v.sku}）` : ""}`;
+  return (
+    <div className="grid gap-2 sm:grid-cols-2">
+      <select
+        value={current}
+        onChange={(e) => {
+          const next = e.target.value;
+          const p = products.find((x) => packageOf(x.title) === next);
+          const only = p && p.variants.length === 1 ? p.variants[0] : null;
+          onChange({ name: next, code: only?.sku || "", price: only?.price ?? null });
+        }}
+        className={className}
+        aria-label="套餐"
+      >
+        <option value="">請選擇</option>
+        {PACKAGES.map(([en, zh]) => <option key={en} value={en}>{zh} {en}</option>)}
+        {current && !known && <option value={current}>{current}</option>}
+      </select>
+      {product && product.variants.length > 1 ? (
+        <select
+          value={code}
+          onChange={(e) => { const v = product.variants.find((x) => x.sku === e.target.value); onChange({ name: current, code: e.target.value, price: v?.price ?? null }); }}
+          className={className}
+          aria-label="套餐代碼"
+        >
+          <option value="">選擇體重（套餐代碼）</option>
+          {product.variants.map((v) => <option key={v.sku || v.title} value={v.sku || ""}>{label(v)}</option>)}
+          {code && !byCode && <option value={code}>{code}</option>}
+        </select>
+      ) : (
+        <div className={className + " flex items-center text-[var(--soft)]"}>{code || "—"}</div>
+      )}
+    </div>
+  );
+}
+
 const HOURS = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, "0"));
 const MINUTES = Array.from({ length: 12 }, (_, i) => String(i * 5).padStart(2, "0"));
 

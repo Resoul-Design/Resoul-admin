@@ -6,7 +6,7 @@ import { LOGISTICS_GROUPS } from "@/lib/logistics-fields";
 import { updateCustomerData } from "./actions";
 import { saveProductLineDetails, type LineDetail } from "./_product-lines-actions";
 import { REFERRAL_PARTNERS, computeLogistics, findPartner, type LineTotals, type ReferralPartner, type ShopifySummary } from "@/lib/logistics-calc";
-import { DateOrPending, TimePicker, UrnPicker, type UrnProduct } from "../_pickers";
+import { DateOrPending, PackagePicker, TimePicker, UrnPicker, type PackageProduct, type UrnProduct } from "../_pickers";
 import { LOGISTICS_STATUSES } from "@/lib/logistics-status";
 import { canonicalDriver } from "@/lib/driver-names";
 import { urnCost } from "@/lib/urn-costs";
@@ -27,7 +27,7 @@ export type MemorialItem = LineDetail & { name: string; quantity: number };
 // 整張單的舊 Excel 紀念品欄（有每件紀念品資料後，只在已有數值時顯示）
 const LEGACY_MEMORIAL = new Set(["delivered_to_supplier_on", "supplier_returned_on", "memorial_cost"]);
 
-export function LogisticsForm({ invoice, initial, exists, isAdmin, autoKeys = [], derived = {}, lines = null, memorialItems = [], urnProducts = [], shopify = null, drivers = [], driverFees = {}, urnCosts, partners = REFERRAL_PARTNERS }: { invoice: string; initial: Record<string, string>; exists: boolean; isAdmin: boolean; autoKeys?: string[]; derived?: Record<string, string>; lines?: LineTotals | null; memorialItems?: MemorialItem[]; urnProducts?: UrnProduct[]; shopify?: ShopifySummary | null; drivers?: string[]; driverFees?: Record<string, number>; urnCosts?: Record<string, number>; partners?: ReferralPartner[] }) {
+export function LogisticsForm({ invoice, initial, exists, isAdmin, autoKeys = [], derived = {}, lines = null, memorialItems = [], urnProducts = [], packageProducts = [], legacy = false, shopify = null, drivers = [], driverFees = {}, urnCosts, partners = REFERRAL_PARTNERS }: { invoice: string; initial: Record<string, string>; exists: boolean; isAdmin: boolean; autoKeys?: string[]; derived?: Record<string, string>; lines?: LineTotals | null; memorialItems?: MemorialItem[]; urnProducts?: UrnProduct[]; packageProducts?: PackageProduct[]; legacy?: boolean; shopify?: ShopifySummary | null; drivers?: string[]; driverFees?: Record<string, number>; urnCosts?: Record<string, number>; partners?: ReferralPartner[] }) {
   const auto = new Set(autoKeys);
   const router = useRouter();
   const [values, setValues] = useState<Record<string, string>>(initial);
@@ -59,6 +59,7 @@ export function LogisticsForm({ invoice, initial, exists, isAdmin, autoKeys = []
     driverCost: values.driver && (values.driver !== initial.driver || !(initial.driver_or_gogovan_cost || "").trim()) ? driverFees[canonicalDriver(values.driver)] ?? null : null,
     urnCost: values.urn && (values.urn !== initial.urn || !(initial.urn_cost || "").trim()) ? urnCost(values.urn, urnCosts) : null,
     partners,
+    memorialIncludesUrn: legacy,
   });
   // 計算欄（只顯示，不會保存）：放在「費用與付款」組最前
   const calcFields: { label: string; value: string }[] = [
@@ -155,8 +156,8 @@ export function LogisticsForm({ invoice, initial, exists, isAdmin, autoKeys = []
                   {group.title === "紀念品及成本" && items.length > 0 && (
                     <div className="text-sm">紀念品成本合計<div className={readonly}>{hk(calc.memorialCost.value)}</div></div>
                   )}
-                  {group.fields.filter((f) => !(group.title === "紀念品及成本" && items.length > 0 && LEGACY_MEMORIAL.has(f.key) && !(initial[f.key] || "").trim())).map((f) => (
-                    <label key={f.key} className={"text-sm" + (f.type === "textarea" ? " sm:col-span-2 lg:col-span-4" : f.key === "urn" ? " sm:col-span-2" : "")}>
+                  {group.fields.filter((f) => f.key !== "package_code" && !(group.title === "紀念品及成本" && items.length > 0 && LEGACY_MEMORIAL.has(f.key) && !(initial[f.key] || "").trim())).map((f) => (
+                    <label key={f.key} className={"text-sm" + (f.type === "textarea" ? " sm:col-span-2 lg:col-span-4" : f.key === "urn" || f.key === "package_name" ? " sm:col-span-2" : "")}>
                       {f.label}
                       {f.key === "driver" ? (
                         <select value={values[f.key] || ""} onChange={(e) => setValues((v) => ({ ...v, [f.key]: e.target.value }))} className={input + (auto.has(f.key) && values[f.key] === initial[f.key] ? " !bg-amber-50" : "")}>
@@ -164,6 +165,8 @@ export function LogisticsForm({ invoice, initial, exists, isAdmin, autoKeys = []
                           {drivers.map((d) => <option key={d}>{d}</option>)}
                           {values[f.key] && !drivers.includes(values[f.key]) && <option value={values[f.key]}>{values[f.key]}</option>}
                         </select>
+                      ) : f.key === "package_name" ? (
+                        <div className="mt-1"><PackagePicker name={values.package_name || ""} code={values.package_code || ""} products={packageProducts} onChange={(p) => setValues((v) => ({ ...v, package_name: p.name, package_code: p.code, ...(p.price && !(v.package_price || "").trim() ? { package_price: String(Number(p.price)) } : {}) }))} className={input.replace("mt-1 ", "") + (auto.has(f.key) && values[f.key] === initial[f.key] ? " !bg-amber-50" : "")} /></div>
                       ) : f.key === "row_status" ? (
                         <select value={values[f.key] || ""} onChange={(e) => setValues((v) => ({ ...v, [f.key]: e.target.value }))} className={input + (auto.has(f.key) && values[f.key] === initial[f.key] ? " !bg-amber-50" : "")}>
                           <option value="">（未選擇）</option>

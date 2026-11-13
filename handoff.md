@@ -136,3 +136,10 @@
 - `lib/logistics-import.ts`：日期驗證年月日（ymd），第二個數字大於 12 時當作美式月/日/年；支援「21-Aug-26」；日期後括號備註（「24 Feb 2026 (Urn)」）只取日期；日期欄 Pending／Collected／0、數字欄 Pending 當空白不提示；重量「138g」→ 0.138 公斤（範圍仍提示）。
 - 附加單（66B 等）不再略過：寫入原單號 `extra_orders`（按附加單號合併，只更新有值欄位；找不到原單號時提示）。匯入結果顯示附加單筆數。
 - 用同一份 CSV 預演：220 張單、8 張附加單，剩 9 項提示（7 個重量範圍、1 個沒有年份的日期、1 行單號 NA）。
+
+## 2026-11-13 套餐選單、產品代碼、毛利修正
+
+- 客戶資料「套餐」改為 `PackagePicker`（`_pickers.tsx`）：先選 Breeze／Cloud／Star／Charity／Back to Nature／Product only（存 Excel 英文簡稱），再選體重款式（顯示 SKU，寫入 package_code）；套餐價格未填時按 Shopify 價錢填入。詳細頁另載 `loadCatalog("cremation")`。
+- 紀念品表格「加產品」的產品及款式選單顯示產品代碼（SKU）。
+- 毛利：Excel 匯入的單（source csv／basic_info_logistic）「紀念品成本」已包括骨灰龕，`computeLogistics` 的 `memorialIncludesUrn` 令毛利不再另扣骨灰龕成本（之前重複扣減，現與 Excel 最終利潤一致）。新單照扣。
+- 紀念品產品行：CSV 匯入只處理「Basic Info Logistic」；產品行來自 Excel「Memorial Product Order Tracking」，資料清空後要再執行 OneDrive 的紀念品產品行 SQL（不入 repo）；Shopify 紀念品訂單要按「全部同步」重新匯入。
