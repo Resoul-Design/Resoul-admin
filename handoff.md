@@ -163,3 +163,9 @@
 - 欄位名稱改為「紀念品成本（不含骨灰龕）」（舊名「紀念品成本」仍可 CSV 匯入）。
 - 匯入 Excel CSV（`plan.excel`）時，Excel「Memorial Product Cost」減去骨灰龕成本（按價目設定）才存入 memorial_cost。
 - 已匯入的舊單：OneDrive `SQL/fix_20261113_memorial_cost_excl_urn.sql`（只改仍是 Excel 原值的單，含成本不入 repo），**待用戶執行**。
+
+## 2026-11-14 毛利扣轉介費、骨灰龕產品行計入骨灰龕成本
+
+- 毛利再扣「轉介費」（只限應付夥伴，`computeLogistics` 內 referralCost），與 Excel 最終利潤一致。
+- 紀念品表格中產品代碼 URN… 的行（Excel「Memorial Product Order Tracking」會把套餐骨灰龕記成一行）：成本計入骨灰龕成本，不計入紀念品成本；卡片標示「骨灰龕」。骨灰龕欄沒有成本表對照時，以這些行的成本作骨灰龕成本。詳細頁自動填入的紀念品成本亦不含這些行。
+- 以 #259 核對：計算結果與 Excel「Endup Balance/ Profit」相同。

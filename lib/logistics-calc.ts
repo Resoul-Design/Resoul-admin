@@ -74,9 +74,11 @@ export function computeLogistics(values: Record<string, unknown>, lines?: LineTo
   const driverCost = auto?.driverCost != null ? { value: auto.driverCost, from: "default" as const } : savedDriver != null ? { value: savedDriver, from: "saved" as const } : { value: 0, from: "default" as const };
   const urnCostValue = auto?.urnCost != null ? auto.urnCost : v("urn_cost");
   const memorialCost = lines && lines.costCount > 0 ? { value: round2(lines.cost), from: "lines" as const } : { value: v("memorial_cost"), from: "saved" as const };
-  // 毛利＝發票總額－折扣－紀念品成本（不含骨灰龕）－骨灰龕成本－客戶送貨費－司機費－佣金
-  const grossProfit = round2(invoiceTotal - discount - memorialCost.value - urnCostValue - v("delivery_cost_to_customer") - driverCost.value - v("commission"));
-  return { urnCost: urnCostValue, memorial, invoiceTotal, depositPaid, credit, discount, balanceDue, driverCost, referral: referralFee(values.referral, values.package_price, values.package_code, auto?.partners), memorialCost, grossProfit };
+  // 毛利＝發票總額－折扣－紀念品成本（不含骨灰龕）－骨灰龕成本－客戶送貨費－司機費－佣金－轉介費（應付）
+  const referral = referralFee(values.referral, values.package_price, values.package_code, auto?.partners);
+  const referralCost = referral.payable && referral.fee != null ? referral.fee : 0;
+  const grossProfit = round2(invoiceTotal - discount - memorialCost.value - urnCostValue - v("delivery_cost_to_customer") - driverCost.value - v("commission") - referralCost);
+  return { urnCost: urnCostValue, memorial, invoiceTotal, depositPaid, credit, discount, balanceDue, driverCost, referral, memorialCost, grossProfit };
 }
 
 // 紀念品產品行加總（只計已存的行；淡黃色建議行未保存，不計）

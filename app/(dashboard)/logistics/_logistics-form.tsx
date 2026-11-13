@@ -23,7 +23,7 @@ const readonly = "mt-1 w-full rounded-lg border border-[var(--line)] bg-[var(--h
 const COMPARE = new Set(["package_price", "memorial_addon_price", "other_surcharge", "package_code"]);
 const differs = (a: string, b: string) => { const x = Number(String(a).replace(/[$,\s]/g, "")), y = Number(String(b).replace(/[$,\s]/g, "")); return Number.isFinite(x) && Number.isFinite(y) ? Math.abs(x - y) > 0.005 : a.trim() !== b.trim(); };
 
-export type MemorialItem = LineDetail & { name: string; quantity: number };
+export type MemorialItem = LineDetail & { name: string; quantity: number; urn?: boolean };
 // 整張單的舊 Excel 紀念品欄（有每件紀念品資料後不再顯示，以每件紀念品為準）
 const LEGACY_MEMORIAL = new Set(["memorial_supplier", "delivered_to_supplier_on", "supplier_returned_on"]);
 
@@ -53,11 +53,15 @@ export function LogisticsForm({ invoice, initial, exists, isAdmin, autoKeys = []
   const changedItems = items.filter(itemChanged);
   const setItem = (id: string, patch: Partial<MemorialItem>) => setItems((list) => list.map((x) => (x.id === id ? { ...x, ...patch } : x)));
   // 紀念品成本：有每件紀念品時按目前輸入加總
+  // 骨灰龕產品行（產品代碼 URN…）的成本計入骨灰龕成本，不計入紀念品成本
   const itemCosts = items.filter((x) => x.cost.trim() !== "");
-  const calc = computeLogistics(values, lines ? { ...lines, cost: itemCosts.reduce((n, x) => n + (Number(x.cost) || 0), 0), costCount: itemCosts.length } : null, shopify, {
+  const keepsakeCost = itemCosts.filter((x) => !x.urn).reduce((n, x) => n + (Number(x.cost) || 0), 0);
+  const urnItemCost = itemCosts.filter((x) => x.urn).reduce((n, x) => n + (Number(x.cost) || 0), 0);
+  const tableUrnCost = values.urn ? urnCost(values.urn, urnCosts) : null;
+  const calc = computeLogistics(values, lines ? { ...lines, cost: keepsakeCost, costCount: itemCosts.length } : null, shopify, {
     // 司機費：改了司機或未有已存值時，按司機的標準收費；骨灰龕成本：改了骨灰龕或未有已存值時，按成本表
     driverCost: values.driver && (values.driver !== initial.driver || !(initial.driver_or_gogovan_cost || "").trim()) ? driverFees[canonicalDriver(values.driver)] ?? null : null,
-    urnCost: values.urn && (values.urn !== initial.urn || !(initial.urn_cost || "").trim()) ? urnCost(values.urn, urnCosts) : null,
+    urnCost: values.urn && (values.urn !== initial.urn || !(initial.urn_cost || "").trim()) && tableUrnCost != null ? tableUrnCost : tableUrnCost == null && urnItemCost > 0 && !(initial.urn_cost || "").trim() ? urnItemCost : null,
     partners,
   });
   // 「費用與付款」：收入、收款、成本及利潤三段；計算欄只顯示，不會保存
@@ -207,7 +211,7 @@ export function LogisticsForm({ invoice, initial, exists, isAdmin, autoKeys = []
                   ))}
                   {group.title === "紀念品" && items.map((it, n) => (
                     <div key={it.id} className="rounded-xl border border-[var(--line)] bg-[var(--card)] p-3 sm:col-span-2 lg:col-span-4">
-                      <p className="mb-2 text-sm font-semibold">紀念品 {n + 1}：{it.name}{it.quantity !== 1 ? ` × ${it.quantity}` : ""}{itemChanged(it) && <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-normal text-amber-800">已修改</span>}</p>
+                      <p className="mb-2 text-sm font-semibold">{it.urn ? "骨灰龕" : "紀念品"} {n + 1}：{it.name}{it.quantity !== 1 ? ` × ${it.quantity}` : ""}{itemChanged(it) && <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-normal text-amber-800">已修改</span>}</p>
                       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                         <label className="text-sm">供應商<input value={it.vendor} onChange={(e) => setItem(it.id, { vendor: e.target.value })} maxLength={120} className={input} /></label>
                         <label className="text-sm">交供應商日期<input type="date" value={it.delivered_to_vendor_on} onChange={(e) => setItem(it.id, { delivered_to_vendor_on: e.target.value })} className={input} /></label>
