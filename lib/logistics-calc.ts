@@ -10,22 +10,8 @@
 export type ReferralType = "percent" | "fixed" | "zero" | "blank" | "unmapped";
 export type ReferralPartner = { key: string; aliases?: string[]; type: "percent" | "fixed" | "zero"; rate: number; payable: boolean; needsPackageCode?: boolean };
 
-// 轉介夥伴對照表（Resoul Referral Fee Cross-Map 2026-11-10）：只有 payable 的夥伴計費
-export const REFERRAL_PARTNERS: ReferralPartner[] = [
-  { key: "Precious Pet Clinic", type: "percent", rate: 0.1, payable: true },
-  { key: "OAFA", type: "percent", rate: 0.1, payable: true, needsPackageCode: true },
-  { key: "Yeah O2", aliases: ["YeahO2"], type: "percent", rate: 0.15, payable: true },
-  { key: "Joyee", type: "fixed", rate: 180, payable: true },
-  { key: "Buddy's", type: "percent", rate: 0.1, payable: true },
-  { key: "Small animal", type: "percent", rate: 0.1, payable: true },
-  { key: "半山貓醫院", type: "percent", rate: 0.1, payable: true },
-  { key: "HKDR(ALC)", type: "zero", rate: 0, payable: false },
-  { key: "Royal Pet 0-20", type: "percent", rate: 0.1, payable: true },
-  { key: "Royal Pet 21-40", type: "percent", rate: 0.15, payable: true },
-  { key: "Royal Pet 41-80", type: "percent", rate: 0.2, payable: true },
-  { key: "Royal Pet 81-100", type: "percent", rate: 0.25, payable: true },
-  { key: "Royal Pet>100", type: "percent", rate: 0.3, payable: true },
-];
+// 轉介夥伴對照表：比例及金額只放在資料庫「價目設定」（price_settings，kind = referral），不寫在公開程式碼；只有 payable 的夥伴計費
+export const REFERRAL_PARTNERS: ReferralPartner[] = [];
 
 const num = (v: unknown): number | null => {
   const s = String(v ?? "").replace(/[$,\s]/g, "");

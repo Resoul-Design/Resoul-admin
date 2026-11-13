@@ -65,8 +65,8 @@
 - 另一工作階段（Claude Code，jovial worktree）同時做了客戶資料自動成本；本次在 main（b7fe0a6）之上合併，沒有覆蓋上列提交。
 - 計算來源統一放在 `lib/logistics-auto-costs.ts`，顯示（客戶資料「費用與付款」唯讀欄）與保存（`logistics/actions.ts`）用同一套：
   - 紀念品加購＝已保存的紀念品產品行總額（不計淡黃色建議行及 Shopify 已刪除的行）；沒有產品行時用未取消的紀念品訂單／開單記錄，再後備已存值。
-  - 司機／GoGoVan 費用＝司機標準收費：`lib/drivers.ts` `driverFees()` 取試算表匯入記錄（source=basic_info_logistic）每位司機最常見金額（Ricky 320、豪仔 / Ho Jai 300、V's Dad 350、Yeah O2 400、Tony／Gary／Louis 300、Joe／JH／Vivian／Jason 0、O2 Team 400）；沒有對照才用最近一筆同司機記錄。
-  - 骨灰龕成本＝`lib/urn-costs.ts` 對照 Drive「Resoul Memorial Product Pricing for Admin（2026-11-10）」numeric_cost（例如 URN02SP 35、URN04L 50、URN08 200）；By Package／No Urn／Pending 等非產品代碼才用最近一筆同骨灰龕記錄。
+  - 司機／GoGoVan 費用＝司機標準收費：`lib/drivers.ts` `driverFees()` 取試算表匯入記錄（source=basic_info_logistic）每位司機最常見金額；沒有對照才用最近一筆同司機記錄。
+  - 骨灰龕成本＝`lib/urn-costs.ts` 對照 Drive「Resoul Memorial Product Pricing for Admin（2026-11-10）」成本；By Package／No Urn／Pending 等非產品代碼才用最近一筆同骨灰龕記錄。
 - 保存規則（保護舊資料）：自動值只在資料庫原本未有數值，或今次保存改了司機／骨灰龕時寫入；不會覆蓋舊單已存的紀念品加購、司機費、骨灰龕成本。
 - 欄位：接送費（pickup_fee）、紀念品加購、骨灰龕成本、司機／GoGoVan 費用在表格隱藏（資料保留），改為唯讀計算欄；毛利扣除骨灰龕成本及司機費，沒有司機費時為 0（不再以接送費作後備）。
 - 司機名稱：`lib/driver-names.ts`（瀏覽器可用）合併同一人寫法：豪仔、Ho Jai → 豪仔 / Ho Jai；V's dad、Vivian's dad → V's Dad；YEAH O2 → Yeah O2。只合併顯示，資料原文不變。
@@ -76,7 +76,7 @@
 ## 2026-11-13 訂金單時間選擇器、套餐代碼對齊、半山貓醫院轉介
 
 - 接送服務列表「操作 → 編輯資料」：原本的「預約時段」四段選單改為「接送時間」時、分選擇（`app/(dashboard)/deposits/_edit.tsx`，用 `_pickers.tsx` TimePicker，與開單及客戶資料一致）。舊單已存的時段文字（例如「上午（08:00–12:00）」）保留不改，除非同事重新選擇；網站預約表格仍為四段時段，沒有改動。
-- 轉介對照表（`lib/logistics-calc.ts` REFERRAL_PARTNERS）加入「半山貓醫院」：套餐價 × 10%，應付。比例按 #233 已存記錄（套餐價 4,800、轉介費 480）。
+- 轉介對照表（`lib/logistics-calc.ts` REFERRAL_PARTNERS）加入「半山貓醫院」（按套餐價百分比，應付；比例按 #233 已存記錄推算，現存於價目設定）。
 - #339、#334 已存套餐代碼對齊 Shopify 草稿 SKU（用戶 2026-11-13 確認）：`db/fix_20261113_package_codes.sql`（339 SJ1 → SJ30；334 BJ1 → BJ0，只在仍為舊值時更新），待用戶於 Supabase 執行。只改後台已存代碼，沒有改 Shopify 草稿。
 - 營運手冊（網頁、Word、PDF、public/manual）已同步。
 
@@ -116,3 +116,9 @@
 - 客戶資料：「供應商」（memorial_supplier）由「骨灰龕」組移到「紀念品及成本」；供應商（各行供應商以「、」合併）及紀念品成本（各行成本合計）按已保存產品行自動填入（淡黃色）；產品卡未填時顯示價目設定的供應商及成本。
 - 開新單：善終／告別套餐「加購紀念品」移出「更多選項」。#278 火化單（#D127）只有 SJ1，後台及 Shopify 都沒有紀念品，所以紀念品表格是 0 行。
 - 留意：骨灰龕成本及司機收費之前已寫在公開 repo（`lib/urn-costs.ts`、`migration_20261113_price_settings.sql`）。
+
+## 2026-11-13 成本數字移出公開 repo
+
+- 骨灰龕成本（`lib/urn-costs.ts` URN_COSTS）、轉介比例（`REFERRAL_PARTNERS`）、司機收費、遷移檔內的初始資料及手冊／handoff 內的成本例子已移除；數字只存於 Supabase `price_settings`（後台「價目設定」）。紀念品成本初始資料只在 OneDrive `Resoul 寵物善終/SQL/data_20261113_product_costs.sql`。
+- 注意：舊 commit 歷史仍有這些數字；要徹底清除須改寫 git 歷史並強制 push，未經用戶確認不做。
+- 「5. 紀念品及成本」供應商及紀念品成本：改為連未儲存的建議行一併計算（開單記錄的項目帶 SKU 作產品代碼），未填時按價目設定；須先執行紀念品成本 SQL 才有供應商及成本。

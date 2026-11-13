@@ -52,8 +52,8 @@ export default async function LogisticsDetail({ params }: { params: Promise<{ in
     prices.driverFees,
     prices.urnCosts,
   );
-  // 紀念品供應商及成本：按已保存的產品行（未填時按價目設定）
-  const savedLines = productLines.ready ? productLines.lines.filter((l) => l.id && !l.suggested && !l.missing) : [];
+  // 紀念品供應商及成本：按產品行（包括未儲存的建議行；未填時按價目設定）
+  const savedLines = productLines.ready ? productLines.lines.filter((l) => !l.missing) : [];
   const lineVendor = (l: (typeof savedLines)[number]) => l.vendor || productPricing(l.product_code, prices).vendor || "";
   const lineCost = (l: (typeof savedLines)[number]) => { if (l.cost != null) return l.cost; const c = productPricing(l.product_code, prices).cost; return c == null ? null : Math.round(c * (l.quantity || 1) * 100) / 100; };
   const memorialAuto: Record<string, string | number> = {};

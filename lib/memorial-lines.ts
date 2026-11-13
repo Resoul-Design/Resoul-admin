@@ -38,7 +38,7 @@ export type ProductLine = {
 
 const LINE_COLUMNS = "id, invoice_no, extra_ref, pet_name, product_name, variant_title, variant_id, product_code, vendor, quantity, unit_price, amount, status, status_note, customer_order_date, completed_on, delivered_to_vendor_on, vendor_returned_on, cost, remarks, source, source_ref, sync_status, sync_error, shopify_ref, invoice_url, target_company_id";
 
-type CompanyLine = { label: string; quantity: number; price?: number };
+type CompanyLine = { label: string; quantity: number; price?: number; sku?: string | null };
 
 // 「產品（款式）」→ 名稱及款式；「項目（HK$100）」只取名稱
 function splitLabel(label: string): { name: string; variant: string | null } {
@@ -128,7 +128,7 @@ export async function loadInvoiceProductLines(invoice: number): Promise<{ ready:
       if (left <= 0) return;
       suggestions.push({
         ...blank(invoice, `s-c${c.id}-${i}`), suggested: true, source: "company_order", source_ref: `company:${c.id}`,
-        product_name: name, variant_title: variant, quantity: left, unit_price: price, amount: price == null ? null : price * left,
+        product_name: name, variant_title: variant, product_code: l.sku || null, quantity: left, unit_price: price, amount: price == null ? null : price * left,
         customer_order_date: String(c.created_at || "").slice(0, 10) || null,
       });
     });

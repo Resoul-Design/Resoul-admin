@@ -18,7 +18,7 @@ export async function driverOptions(): Promise<string[]> {
   return [...seen.values()];
 }
 
-// 每位司機的標準司機費：按試算表匯入記錄最常見的「司機／GoGoVan 費用」（同一司機以往收費一致，例如 Ricky 320）
+// 每位司機的標準司機費：按試算表匯入記錄最常見的「司機／GoGoVan 費用」（價目設定未有該司機時才使用）
 export async function driverFees(): Promise<Record<string, number>> {
   const { data } = await createAdminClient().from("logistics_orders").select("driver, driver_or_gogovan_cost").eq("source", "basic_info_logistic").not("driver", "is", null).not("driver_or_gogovan_cost", "is", null).limit(5000);
   const count = new Map<string, Map<number, number>>();
