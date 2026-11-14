@@ -17,7 +17,7 @@ import { phoneKey } from "@/lib/product-orders";
 import { appendNote } from "@/lib/payment-check";
 import { invoiceLabel } from "@/lib/invoice-label";
 import { depositCreditValue } from "@/lib/deposit-amount";
-import { newCompanyProjectNo } from "@/lib/project-no";
+import { newCompanyProjectNo, newTestProjectNo } from "@/lib/project-no";
 import { loadSiteContent } from "@/lib/site-content-server";
 import { ORDER_TYPE_MAP, PET_GENDERS, RECEIVED_METHODS, type OrderType, type PaymentIntent, URN_PICKUP_PENDING } from "@/lib/order-types";
 import { applyFix } from "@/lib/reconcile-fix";
@@ -51,6 +51,7 @@ export type NewOrderInput = {
   variantId?: string; // 告別套餐、接送訂金
   lines?: NewOrderLine[]; // 紀念品；告別套餐及安樂在家的加購
   depositCreditId?: string; // 扣除同一專案已付的接送訂金（deposit_bookings.id）
+  test?: boolean; // 測試訂單：單號 TEST-01 等，不佔正式單號
   vetSurcharges?: number[]; // 安樂在家附加費（網站內容的序號）
   other?: { title: string; amount: number; description?: string };
   urnPickup?: UrnPickup; // 發票預設備註（接送訂金以外必選）
@@ -323,7 +324,10 @@ export async function createOrder(input: NewOrderInput): Promise<{ id?: string; 
   const remarkLines = input.type === "deposit" ? [] : invoiceRemarkLines(input.urnPickup, hasMemorial, urnPickupDate);
 
   // 新專案：專案編號＝單號（例如 290）；沿用舊專案則保留原編號
-  const projectNo = enteredProject || (await newCompanyProjectNo(admin));
+  // 測試訂單：另開 TEST-xx 專案及單號，不沿用正式專案、不扣訂金
+  const isTest = !!input.test;
+  if (isTest && t(input.depositCreditId, 40)) return { error: "測試訂單不可扣除接送訂金。" };
+  const projectNo = isTest ? await newTestProjectNo(admin) : enteredProject || (await newCompanyProjectNo(admin));
   if (!projectNo) return { error: "未能編配單號，請稍後再試。" };
 
   // 扣除接送訂金：只限同一專案、已付款、未用、未取消
@@ -372,6 +376,7 @@ export async function createOrder(input: NewOrderInput): Promise<{ id?: string; 
       owner_name: name, contact: phone, pet_name: petName || null, pet_type: petType || null, service_date: serviceDate || null,
       pickup_address: input.type === "vet" ? null : address || null, notes, status: "new",
       payment_ref: paymentRef, payment_status: "pending", payment_amount: amount, payment_currency: "HKD",
+      ...(isTest ? { is_test: true } : {}),
     };
     const row: Record<string, unknown> = input.type === "deposit"
       ? { ...common, project_no: projectNo, plan: planName, service_time: slot || null, source: "admin:deposit" }
@@ -402,7 +407,7 @@ export async function createOrder(input: NewOrderInput): Promise<{ id?: string; 
     email,
     note: [...remarkLines, publicNote, otherDescription && input.type === "other" ? otherDescription : "", petName ? `寵物：${petName}` : "", `單據編號：${invoiceLabel(invoiceNo, input.type)}`].filter(Boolean).join("\n"),
     // 標籤只放類型；舊專案（RSL- 或自訂編號）另加專案編號。單號不加標籤（已在自訂欄位 Invoice No 及備註）
-    tags: [...def2.tags, ...(projectNo !== String(invoiceNo) ? [projectNo] : [])],
+    tags: [...def2.tags, ...(isTest ? ["TEST"] : projectNo !== String(invoiceNo) ? [projectNo] : [])],
     attributes: [
       { key: "Invoice No", value: invoiceLabel(invoiceNo, input.type) },
       { key: "Order Type", value: def2.label },
@@ -439,6 +444,7 @@ export async function createOrder(input: NewOrderInput): Promise<{ id?: string; 
     other: input.type === "other" ? { title: lines[0].title, description: otherDescription || null } : null,
     vetSurcharges: input.type === "vet" ? input.vetSurcharges || [] : null,
     depositCredit: credit ? { depositId: credit.id, amount: credit.amount, invoiceNo: credit.invoiceNo } : null,
+    test: isTest,
     draft: plan,
   };
   const { data: order, error: orderError } = await admin

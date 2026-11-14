@@ -148,6 +148,7 @@ export function NewOrderForm({ catalog, allowed, prefill, drivers = [] }: { cata
   const [urnPickup, setUrnPickup] = useState<UrnPickup | "">("");
   const [internalNote, setInternalNote] = useState("");
   const [intent, setIntent] = useState<PaymentIntent>("link");
+  const [isTest, setIsTest] = useState(false);
   const [method, setMethod] = useState("");
   const [more, setMore] = useState(false);
   const [creditId, setCreditId] = useState("");
@@ -256,7 +257,8 @@ export function NewOrderForm({ catalog, allowed, prefill, drivers = [] }: { cata
         ...(type === "deposit" ? { variantId: depositVariant?.v.id } : {}),
         ...(type === "product" ? { lines } : {}),
         ...(type === "vet" ? { vetSurcharges: surcharges, lines } : {}),
-        ...(chosenCredit ? { depositCreditId: chosenCredit.id } : {}),
+        ...(chosenCredit && !isTest ? { depositCreditId: chosenCredit.id } : {}),
+        ...(isTest ? { test: true } : {}),
         ...(type === "other" ? { other: { title: otherTitle, amount: Number(otherAmount), description: otherDesc } } : {}),
       });
       if (res.error) return setError(res.error);
@@ -508,9 +510,12 @@ export function NewOrderForm({ catalog, allowed, prefill, drivers = [] }: { cata
           </dl>
           {missing.length > 0 && <p className="mt-3 text-sm text-amber-700">尚欠：{missing.join("、")}</p>}
           {error && <p className="mt-3 text-sm text-red-700" role="alert">{error}</p>}
-          <div className="mt-4 flex justify-end">
+          <div className="mt-4 flex flex-wrap items-center justify-end gap-3">
+            <label className={"flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-sm " + (isTest ? "border-amber-400 bg-amber-50 text-amber-800" : "border-[var(--line)] bg-white")}>
+              <input type="checkbox" checked={isTest} onChange={(e) => setIsTest(e.target.checked)} />測試訂單（單號 TEST-xx）
+            </label>
             <button type="button" onClick={submit} disabled={pending || missing.length > 0} className="rounded-lg bg-[var(--gold)] px-5 py-2.5 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50">
-              {pending ? "建立中…" : "建立單據"}
+              {pending ? "建立中…" : isTest ? "建立測試單據" : "建立單據"}
             </button>
           </div>
         </Section>

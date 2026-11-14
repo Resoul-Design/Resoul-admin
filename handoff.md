@@ -189,3 +189,9 @@
 - 紀念品產品表格狀態下不再顯示 Excel 原文（status_note 仍保存）。
 - Grok 另列的付款／金額／狀態等「未匯入欄位」差異（131 格、108 筆）不在今次範圍。
 - 骨灰龕欄：已存為 By Package 或未填時，按紀念品表格內的骨灰龕產品行（URN…，不含 URNW 刻字）自動填入代碼（淡黃色，採用自動填入或修改後保存）；骨灰龕供應商亦按此代碼。
+
+## 2026-11-14 測試訂單（TEST-01）
+
+- 開新單「4. 確認」加「測試訂單（單號 TEST-xx）」選項，適用所有類型。測試單由 `newTestProjectNo`（`lib/project-no.ts`）直接在 company_invoices 寫入 900001 起的單號及專案編號 TEST-01、TEST-02…（不經正式單號序列 company_invoice_no_seq）；觸發器按專案編號配到同一單號。
+- `lib/invoice-label.ts`：TEST_INVOICE_BASE＝900000，`invoiceLabel` 把 900001 顯示為 TEST-01（接送訂金為 TEST-01-DEPOSIT）；Shopify 備註、Invoice No 欄、發票 PDF／Word、單詳情、客戶資料列表及詳細頁跟隨。
+- 測試單：接送／火化記錄 is_test＝true，開單記錄 details.test＝true，Shopify 標籤加 TEST（不加專案編號標籤），服務工作台當測試記錄（預設隱藏）；付款後的 Shopify 紀念品訂單如專案編號為 TEST-xx 亦標記 is_test。測試單不可扣接送訂金，亦不沿用正式專案。

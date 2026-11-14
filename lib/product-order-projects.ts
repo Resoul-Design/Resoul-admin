@@ -19,7 +19,8 @@ export async function assignMissingProjectNos(): Promise<Map<string, string>> {
     if (isProjectNo(fromOrder)) {
       const { error: updateError } = await admin
         .from("product_orders")
-        .update({ project_no: fromOrder })
+        // 測試訂單（TEST-01 等）付款後的 Shopify 訂單亦標記為測試
+        .update({ project_no: fromOrder, ...(/^TEST-\d+$/i.test(fromOrder) ? { is_test: true } : {}) })
         .eq("shopify_order_id", row.shopify_order_id)
         .is("project_no", null);
       if (!updateError) assigned.set(row.shopify_order_id, fromOrder);
