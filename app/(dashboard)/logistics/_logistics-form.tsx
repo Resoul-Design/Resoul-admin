@@ -138,7 +138,7 @@ export function LogisticsForm({ invoice, initial, exists, isAdmin, autoKeys = []
                           {values[f.key] && findPartner(values[f.key], partners) && findPartner(values[f.key], partners)?.key !== values[f.key] && <option value={values[f.key]}>{values[f.key]}</option>}
                         </select>
                       ) : f.type === "textarea" ? (
-                        <textarea value={values[f.key] || ""} onChange={(e) => setValues((v) => ({ ...v, [f.key]: e.target.value }))} rows={2} maxLength={2000} className={input + (auto.has(f.key) && values[f.key] === initial[f.key] ? " !bg-amber-50" : "")} />
+                        <textarea value={values[f.key] || ""} onChange={(e) => setValues((v) => ({ ...v, [f.key]: e.target.value }))} rows={2} maxLength={20000} className={input + (auto.has(f.key) && values[f.key] === initial[f.key] ? " !bg-amber-50" : "")} />
                       ) : (
                         <input
                           type={f.type === "date" ? "date" : f.type === "url" ? "url" : "text"}
@@ -218,7 +218,7 @@ export function LogisticsForm({ invoice, initial, exists, isAdmin, autoKeys = []
                         <label className="text-sm">供應商交回日期<input type="date" value={it.vendor_returned_on} onChange={(e) => setItem(it.id, { vendor_returned_on: e.target.value })} className={input} /></label>
                         <label className="text-sm">完成日期<input type="date" value={it.completed_on} onChange={(e) => setItem(it.id, { completed_on: e.target.value })} className={input} /></label>
                         <label className="text-sm">成本<input value={it.cost} onChange={(e) => setItem(it.id, { cost: e.target.value.replace(/[^\d.]/g, "") })} inputMode="decimal" className={input} /></label>
-                        <label className="text-sm sm:col-span-1 lg:col-span-3">備註<input value={it.remarks} onChange={(e) => setItem(it.id, { remarks: e.target.value })} maxLength={2000} className={input} /></label>
+                        <label className="text-sm sm:col-span-1 lg:col-span-3">備註<input value={it.remarks} onChange={(e) => setItem(it.id, { remarks: e.target.value })} maxLength={20000} className={input} /></label>
                       </div>
                     </div>
                   ))}

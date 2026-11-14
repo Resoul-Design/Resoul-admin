@@ -63,7 +63,7 @@ export function planMemorialImport(csv: string): { rows: MemorialImportRow[]; er
         quantity: money(get("unit")) || 1, unit_price: money(get("unitPrice")), amount: money(get("amount")),
         status: statusOf(statusNote, completedOn), status_note: statusNote?.slice(0, 300) || null,
         customer_order_date: date(get("order")), completed_on: completedOn, delivered_to_vendor_on: date(get("toVendor")), vendor_returned_on: date(get("returned")),
-        cost: money(get("cost")), remarks: text(get("remarks"))?.slice(0, 2000) || null,
+        cost: money(get("cost")), remarks: text(get("remarks"))?.slice(0, 20000) || null,
       },
     });
   }

@@ -180,3 +180,11 @@
 
 - 「成本及利潤」新增「其他費用」（other_cost，數字）及「其他費用說明」（other_cost_note）；毛利＝發票總額－折扣－紀念品成本（不含骨灰龕）－骨灰龕成本－司機費－客戶送貨費－佣金－轉介費（應付）－其他費用。
 - `db/migration_20261114_other_cost.sql` **待用戶執行**。保存時未有的可選欄位（urn_cost、urn_supplier、other_cost、other_cost_note）改為通用處理：略過該欄、其他照存並提示要執行的 SQL（`logistics/actions.ts` OPTIONAL）。
+
+## 2026-11-14 Grok 核對跟進：備註、體重、骨灰龕代碼、狀態原文
+
+- 備註上限由 2,000 改為 20,000 字（CSV 匯入、紀念品 Tracking 匯入、客戶資料保存及表格、紀念品產品行）；Grok 指出 #222–#239 等 10 筆備註被截斷，重新匯入 Excel CSV 即補回完整原文。
+- 體重：`db/migration_20261114_weight_precision.sql`（weight_kg 改為 numeric，保留 0.072 等小數）**待用戶執行**，之後重新匯入即修正 #216。
+- 骨灰龕：Excel 寫 By Package、後台已是 URN… 代碼的單（#254、#258、#259、#272）重新匯入時保留後台代碼（`app/api/logistics/sync/route.ts`）。
+- 紀念品產品表格狀態下不再顯示 Excel 原文（status_note 仍保存）。
+- Grok 另列的付款／金額／狀態等「未匯入欄位」差異（131 格、108 筆）不在今次範圍。

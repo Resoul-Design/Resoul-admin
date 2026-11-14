@@ -20,7 +20,7 @@ export async function updateCustomerData(invoice: string, values: Record<string,
     if (!(field.key in values)) continue;
     if (field.adminOnly && staff.role !== "admin") continue;
     if (field.hidden) continue; // 表格不顯示的欄位不在此修改（保留原有資料）
-    const raw = String(values[field.key] ?? "").trim().slice(0, field.type === "textarea" ? 2000 : 300);
+    const raw = String(values[field.key] ?? "").trim().slice(0, field.type === "textarea" ? 20000 : 300);
     if (!raw) { row[field.key] = null; continue; }
     if (field.type === "date" && !/^\d{4}-\d{2}-\d{2}$/.test(raw)) return { error: `「${field.label}」日期格式不正確。` };
     if (field.type === "number") {

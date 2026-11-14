@@ -158,7 +158,6 @@ export function ProductLines({ invoice, lines, catalog, catalogError, showCost, 
                         {!isMemorialStatus(r.status) && <option value={r.status}>{memorialLabel(r.status)}</option>}
                         {MEMORIAL_STATUSES.map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}
                       </select>
-                      {r.status_note && <span className="mt-0.5 block max-w-[150px] truncate text-xs text-[var(--soft)]" title={r.status_note}>{r.status_note}</span>}
                     </td>
                     <td className="w-32 p-1"><input type="date" value={r.customer_order_date} onChange={(e) => set(r.key, { customer_order_date: e.target.value })} className={cell} aria-label="下單日期" /></td>
                     <td className="w-36 p-1 text-xs">

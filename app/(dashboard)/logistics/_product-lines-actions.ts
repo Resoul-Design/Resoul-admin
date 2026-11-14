@@ -87,7 +87,7 @@ export async function saveProductLines(invoiceNo: number, rows: SaveLine[], dele
     const autoCost = cost.value == null && pricing.cost != null ? Math.round(pricing.cost * qty.value * 100) / 100 : null;
     const common: Record<string, unknown> = {
       product_code: text(r.product_code, 120), vendor: text(r.vendor, 120) || pricing.vendor, status: r.status, customer_order_date: d1.value, completed_on: d2.value,
-      delivered_to_vendor_on: d3.value, vendor_returned_on: d4.value, remarks: text(r.remarks, 2000), updated_at: now,
+      delivered_to_vendor_on: d3.value, vendor_returned_on: d4.value, remarks: text(r.remarks, 20000), updated_at: now,
       ...(showCost ? { cost: cost.value ?? autoCost } : !cur && autoCost != null ? { cost: autoCost } : {}),
     };
     const content: Record<string, unknown> = {
@@ -157,7 +157,7 @@ export async function saveProductLineDetails(invoiceNo: number, items: LineDetai
     const err = [d1, d2, d3, c].find((x) => x.error)?.error;
     if (err) return { error: err.replace(/^第 (\d+) 行/, "第 $1 件紀念品") };
     const { error: upErr } = await admin.from("memorial_product_lines").update({
-      vendor: text(it.vendor, 120), delivered_to_vendor_on: d1.value, vendor_returned_on: d2.value, completed_on: d3.value, cost: c.value, remarks: text(it.remarks, 2000), updated_at: new Date().toISOString(),
+      vendor: text(it.vendor, 120), delivered_to_vendor_on: d1.value, vendor_returned_on: d2.value, completed_on: d3.value, cost: c.value, remarks: text(it.remarks, 20000), updated_at: new Date().toISOString(),
     }).eq("id", it.id);
     if (upErr) return { error: `未能保存：${upErr.message}` };
   }

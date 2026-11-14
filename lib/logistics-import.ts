@@ -144,7 +144,7 @@ export function planImport(text: string, opts: { isAdmin: boolean }): ImportPlan
         else errors.push(`第 ${line} 行「${f.label}」日期格式無法辨認（${raw.slice(0, 20)}），已略過此格`);
       } else if (f.key === "arrival_time" || f.key === "ceremony_time") values[f.key] = toTime(raw);
       else if (f.key === "urn_pickup_status") values[f.key] = /^pending$/i.test(raw) ? "待定" : toDate(raw) || raw.slice(0, 300);
-      else values[f.key] = raw.slice(0, f.type === "textarea" ? 2000 : 300);
+      else values[f.key] = raw.slice(0, f.type === "textarea" ? 20000 : 300);
     });
     if (extra) extras.push({ line, invoiceNo: extra.invoice, ref: extra.ref, values });
     else rows.push({ line, invoiceNo, values });

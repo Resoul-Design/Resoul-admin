@@ -67,6 +67,13 @@ export async function POST(request: Request) {
       const mc = typeof r.values.memorial_cost === "number" ? r.values.memorial_cost : null;
       if (urn && mc != null && mc >= urn) r.values.memorial_cost = Math.round((mc - urn) * 100) / 100;
     }
+    // 後台已改為骨灰龕產品代碼（URN…）的單，Excel 仍寫 By Package 時保留後台代碼
+    const byPackage = plan.rows.filter((r) => /^by package$/i.test(String(r.values.urn || "")));
+    for (let i = 0; i < byPackage.length; i += 500) {
+      const { data } = await admin.from("logistics_orders").select("invoice_no, urn").in("invoice_no", byPackage.slice(i, i + 500).map((r) => r.invoiceNo));
+      const sku = new Set((data || []).filter((x) => /^URN/i.test(String(x.urn || ""))).map((x) => Number(x.invoice_no)));
+      for (const r of byPackage.slice(i, i + 500)) if (sku.has(r.invoiceNo)) delete r.values.urn;
+    }
   }
   const ids = [...new Set(plan.rows.map((r) => r.invoiceNo))];
   const existing = new Set<number>();
