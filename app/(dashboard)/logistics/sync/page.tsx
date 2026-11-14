@@ -15,7 +15,8 @@ export default async function LogisticsSyncPage() {
           <li>欄位名稱可用中文（與單號詳細頁相同）或欄位代號；可先 <a href="/api/logistics/sync" className="text-[var(--gold)] hover:underline">下載範本</a>。</li>
           <li>空白格不會覆蓋現有資料；只會更新有填的欄位。未有的單號會新增記錄。</li>
           <li>金額可含 $ 或逗號；日期接受 2026-11-08、2026/11/08 或 8/11/2026。</li>
-          <li>Excel「Basic Info Logistic」及「Memorial Product Order Tracking」匯出的 CSV 可直接匯入；紀念品只會加入未有的項目。</li>
+          <li>Excel「Basic Info Logistic」及「Memorial Product Order Tracking」匯出的 CSV 可直接匯入。</li>
+          <li>按「比較差異」先列出與後台不同的單及欄位（不會寫入），檢查後剔選要更新的項目，再按「核准並寫入」；沒有剔選的不會改動，相同的資料會略過。</li>
         </ol>
         <ImportForm />
       </div>

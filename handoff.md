@@ -196,3 +196,11 @@
 - `lib/invoice-label.ts`：TEST_INVOICE_BASE＝900000，`invoiceLabel` 把 900001 顯示為 TEST-01（接送訂金為 TEST-01-DEPOSIT）；Shopify 備註、Invoice No 欄、發票 PDF／Word、單詳情、客戶資料列表及詳細頁跟隨。
 - 測試單：接送／火化記錄 is_test＝true，開單記錄 details.test＝true，Shopify 標籤加 TEST（不加專案編號標籤），服務工作台當測試記錄（預設隱藏）；付款後的 Shopify 紀念品訂單如專案編號為 TEST-xx 亦標記 is_test。測試單不可扣接送訂金，亦不沿用正式專案。
 - 修正：測試訂單原本每次都開新 TEST 專案（同一客人第二張單變 TEST-02）。改為選回原有測試專案（TEST-xx）時沿用同一單號，選測試專案會自動剔選測試訂單；測試單不可沿用正式專案，正式單不可用測試專案。開單頁專案及訂金選項顯示 TEST-xx。已開的 TEST-02 併入 TEST-01：OneDrive `SQL/fix_20261114_merge_test02_into_test01.sql` **待用戶執行**。
+
+## 2026-11-15 Excel 匯入改為「比較差異 → 核准 → 寫入」
+
+- 用戶情況：Grok 每日檢查 Excel，客人亦會不斷更新 Excel 舊單，需要方便更新而又可人手檢查。
+- `lib/excel-sync.ts`：`prepareLogistics`（Excel 調整：紀念品成本扣骨灰龕、By Package 保留後台代碼）、`reviewLogistics`／`applyLogistics`（客戶資料及附加單，按欄位比較：數字按數值、日期取前 10 字）、`reviewMemorial`／`applyMemorial`（Tracking 每件紀念品：未有的新增，已有的列出更改欄位；已同步 Shopify 的行不改名稱、數量、價錢；Excel 空白不覆蓋）。
+- `app/api/logistics/sync/route.ts`：mode=preview 只回傳差異（不寫入）；mode=apply 連同 approved（項目 id → 欄位）只寫入核准部分，留審計記錄。
+- 匯入頁（`logistics/sync/_import-form.tsx`）：「比較差異」→ 每張單／每件紀念品列出「現有 → Excel」，可逐項或逐欄剔選、全選／全不選、只看新增 →「核准並寫入（n 項）」。
+- 以 Downloads 的 Excel CSV 預演（只讀）：客戶資料 122 張有更改、106 張相同；紀念品 68 件有更改。
