@@ -65,14 +65,19 @@ export default async function LogisticsDetail({ params }: { params: Promise<{ in
   if (costs.length) memorialAuto.memorial_cost = Math.round(costs.reduce((a, b) => a + b, 0) * 100) / 100;
   const state = invoiceLogisticsStatus({ rowStatus: null, deposits: deposits.data || [], cremations: cremations.data || [], company: (company.data || []).filter((c) => !c.linked_id), products: products.data || [], memorialStatuses: savedLines.filter((l) => l.id).map((l) => String(l.status)) });
   if (state && state.key !== "Cancelled") memorialAuto.row_status = state.key;
-  const urnCode = String(lg?.urn || derived.urn || "").trim().toUpperCase();
+  // 骨灰龕：已存為「套餐包括（By Package）」或未有時，按紀念品表格內的骨灰龕產品行（URN…）填入代碼（淡黃色，保存後才寫入）
+  const urnLine = savedLines.find((l) => /^URN/i.test(String(l.product_code || "")) && !/^URNW/i.test(String(l.product_code || "")));
+  const savedUrn = String(lg?.urn || "").trim();
+  const urnFromLine = urnLine && (!savedUrn || /^by package$/i.test(savedUrn)) ? String(urnLine.product_code).toUpperCase() : "";
+  if (urnFromLine) memorialAuto.urn = urnFromLine;
+  const urnCode = String(urnFromLine || lg?.urn || derived.urn || "").trim().toUpperCase();
   if (urnCode && prices.urnVendors[urnCode]) memorialAuto.urn_supplier = prices.urnVendors[urnCode];
   const allDerived: Record<string, string | number> = { ...derived, ...memorialAuto, ...automatic };
   const autoKeys: string[] = [];
   const formInitial: Record<string, string> = Object.fromEntries(LOGISTICS_FIELDS.map((f) => {
     const saved = lg ? lg[f.key] : null;
     const auto = allDerived[f.key];
-    const automaticKey = ["memorial_addon_price", "driver_or_gogovan_cost", "urn_cost"].includes(f.key);
+    const automaticKey = ["memorial_addon_price", "driver_or_gogovan_cost", "urn_cost"].includes(f.key) || (f.key === "urn" && !!urnFromLine);
     if (automaticKey && auto != null && String(auto) !== "") { autoKeys.push(f.key); return [f.key, String(auto).slice(0, f.type === "date" ? 10 : 20000)]; }
     // 司機：同一人不同寫法以合併後的名稱顯示（資料庫原文不變，未修改不會寫入）
     if (saved != null && String(saved) !== "") return [f.key, f.key === "driver" ? canonicalDriver(String(saved)) : String(saved).slice(0, f.type === "date" ? 10 : 20000)];
