@@ -324,10 +324,12 @@ export async function createOrder(input: NewOrderInput): Promise<{ id?: string; 
   const remarkLines = input.type === "deposit" ? [] : invoiceRemarkLines(input.urnPickup, hasMemorial, urnPickupDate);
 
   // 新專案：專案編號＝單號（例如 290）；沿用舊專案則保留原編號
-  // 測試訂單：另開 TEST-xx 專案及單號，不沿用正式專案、不扣訂金
+  // 測試訂單：沿用已選的測試專案（TEST-xx，同一專案同一單號），否則另開新的測試專案；不可與正式專案混用
   const isTest = !!input.test;
-  if (isTest && t(input.depositCreditId, 40)) return { error: "測試訂單不可扣除接送訂金。" };
-  const projectNo = isTest ? await newTestProjectNo(admin) : enteredProject || (await newCompanyProjectNo(admin));
+  const isTestProject = /^TEST-\d+$/i.test(enteredProject);
+  if (isTest && enteredProject && !isTestProject) return { error: "測試訂單不可沿用正式專案，請選「新專案」或測試專案（TEST-xx）。" };
+  if (!isTest && isTestProject) return { error: "此為測試專案（TEST-xx），請剔選「測試訂單」。" };
+  const projectNo = isTest ? (isTestProject ? enteredProject.toUpperCase() : await newTestProjectNo(admin)) : enteredProject || (await newCompanyProjectNo(admin));
   if (!projectNo) return { error: "未能編配單號，請稍後再試。" };
 
   // 扣除接送訂金：只限同一專案、已付款、未用、未取消

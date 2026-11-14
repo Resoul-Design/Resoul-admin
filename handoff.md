@@ -195,3 +195,4 @@
 - 開新單「4. 確認」加「測試訂單（單號 TEST-xx）」選項，適用所有類型。測試單由 `newTestProjectNo`（`lib/project-no.ts`）直接在 company_invoices 寫入 900001 起的單號及專案編號 TEST-01、TEST-02…（不經正式單號序列 company_invoice_no_seq）；觸發器按專案編號配到同一單號。
 - `lib/invoice-label.ts`：TEST_INVOICE_BASE＝900000，`invoiceLabel` 把 900001 顯示為 TEST-01（接送訂金為 TEST-01-DEPOSIT）；Shopify 備註、Invoice No 欄、發票 PDF／Word、單詳情、客戶資料列表及詳細頁跟隨。
 - 測試單：接送／火化記錄 is_test＝true，開單記錄 details.test＝true，Shopify 標籤加 TEST（不加專案編號標籤），服務工作台當測試記錄（預設隱藏）；付款後的 Shopify 紀念品訂單如專案編號為 TEST-xx 亦標記 is_test。測試單不可扣接送訂金，亦不沿用正式專案。
+- 修正：測試訂單原本每次都開新 TEST 專案（同一客人第二張單變 TEST-02）。改為選回原有測試專案（TEST-xx）時沿用同一單號，選測試專案會自動剔選測試訂單；測試單不可沿用正式專案，正式單不可用測試專案。開單頁專案及訂金選項顯示 TEST-xx。已開的 TEST-02 併入 TEST-01：OneDrive `SQL/fix_20261114_merge_test02_into_test01.sql` **待用戶執行**。

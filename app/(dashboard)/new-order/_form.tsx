@@ -1,5 +1,6 @@
 "use client";
 
+import { invoiceLabel } from "@/lib/invoice-label";
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { DraftCatalogProduct } from "@/lib/catalog";
@@ -148,7 +149,10 @@ export function NewOrderForm({ catalog, allowed, prefill, drivers = [] }: { cata
   const [urnPickup, setUrnPickup] = useState<UrnPickup | "">("");
   const [internalNote, setInternalNote] = useState("");
   const [intent, setIntent] = useState<PaymentIntent>("link");
-  const [isTest, setIsTest] = useState(false);
+  const [testTicked, setIsTest] = useState(false);
+  // 已選測試專案（TEST-xx）時一定是測試訂單
+  const testProject = /^TEST-\d+$/i.test(projectNo || "");
+  const isTest = testTicked || testProject;
   const [method, setMethod] = useState("");
   const [more, setMore] = useState(false);
   const [creditId, setCreditId] = useState("");
@@ -257,7 +261,7 @@ export function NewOrderForm({ catalog, allowed, prefill, drivers = [] }: { cata
         ...(type === "deposit" ? { variantId: depositVariant?.v.id } : {}),
         ...(type === "product" ? { lines } : {}),
         ...(type === "vet" ? { vetSurcharges: surcharges, lines } : {}),
-        ...(chosenCredit && !isTest ? { depositCreditId: chosenCredit.id } : {}),
+        ...(chosenCredit ? { depositCreditId: chosenCredit.id } : {}),
         ...(isTest ? { test: true } : {}),
         ...(type === "other" ? { other: { title: otherTitle, amount: Number(otherAmount), description: otherDesc } } : {}),
       });
@@ -293,7 +297,7 @@ export function NewOrderForm({ catalog, allowed, prefill, drivers = [] }: { cata
               {match.projects.map((p) => (
                 <label key={p.projectNo} className="flex cursor-pointer items-center gap-2">
                   <input type="radio" name="project" checked={projectNo === p.projectNo} onChange={() => setProjectNo(p.projectNo)} />
-                  <span>單號 <b>{p.invoiceNo ?? "—"}</b> · {p.projectNo} · {p.labels.join("、")} · {p.lastDate}</span>
+                  <span>單號 <b>{p.invoiceNo != null ? invoiceLabel(p.invoiceNo) : "—"}</b> · {p.projectNo} · {p.labels.join("、")} · {p.lastDate}</span>
                 </label>
               ))}
               <label className="flex cursor-pointer items-center gap-2">
@@ -448,7 +452,7 @@ export function NewOrderForm({ catalog, allowed, prefill, drivers = [] }: { cata
                 <div className="mb-1 font-medium">扣除接送訂金（同一專案）</div>
                 <label className="mr-4 inline-flex items-center gap-1.5"><input type="radio" name="credit" checked={!chosenCredit} onChange={() => setCreditId("")} />不扣除</label>
                 {projectDeposits.map((d) => (
-                  <label key={d.id} className="mr-4 inline-flex items-center gap-1.5"><input type="radio" name="credit" checked={chosenCredit?.id === d.id} onChange={() => setCreditId(d.id)} />單號 {d.invoiceNo ?? "—"} · {hk(d.amount)} · 已付 {d.paidAt}{d.isTest ? "（測試）" : ""}</label>
+                  <label key={d.id} className="mr-4 inline-flex items-center gap-1.5"><input type="radio" name="credit" checked={chosenCredit?.id === d.id} onChange={() => setCreditId(d.id)} />單號 {d.invoiceNo != null ? invoiceLabel(d.invoiceNo) : "—"} · {hk(d.amount)} · 已付 {d.paidAt}{d.isTest ? "（測試）" : ""}</label>
                 ))}
               </div>
             )}
@@ -512,7 +516,7 @@ export function NewOrderForm({ catalog, allowed, prefill, drivers = [] }: { cata
           {error && <p className="mt-3 text-sm text-red-700" role="alert">{error}</p>}
           <div className="mt-4 flex flex-wrap items-center justify-end gap-3">
             <label className={"flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-sm " + (isTest ? "border-amber-400 bg-amber-50 text-amber-800" : "border-[var(--line)] bg-white")}>
-              <input type="checkbox" checked={isTest} onChange={(e) => setIsTest(e.target.checked)} />測試訂單（單號 TEST-xx）
+              <input type="checkbox" checked={isTest} disabled={testProject} onChange={(e) => setIsTest(e.target.checked)} />測試訂單（單號 TEST-xx）
             </label>
             <button type="button" onClick={submit} disabled={pending || missing.length > 0} className="rounded-lg bg-[var(--gold)] px-5 py-2.5 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50">
               {pending ? "建立中…" : isTest ? "建立測試單據" : "建立單據"}
