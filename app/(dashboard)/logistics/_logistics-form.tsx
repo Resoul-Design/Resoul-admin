@@ -91,7 +91,7 @@ export function LogisticsForm({ invoice, initial, exists, isAdmin, autoKeys = []
       const res = Object.keys(payload).length || !exists ? await updateCustomerData(invoice, payload) : {};
       if (res.error) return setMsg({ ok: false, text: res.error });
       if (changedItems.length) {
-        const r2 = await saveProductLineDetails(Number(invoice), changedItems.map(({ id, vendor, delivered_to_vendor_on, vendor_returned_on, completed_on, cost, remarks }) => ({ id, vendor, delivered_to_vendor_on, vendor_returned_on, completed_on, cost, remarks })));
+        const r2 = await saveProductLineDetails(Number(invoice), changedItems.map(({ id, vendor, delivered_to_vendor_on, vendor_settled_on, vendor_returned_on, completed_on, cost, remarks }) => ({ id, vendor, delivered_to_vendor_on, vendor_settled_on, vendor_returned_on, completed_on, cost, remarks })));
         if (r2.error) return setMsg({ ok: false, text: r2.error });
         setSavedItems(items);
       }
@@ -218,6 +218,7 @@ export function LogisticsForm({ invoice, initial, exists, isAdmin, autoKeys = []
                       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                         <label className="text-sm">供應商<input value={it.vendor} onChange={(e) => setItem(it.id, { vendor: e.target.value })} maxLength={120} className={input} /></label>
                         <label className="text-sm">交供應商日期<input type="date" value={it.delivered_to_vendor_on} onChange={(e) => setItem(it.id, { delivered_to_vendor_on: e.target.value })} className={input} /></label>
+                        <label className="text-sm">供應商結算日期<input type="date" value={it.vendor_settled_on || ""} onChange={(e) => setItem(it.id, { vendor_settled_on: e.target.value })} className={input} /></label>
                         <label className="text-sm">供應商交回日期<input type="date" value={it.vendor_returned_on} onChange={(e) => setItem(it.id, { vendor_returned_on: e.target.value })} className={input} /></label>
                         <label className="text-sm">完成日期<input type="date" value={it.completed_on} onChange={(e) => setItem(it.id, { completed_on: e.target.value })} className={input} /></label>
                         <label className="text-sm">成本<input value={it.cost} onChange={(e) => setItem(it.id, { cost: e.target.value.replace(/[^\d.]/g, "") })} inputMode="decimal" className={input} /></label>

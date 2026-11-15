@@ -141,13 +141,13 @@ export function ProductLines({ invoice, lines, catalog, catalogError, showCost, 
             <table className="w-full min-w-[980px] text-sm">
               <thead>
                 <tr className="text-left text-xs text-[var(--soft)]">
-                  {["產品名稱", "款式", "產品代碼", "數量", "單價", "金額", "狀態", "下單日期", "Shopify", ""].map((h) => <th key={h} className="px-1 py-2 font-medium">{h}</th>)}
+                  {["產品名稱", "款式", "產品代碼", "數量", "單價", "金額", "狀態", ""].map((h) => <th key={h} className="px-1 py-2 font-medium">{h}</th>)}
                 </tr>
               </thead>
               <tbody>
                 {rows.map((r) => (
                   <tr key={r.key} className={"border-t border-[var(--line)] align-top " + (r.suggested ? "bg-amber-50" : r.missing ? "bg-red-50" : "")}>
-                    <td className="min-w-[180px] p-1"><input value={r.product_name} disabled={r.locked} onChange={(e) => set(r.key, { product_name: e.target.value })} maxLength={300} className={cell} aria-label="產品名稱" />{r.extra_ref && <span className="text-xs text-[var(--soft)]">附加單 {r.extra_ref}</span>}</td>
+                    <td className="min-w-[180px] p-1"><input value={r.product_name} disabled={r.locked} onChange={(e) => set(r.key, { product_name: e.target.value })} maxLength={300} className={cell} aria-label="產品名稱" />{r.extra_ref && <span className="text-xs text-[var(--soft)]">附加單 {r.extra_ref}</span>}{r.missing && <span className="block text-xs text-red-700">Shopify 已沒有此項目，可按「移除」刪走此行</span>}{r.sync_status === "failed" && <span className="block text-xs text-red-700" title={r.sync_error || ""}>同步 Shopify 失敗：{r.sync_error || "請重試"}</span>}</td>
                     <td className="min-w-[110px] p-1"><input value={r.variant_title} disabled={r.locked} onChange={(e) => set(r.key, { variant_title: e.target.value })} maxLength={200} className={cell} aria-label="款式" /></td>
                     <td className="w-24 p-1"><input value={r.product_code} onChange={(e) => set(r.key, { product_code: e.target.value })} maxLength={120} className={cell} aria-label="產品代碼" /></td>
                     <td className="w-16 p-1"><input value={r.quantity} disabled={r.locked} onChange={(e) => set(r.key, { quantity: e.target.value.replace(/[^\d.]/g, "") })} inputMode="decimal" className={cell} aria-label="數量" /></td>
@@ -159,27 +159,10 @@ export function ProductLines({ invoice, lines, catalog, catalogError, showCost, 
                         {MEMORIAL_STATUSES.map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}
                       </select>
                     </td>
-                    <td className="w-32 p-1"><input type="date" value={r.customer_order_date} onChange={(e) => set(r.key, { customer_order_date: e.target.value })} className={cell} aria-label="下單日期" /></td>
-                    <td className="w-36 p-1 text-xs">
-                      {r.missing ? (
-                        <span className="text-red-700">Shopify {r.shopify_ref || ""} 已沒有此項目，可按「移除」刪走此行</span>
-                      ) : r.sync_status === "synced" ? (
-                        <span className="text-green-800">已同步{r.shopify_ref ? ` ${r.shopify_ref}` : ""}{r.invoice_url && <> · <a href={r.invoice_url} target="_blank" rel="noopener noreferrer" className="text-[var(--gold)] hover:underline">付款頁 ↗</a></>}</span>
-                      ) : r.sync_status === "syncing" ? (
-                        <span className="text-[var(--soft)]">同步中…</span>
-                      ) : r.suggested || (r.id && r.source !== "manual") ? (
-                        <span className="text-[var(--soft)]">{r.source === "excel" ? "Excel 記錄" : "已在單據內"}</span>
-                      ) : (
-                        <>
-                          <label className="flex items-center gap-1"><input type="checkbox" checked={r.to_sync} onChange={(e) => set(r.key, { to_sync: e.target.checked })} />{r.to_sync ? "待同步" : "不同步"}</label>
-                          {r.sync_status === "failed" && <span className="mt-1 block text-red-700" title={r.sync_error || ""}>同步失敗：{r.sync_error || "請重試"}</span>}
-                        </>
-                      )}
-                    </td>
                     <td className="w-10 p-1 text-right">{r.suggested ? <span className="px-1 text-xs text-[var(--soft)]" title="先按「儲存」，之後可移除（會同時刪除 Shopify 項目）">—</span> : r.sync_status !== "syncing" && <button type="button" onClick={() => remove(r)} className="px-1 py-1.5 text-xs text-red-700 hover:underline">移除</button>}</td>
                   </tr>
                 ))}
-                {rows.length === 0 && <tr><td colSpan={10} className="p-6 text-center text-[var(--soft)]">未有產品。可選擇 Shopify 產品或按「＋ 加一行」。</td></tr>}
+                {rows.length === 0 && <tr><td colSpan={8} className="p-6 text-center text-[var(--soft)]">未有產品。可選擇 Shopify 產品或按「＋ 加一行」。</td></tr>}
               </tbody>
             </table>
           </div>

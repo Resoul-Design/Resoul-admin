@@ -140,7 +140,7 @@ export async function saveProductLines(invoiceNo: number, rows: SaveLine[], dele
 }
 
 // 「6. 紀念品及成本」：每件紀念品的供應商、日期、成本及備註（只改這幾欄，不影響產品名稱、數量、價錢及 Shopify）
-export type LineDetail = { id: string; vendor: string; delivered_to_vendor_on: string; vendor_returned_on: string; completed_on: string; cost: string; remarks: string };
+export type LineDetail = { id: string; vendor: string; delivered_to_vendor_on: string; vendor_settled_on?: string; vendor_returned_on: string; completed_on: string; cost: string; remarks: string };
 export async function saveProductLineDetails(invoiceNo: number, items: LineDetail[]): Promise<{ error?: string }> {
   const staff = await getStaff();
   if (!staff || !hasModule(staff, ["inventory"])) return { error: "沒有權限。" };
@@ -153,12 +153,16 @@ export async function saveProductLineDetails(invoiceNo: number, items: LineDetai
   for (let i = 0; i < items.length; i++) {
     const it = items[i];
     if (!ids.has(it.id)) return { error: "表格內容已過期，請重新整理頁面。" };
-    const d1 = date(it.delivered_to_vendor_on, "交供應商日期", i + 1), d2 = date(it.vendor_returned_on, "供應商交回日期", i + 1), d3 = date(it.completed_on, "完成日期", i + 1), c = num(it.cost, "成本", i + 1);
-    const err = [d1, d2, d3, c].find((x) => x.error)?.error;
+    const d1 = date(it.delivered_to_vendor_on, "交供應商日期", i + 1), d2 = date(it.vendor_returned_on, "供應商交回日期", i + 1), d3 = date(it.completed_on, "完成日期", i + 1), d4 = date(it.vendor_settled_on || "", "供應商結算日期", i + 1), c = num(it.cost, "成本", i + 1);
+    const err = [d1, d2, d3, d4, c].find((x) => x.error)?.error;
     if (err) return { error: err.replace(/^第 (\d+) 行/, "第 $1 件紀念品") };
-    const { error: upErr } = await admin.from("memorial_product_lines").update({
+    const patch: Record<string, unknown> = {
       vendor: text(it.vendor, 120), delivered_to_vendor_on: d1.value, vendor_returned_on: d2.value, completed_on: d3.value, cost: c.value, remarks: text(it.remarks, 20000), updated_at: new Date().toISOString(),
-    }).eq("id", it.id);
+      ...(it.vendor_settled_on !== undefined ? { vendor_settled_on: d4.value } : {}),
+    };
+    let { error: upErr } = await admin.from("memorial_product_lines").update(patch).eq("id", it.id);
+    // 未執行供應商結算日期遷移：其他欄照存
+    if (upErr && /vendor_settled_on/.test(upErr.message)) { delete patch.vendor_settled_on; ({ error: upErr } = await admin.from("memorial_product_lines").update(patch).eq("id", it.id)); }
     if (upErr) return { error: `未能保存：${upErr.message}` };
   }
   await logAudit("save_product_line_details", "memorial_product_lines", String(invoiceNo), `單號 ${invoiceNo}｜紀念品成本資料 ${items.length} 件`);

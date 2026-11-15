@@ -122,9 +122,10 @@ export async function applyLogistics(plan: ImportPlan, approved: Approved, admin
 // ---------- 紀念品（Memorial Product Order Tracking） ----------
 const MEMORIAL_LABEL: Record<string, string> = {
   pet_name: "寵物", product_name: "產品名稱", product_code: "產品代碼", vendor: "供應商", quantity: "數量", unit_price: "單價", amount: "金額", status: "狀態",
-  status_note: "Excel 狀態", customer_order_date: "下單日期", completed_on: "完成日期", delivered_to_vendor_on: "交供應商日期", vendor_returned_on: "供應商交回日期", cost: "成本", remarks: "備註",
+  status_note: "Excel 狀態", customer_order_date: "下單日期", completed_on: "完成日期", delivered_to_vendor_on: "交供應商日期", vendor_settled_on: "供應商結算日期", vendor_returned_on: "供應商交回日期", cost: "成本", remarks: "備註",
 };
-const MEMORIAL_TYPE: Record<string, string> = { quantity: "number", unit_price: "number", amount: "number", cost: "number", customer_order_date: "date", completed_on: "date", delivered_to_vendor_on: "date", vendor_returned_on: "date" };
+const MEMORIAL_TYPE: Record<string, string> = { quantity: "number", unit_price: "number", amount: "number", cost: "number", customer_order_date: "date", completed_on: "date", delivered_to_vendor_on: "date", vendor_settled_on: "date", vendor_returned_on: "date" };
+const withoutSettled = <T extends Record<string, unknown>>(v: T) => Object.fromEntries(Object.entries(v).filter(([k]) => k !== "vendor_settled_on"));
 const STATUS_LABEL: Record<string, string> = { ordered: "已訂購", pending_delivery: "待交付", completed: "已完成" };
 // 已同步 Shopify 的行：名稱、數量、價錢以 Shopify 為準，不按 Excel 改
 const LOCKED = new Set(["product_name", "product_code", "quantity", "unit_price", "amount"]);
@@ -168,7 +169,7 @@ export async function applyMemorial(csv: string, approved: Approved, admin: Supa
   const mp = planMemorialImport(csv);
   const ctx = await memorialContext(mp.rows, admin);
   const errors: string[] = [];
-  let added = 0, updated = 0;
+  let added = 0, updated = 0, settledMissing = false;
   for (const { row, line } of ctx) {
     const fields = approved[`M:${row.key}`];
     if (!fields?.length) continue;
@@ -176,13 +177,24 @@ export async function applyMemorial(csv: string, approved: Approved, admin: Supa
     const values = Object.fromEntries(Object.entries(row.values).filter(([k]) => allowed.has(k)));
     if (line) {
       if (!Object.keys(values).length) continue;
-      const { error } = await admin.from("memorial_product_lines").update({ ...values, updated_at: new Date().toISOString() }).eq("id", String(line.id));
+      let { error } = await admin.from("memorial_product_lines").update({ ...values, updated_at: new Date().toISOString() }).eq("id", String(line.id));
+      // 未執行供應商結算日期遷移：其他欄照寫
+      if (error && /vendor_settled_on/.test(error.message)) {
+        ({ error } = await admin.from("memorial_product_lines").update({ ...withoutSettled(values), updated_at: new Date().toISOString() }).eq("id", String(line.id)));
+        if (!error) settledMissing = true;
+      }
       if (error) errors.push(`單號 ${row.invoiceNo}「${row.values.product_name.slice(0, 30)}」：未能更新（${error.message.slice(0, 80)}）`); else updated++;
     } else {
       // 新增的紀念品：寫入整行（產品名稱必定寫入）
-      const { error } = await admin.from("memorial_product_lines").insert({ ...row.values, invoice_no: row.invoiceNo, extra_ref: row.extraRef, source: "excel", sync_status: "none", sort_order: Number(row.key.split("#")[1]), created_by: `Excel 匯入（${who}）` });
+      const insertRow = { ...row.values, invoice_no: row.invoiceNo, extra_ref: row.extraRef, source: "excel", sync_status: "none", sort_order: Number(row.key.split("#")[1]), created_by: `Excel 匯入（${who}）` };
+      let { error } = await admin.from("memorial_product_lines").insert(insertRow);
+      if (error && /vendor_settled_on/.test(error.message)) {
+        ({ error } = await admin.from("memorial_product_lines").insert(withoutSettled(insertRow)));
+        if (!error) settledMissing = true;
+      }
       if (error) errors.push(`單號 ${row.invoiceNo}「${row.values.product_name.slice(0, 30)}」：未能新增（${error.message.slice(0, 80)}）`); else added++;
     }
   }
+  if (settledMissing) errors.push("供應商結算日期未能保存：請先於 Supabase 執行 db/migration_20261116_vendor_settled.sql。");
   return { added, updated, errors };
 }

@@ -23,6 +23,7 @@ export type ProductLine = {
   customer_order_date: string | null;
   completed_on: string | null;
   delivered_to_vendor_on: string | null;
+  vendor_settled_on?: string | null;
   vendor_returned_on: string | null;
   cost: number | null;
   remarks: string | null;
@@ -35,8 +36,6 @@ export type ProductLine = {
   suggested?: boolean;
   missing?: boolean; // 已同步，但 Shopify 付款連結已沒有此項目（例如在 Shopify 刪除）
 };
-
-const LINE_COLUMNS = "id, invoice_no, extra_ref, pet_name, product_name, variant_title, variant_id, product_code, vendor, quantity, unit_price, amount, status, status_note, customer_order_date, completed_on, delivered_to_vendor_on, vendor_returned_on, cost, remarks, source, source_ref, sync_status, sync_error, shopify_ref, invoice_url, target_company_id";
 
 type CompanyLine = { label: string; quantity: number; price?: number; sku?: string | null };
 
@@ -58,7 +57,7 @@ function blank(invoice: number, key: string): ProductLine {
 export async function loadInvoiceProductLines(invoice: number): Promise<{ ready: boolean; lines: ProductLine[]; cancelled: boolean }> {
   const admin = createAdminClient();
   const [saved, orders, company, deposits, cremations] = await Promise.all([
-    admin.from("memorial_product_lines").select(LINE_COLUMNS).eq("invoice_no", invoice).order("sort_order").order("created_at"),
+    admin.from("memorial_product_lines").select("*").eq("invoice_no", invoice).order("sort_order").order("created_at"),
     admin.from("product_orders").select("shopify_order_id, line_items, shopify_created_at, cancelled_at, memorial_status, fulfillment_status").eq("invoice_no", invoice),
     admin.from("company_orders").select("id, order_type, status, details, created_at, shopify_order_id, linked_id").eq("invoice_no", invoice),
     admin.from("deposit_bookings").select("status").eq("invoice_no", invoice),

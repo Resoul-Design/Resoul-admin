@@ -209,3 +209,10 @@
 
 - 轉介費付款：新欄 referral_paid_on（`db/migration_20261116_referral_paid.sql` **待用戶執行**）。應付轉介費的單在「成本及利潤」顯示「轉介費付款日期」：剔「轉介費已付」即填今日（香港時間），可改日期；轉介費顯示「（已付）」，客戶資料列表轉介欄顯示已付／應付。毛利照扣轉介費。未加欄位時其他照存並提示（OPTIONAL）。
 - 自動填入：取消「採用自動填入」剔選；淡黃色自動填入的值在「儲存修改」時一併寫入。訂單狀態（row_status）除外，以免固定後不再按進度自動更新。
+
+## 2026-11-16 紀念品供應商日期、產品表格欄位
+
+- 每件紀念品卡加「供應商結算日期」（memorial_product_lines.vendor_settled_on，`db/migration_20261116_vendor_settled.sql` **待用戶執行**）；Tracking 匯入對應 Delivery date to vendor → 交供應商日期、Vendor settlement date → 供應商結算日期、Vendor return date → 供應商交回日期，並在「比較差異」列出。未加欄位時其他照寫並提示。
+- `lib/memorial-lines.ts` 讀取改為 select("*")（新欄位未建立時亦可讀）。
+- 紀念品產品表格不再顯示「下單日期」及「Shopify」欄；Shopify 已刪除或同步失敗的提示改放產品名稱下；新增行仍預設同步 Shopify。
+- 例：#256 BT019 在 Excel 交供應商日期為 2026-11-03，後台空白，因該行由舊版 Excel 匯入；用最新 Tracking CSV「比較差異」即可核准更新。

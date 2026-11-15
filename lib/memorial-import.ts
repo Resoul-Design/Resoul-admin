@@ -5,14 +5,14 @@ import { parseExtraRef } from "@/lib/logistics-extra";
 
 export type MemorialImportRow = {
   line: number; invoiceNo: number; extraRef: string | null; key: string;
-  values: { pet_name: string | null; product_name: string; product_code: string | null; vendor: string | null; quantity: number; unit_price: number | null; amount: number | null; status: string; status_note: string | null; customer_order_date: string | null; completed_on: string | null; delivered_to_vendor_on: string | null; vendor_returned_on: string | null; cost: number | null; remarks: string | null };
+  values: { pet_name: string | null; product_name: string; product_code: string | null; vendor: string | null; quantity: number; unit_price: number | null; amount: number | null; status: string; status_note: string | null; customer_order_date: string | null; completed_on: string | null; delivered_to_vendor_on: string | null; vendor_settled_on: string | null; vendor_returned_on: string | null; cost: number | null; remarks: string | null };
 };
 
 const norm = (s: string) => s.trim().toLowerCase().replace(/[\s（）()：:/]/g, "");
 const HEAD = {
   no: "Customer Number", pet: "Pet Name", order: "Customer Order Date", done: "Completed / delivery to Customer date",
   code: "Product Code", vendor: "Vendor", unit: "Unit", product: "Product", remarks: "Remarks", unitPrice: "Prodcut price - pre Unit",
-  amount: "Prodcut price  -Item Total", toVendor: "Delivery date to vendor", returned: "Vendor return date", cost: "Item cost/ To pay Vendor)", status: "Product Status",
+  amount: "Prodcut price  -Item Total", toVendor: "Delivery date to vendor", settled: "Vendor settlement date", returned: "Vendor return date", cost: "Item cost/ To pay Vendor)", status: "Product Status",
 } as const;
 
 // 是否「Memorial Product Order Tracking」CSV
@@ -62,7 +62,7 @@ export function planMemorialImport(csv: string): { rows: MemorialImportRow[]; er
         pet_name: text(get("pet")), product_name: product.slice(0, 300), product_code: code?.slice(0, 120) || null, vendor: text(get("vendor"))?.slice(0, 120) || null,
         quantity: money(get("unit")) || 1, unit_price: money(get("unitPrice")), amount: money(get("amount")),
         status: statusOf(statusNote, completedOn), status_note: statusNote?.slice(0, 300) || null,
-        customer_order_date: date(get("order")), completed_on: completedOn, delivered_to_vendor_on: date(get("toVendor")), vendor_returned_on: date(get("returned")),
+        customer_order_date: date(get("order")), completed_on: completedOn, delivered_to_vendor_on: date(get("toVendor")), vendor_settled_on: date(get("settled")), vendor_returned_on: date(get("returned")),
         cost: money(get("cost")), remarks: text(get("remarks"))?.slice(0, 20000) || null,
       },
     });
