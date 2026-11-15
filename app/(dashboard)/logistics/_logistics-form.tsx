@@ -40,8 +40,6 @@ export function LogisticsForm({ invoice, initial, exists, isAdmin, autoKeys = []
   const [saved, setSaved] = useState<Record<string, string>>(initial);
   const changed = (k: string) => (values[k] || "") !== (saved[k] || "");
   const changedCount = groups.reduce((n, g) => n + g.fields.filter((f) => changed(f.key)).length, 0);
-  // 自動填入（淡黃色）的值：按「採用自動填入」才保存，否則保留資料庫原有（空白）值
-  const [acceptAuto, setAcceptAuto] = useState(false);
   // 每件紀念品的成本資料（與客戶資料一起保存）
   const [items, setItems] = useState<MemorialItem[]>(memorialItems);
   const [savedItems, setSavedItems] = useState<MemorialItem[]>(memorialItems);
@@ -76,7 +74,8 @@ export function LogisticsForm({ invoice, initial, exists, isAdmin, autoKeys = []
       { kind: "calc", label: "骨灰龕成本", value: hk(calc.urnCost) },
       { kind: "calc", label: "司機／GoGoVan 費用", value: hk(calc.driverCost.value) },
       fld("delivery_cost_to_customer"), fld("commission"), fld("other_cost"), fld("other_cost_note"), fld("referral"),
-      { kind: "calc", label: `轉介費${calc.referral.partner ? `（${calc.referral.partner}）` : ""}`, value: calc.referral.fee == null ? "—" : `${hk(calc.referral.fee)}${calc.referral.payable && calc.referral.fee ? "（應付）" : ""}` },
+      { kind: "calc", label: `轉介費${calc.referral.partner ? `（${calc.referral.partner}）` : ""}`, value: calc.referral.fee == null ? "—" : `${hk(calc.referral.fee)}${calc.referral.payable && calc.referral.fee ? ((values.referral_paid_on || "").trim() ? "（已付）" : "（應付）") : ""}` },
+      ...(calc.referral.payable && calc.referral.fee ? [fld("referral_paid_on")] : []),
       ...(isAdmin ? [{ kind: "calc" as const, label: "毛利", value: hk(calc.grossProfit), strong: true }] : []),
     ] },
   ];
@@ -87,7 +86,7 @@ export function LogisticsForm({ invoice, initial, exists, isAdmin, autoKeys = []
     setMsg(null);
     start(async () => {
       // 只送出真正修改的欄位；未修改的欄位維持已存值，不會被重寫
-      const payload = Object.fromEntries(Object.entries(values).filter(([k, v]) => (v || "") !== (initial[k] || "") || (acceptAuto && auto.has(k) && (v || "") !== "")));
+      const payload = Object.fromEntries(Object.entries(values).filter(([k, v]) => (v || "") !== (initial[k] || "") || (auto.has(k) && k !== "row_status" && (v || "") !== "")));
       if (exists && !Object.keys(payload).length && !changedItems.length) return setMsg({ ok: true, text: "沒有修改，未有保存。" });
       const res = Object.keys(payload).length || !exists ? await updateCustomerData(invoice, payload) : {};
       if (res.error) return setMsg({ ok: false, text: res.error });
@@ -115,6 +114,11 @@ export function LogisticsForm({ invoice, initial, exists, isAdmin, autoKeys = []
                         </select>
                       ) : f.key === "package_name" ? (
                         <div className="mt-1"><PackagePicker name={values.package_name || ""} code={values.package_code || ""} products={packageProducts} onChange={(p) => setValues((v) => ({ ...v, package_name: p.name, package_code: p.code, ...(p.price && !(v.package_price || "").trim() ? { package_price: String(Number(p.price)) } : {}) }))} className={input.replace("mt-1 ", "") + (auto.has(f.key) && values[f.key] === initial[f.key] ? " !bg-amber-50" : "")} /></div>
+                      ) : f.key === "referral_paid_on" ? (
+                        <div className="mt-1 flex items-center gap-3">
+                          <label className="flex shrink-0 items-center gap-1.5"><input type="checkbox" checked={!!(values[f.key] || "").trim()} onChange={(e) => setValues((v) => ({ ...v, [f.key]: e.target.checked ? new Date(Date.now() + 8 * 3600 * 1000).toISOString().slice(0, 10) : "" }))} />轉介費已付</label>
+                          <input type="date" value={values[f.key] || ""} onChange={(e) => setValues((v) => ({ ...v, [f.key]: e.target.value }))} className={input.replace("mt-1 ", "")} />
+                        </div>
                       ) : f.key === "row_status" ? (
                         <select value={values[f.key] || ""} onChange={(e) => setValues((v) => ({ ...v, [f.key]: e.target.value }))} className={input + (auto.has(f.key) && values[f.key] === initial[f.key] ? " !bg-amber-50" : "")}>
                           <option value="">（未選擇）</option>
@@ -180,8 +184,7 @@ export function LogisticsForm({ invoice, initial, exists, isAdmin, autoKeys = []
       {staleCount > 0 && <p className="mb-3 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">有 {staleCount} 個金額與單據最新計算不同（例如開單後加減了產品），請在「費用與付款」核對，按「用單據金額」更新後儲存。</p>}
       {autoKeys.length > 0 && (
         <p className="mb-3 flex flex-wrap items-center gap-2 text-xs text-[var(--soft)]">
-          <span><span className="mr-1 inline-block h-3 w-3 rounded border border-amber-300 bg-amber-50 align-middle" />淡黃色欄位按單據資料自動填入（{autoKeys.length} 項），只作參考；修改後或按「採用自動填入」才會保存。</span>
-          <label className="flex items-center gap-1 text-[var(--ink)]"><input type="checkbox" checked={acceptAuto} onChange={(e) => setAcceptAuto(e.target.checked)} />採用自動填入</label>
+          <span><span className="mr-1 inline-block h-3 w-3 rounded border border-amber-300 bg-amber-50 align-middle" />淡黃色欄位已按單據資料自動填入（{autoKeys.length} 項），按「儲存修改」時一併保存。</span>
         </p>
       )}
       <div className="space-y-3">

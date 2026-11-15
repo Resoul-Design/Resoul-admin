@@ -73,6 +73,7 @@ export async function updateCustomerData(invoice: string, values: Record<string,
     urn_supplier: "骨灰龕供應商未能保存：請先於 Supabase 執行 db/migration_20261113_urn_supplier.sql。",
     other_cost: "其他費用未能保存：請先於 Supabase 執行 db/migration_20261114_other_cost.sql。",
     other_cost_note: "其他費用說明未能保存：請先於 Supabase 執行 db/migration_20261114_other_cost.sql。",
+    referral_paid_on: "轉介費付款日期未能保存：請先於 Supabase 執行 db/migration_20261116_referral_paid.sql。",
   };
   const dropped = new Set<string>();
   for (let tries = 0; error && tries < 4; tries++) {

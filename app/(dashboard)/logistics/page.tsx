@@ -78,6 +78,7 @@ export default async function LogisticsPage() {
     updated: hkTime(text(row, "updated_at", "synced_at", "created_at")),
     extraRefs: extraOrders(row).map((x) => x.ref),
     referral: referralFee(row.referral, row.package_price, row.package_code, prices.partners),
+    referralPaid: !!String(row.referral_paid_on || "").trim(),
     state: invoiceLogisticsStatus({ rowStatus: rowStatus.get(String(row.invoice_no)), deposits: depBy.get(String(row.invoice_no)) || [], cremations: creBy.get(String(row.invoice_no)) || [], company: coBy.get(String(row.invoice_no)) || [], products: proBy.get(String(row.invoice_no)) || [], memorialStatuses: lineBy.get(String(row.invoice_no)) || [] }),
   }));
   const errors = [logistics, company, deposits, cremations, products].map((result) => result.error?.message).filter(Boolean);
