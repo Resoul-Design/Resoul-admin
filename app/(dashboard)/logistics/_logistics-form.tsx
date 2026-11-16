@@ -38,6 +38,14 @@ export function LogisticsForm({ invoice, initial, exists, isAdmin, autoKeys = []
   const groups = LOGISTICS_GROUPS.map((g) => ({ ...g, fields: g.fields.filter((f) => (!f.adminOnly || isAdmin) && !f.hidden) }));
   const [closed, setClosed] = useState<Set<string>>(() => new Set(groups.map((g) => g.title)));
   const [saved, setSaved] = useState<Record<string, string>>(initial);
+  const [autoSaved, setAutoSaved] = useState(false);
+  // 保存後頁面重新載入：以最新資料為準（未有未保存修改時）
+  const initialKey = JSON.stringify(initial);
+  const [shownInitial, setShownInitial] = useState(initialKey);
+  if (shownInitial !== initialKey) {
+    setShownInitial(initialKey);
+    if (Object.keys(values).every((k) => (values[k] || "") === (saved[k] || ""))) { setValues(initial); setSaved(initial); }
+  }
   const changed = (k: string) => (values[k] || "") !== (saved[k] || "");
   const changedCount = groups.reduce((n, g) => n + g.fields.filter((f) => changed(f.key)).length, 0);
   // 每件紀念品的成本資料（與客戶資料一起保存）
@@ -66,7 +74,7 @@ export function LogisticsForm({ invoice, initial, exists, isAdmin, autoKeys = []
   type FeeItem = { kind: "calc"; label: string; value: string; strong?: boolean } | { kind: "field"; key: string };
   const fld = (key: string): FeeItem => ({ kind: "field", key });
   const feeSections: { title: string; items: FeeItem[] }[] = [
-    { title: "收入", items: [fld("package_price"), { kind: "calc", label: "紀念品加購", value: hk(calc.memorial.value) }, fld("back_to_nature_price"), fld("urn_storage_rental_price"), fld("other_surcharge"), { kind: "calc", label: "發票總額", value: hk(calc.invoiceTotal), strong: true }] },
+    { title: "收入", items: [fld("package_price"), { kind: "calc", label: "紀念品加購", value: hk(calc.memorial.value) }, { kind: "calc", label: "骨灰龕加購費", value: hk(calc.urnAddon) }, fld("back_to_nature_price"), fld("urn_storage_rental_price"), fld("other_surcharge"), { kind: "calc", label: "發票總額", value: hk(calc.invoiceTotal), strong: true }] },
     { title: "收款", items: [{ kind: "calc", label: "已收訂金", value: hk(calc.depositPaid) }, { kind: "calc", label: "接送訂金抵扣", value: hk(calc.credit) }, { kind: "calc", label: "折扣金額", value: hk(calc.discount) }, fld("discount_code"), { kind: "calc", label: "尚欠", value: hk(calc.balanceDue), strong: true }] },
     { title: "成本及利潤", items: [
       // 紀念品成本：有每件紀念品成本時按「5. 紀念品」加總，否則可直接填寫
@@ -86,7 +94,8 @@ export function LogisticsForm({ invoice, initial, exists, isAdmin, autoKeys = []
     setMsg(null);
     start(async () => {
       // 只送出真正修改的欄位；未修改的欄位維持已存值，不會被重寫
-      const payload = Object.fromEntries(Object.entries(values).filter(([k, v]) => (v || "") !== (initial[k] || "") || (auto.has(k) && k !== "row_status" && (v || "") !== "")));
+      // 與最近一次保存的內容比較（保存後再按不會重複寫入）；淡黃色自動填入值未保存過時一併寫入
+      const payload = Object.fromEntries(Object.entries(values).filter(([k, v]) => (v || "") !== (saved[k] || "") || (!autoSaved && auto.has(k) && k !== "row_status" && (v || "") !== "")));
       if (exists && !Object.keys(payload).length && !changedItems.length) return setMsg({ ok: true, text: "沒有修改，未有保存。" });
       const res = Object.keys(payload).length || !exists ? await updateCustomerData(invoice, payload) : {};
       if (res.error) return setMsg({ ok: false, text: res.error });
@@ -96,6 +105,7 @@ export function LogisticsForm({ invoice, initial, exists, isAdmin, autoKeys = []
         setSavedItems(items);
       }
       setSaved(values);
+      setAutoSaved(true);
       setMsg(res.warning ? { ok: false, text: `已保存。${res.warning}` } : { ok: true, text: `已保存（${Object.keys(payload).length + changedItems.length} 項）。` });
       router.refresh();
     });

@@ -223,3 +223,8 @@
 - 頁面讀取改為地點的「可售」數量（inventoryItem.inventoryLevels，只有一個地點；Shopify 權限有 write_products、write_inventory，冇 read_locations，地點 ID 由 inventoryLevels 取得）。
 - 產品目錄快取（`lib/catalog.ts`）加 tag shopify-catalog，改售價後即時更新開單價錢。
 - 未在正式 Shopify 實際寫入測試（避免改動真實產品）；已用唯讀查詢確認讀取欄位正確。
+
+## 2026-11-17 骨灰龕加購費、保存後提示修正
+
+- 「收入」新增「骨灰龕加購費」：紀念品表格內產品代碼 URN… 的行（例如 Textured Heaven Upgrade URN06UP）的收費，不再計入「紀念品加購」；發票總額＝套餐價＋紀念品加購＋骨灰龕加購費＋骨灰龕存放費＋回歸自然費＋其他附加費（有 Shopify 單據時仍用 Shopify 原價）。`lineTotals` 加 urnAmount；自動填入的紀念品加購亦不含 URN 行。
+- 保存修正：用戶見到「已保存（3 項）」同時仍顯示「共 3 項未保存」。保存內容改為與最近一次保存比較（不再與載入時比較），淡黃色自動值只在首次保存時寫入；保存後頁面重新載入時，如沒有未保存修改即以最新資料為準。

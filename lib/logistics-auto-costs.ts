@@ -35,7 +35,8 @@ export function deriveLogisticsAutoCosts(
     ? logisticsRows.find((row) => same(row.urn || row.urn_name || row.urn_type, urn) && money(row.urn_cost) > 0)
     : undefined;
 
-  const savedLines = productLines.filter((row) => row.id && !row.suggested && !row.missing);
+  // 紀念品加購不含骨灰龕產品行（URN…，另計骨灰龕加購費）
+  const savedLines = productLines.filter((row) => row.id && !row.suggested && !row.missing && !/^URN/i.test(text(row.product_code)));
   const lineTotal = savedLines.reduce((sum, row) => {
     const amount = row.amount != null && row.amount !== "" ? money(row.amount) : money(row.unit_price) * Math.max(1, money(row.quantity));
     return sum + amount;
