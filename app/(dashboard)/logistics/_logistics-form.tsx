@@ -27,7 +27,7 @@ export type MemorialItem = LineDetail & { name: string; quantity: number; urn?: 
 // 整張單的舊 Excel 紀念品欄（有每件紀念品資料後不再顯示，以每件紀念品為準）
 const LEGACY_MEMORIAL = new Set(["memorial_supplier", "delivered_to_supplier_on", "supplier_returned_on"]);
 
-export function LogisticsForm({ invoice, initial, exists, isAdmin, autoKeys = [], derived = {}, lines = null, memorialItems = [], urnProducts = [], packageProducts = [], shopify = null, drivers = [], driverFees = {}, urnCosts, partners = REFERRAL_PARTNERS }: { invoice: string; initial: Record<string, string>; exists: boolean; isAdmin: boolean; autoKeys?: string[]; derived?: Record<string, string>; lines?: LineTotals | null; memorialItems?: MemorialItem[]; urnProducts?: UrnProduct[]; packageProducts?: PackageProduct[]; shopify?: ShopifySummary | null; drivers?: string[]; driverFees?: Record<string, number>; urnCosts?: Record<string, number>; partners?: ReferralPartner[] }) {
+export function LogisticsForm({ invoice, initial, exists, isAdmin, autoKeys = [], derived = {}, lines = null, memorialItems = [], urnProducts = [], packageProducts = [], discountCodes = [], shopify = null, drivers = [], driverFees = {}, urnCosts, partners = REFERRAL_PARTNERS }: { invoice: string; initial: Record<string, string>; exists: boolean; isAdmin: boolean; autoKeys?: string[]; derived?: Record<string, string>; lines?: LineTotals | null; memorialItems?: MemorialItem[]; urnProducts?: UrnProduct[]; packageProducts?: PackageProduct[]; discountCodes?: { code: string; summary: string }[]; shopify?: ShopifySummary | null; drivers?: string[]; driverFees?: Record<string, number>; urnCosts?: Record<string, number>; partners?: ReferralPartner[] }) {
   const auto = new Set(autoKeys);
   const router = useRouter();
   const [values, setValues] = useState<Record<string, string>>(initial);
@@ -106,7 +106,7 @@ export function LogisticsForm({ invoice, initial, exists, isAdmin, autoKeys = []
       }
       setSaved(values);
       setAutoSaved(true);
-      setMsg(res.warning ? { ok: false, text: `已保存。${res.warning}` } : { ok: true, text: `已保存（${Object.keys(payload).length + changedItems.length} 項）。` });
+      setMsg(res.warning ? { ok: false, text: `已保存。${"notice" in res && res.notice ? `${res.notice} ` : ""}${res.warning}` } : { ok: true, text: `已保存（${Object.keys(payload).length + changedItems.length} 項）。${"notice" in res && res.notice ? ` ${res.notice}` : ""}` });
       router.refresh();
     });
   }
@@ -129,6 +129,12 @@ export function LogisticsForm({ invoice, initial, exists, isAdmin, autoKeys = []
                           <label className="flex shrink-0 items-center gap-1.5"><input type="checkbox" checked={!!(values[f.key] || "").trim()} onChange={(e) => setValues((v) => ({ ...v, [f.key]: e.target.checked ? new Date(Date.now() + 8 * 3600 * 1000).toISOString().slice(0, 10) : "" }))} />轉介費已付</label>
                           <input type="date" value={values[f.key] || ""} onChange={(e) => setValues((v) => ({ ...v, [f.key]: e.target.value }))} className={input.replace("mt-1 ", "")} />
                         </div>
+                      ) : f.key === "discount_code" ? (
+                        <select value={values[f.key] || ""} onChange={(e) => setValues((v) => ({ ...v, [f.key]: e.target.value }))} className={input}>
+                          <option value="">（沒有優惠碼）</option>
+                          {discountCodes.map((c) => <option key={c.code} value={c.code}>{c.code}{c.summary ? `｜${c.summary}` : ""}</option>)}
+                          {values[f.key] && !discountCodes.some((c) => c.code.toUpperCase() === (values[f.key] || "").toUpperCase()) && <option value={values[f.key]}>{values[f.key]}</option>}
+                        </select>
                       ) : f.key === "row_status" ? (
                         <select value={values[f.key] || ""} onChange={(e) => setValues((v) => ({ ...v, [f.key]: e.target.value }))} className={input + (auto.has(f.key) && values[f.key] === initial[f.key] ? " !bg-amber-50" : "")}>
                           <option value="">（未選擇）</option>

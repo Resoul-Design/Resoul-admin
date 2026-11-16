@@ -6,6 +6,7 @@ import { logAudit } from "@/lib/audit";
 import { LOGISTICS_FIELDS } from "@/lib/logistics-fields";
 import { deriveLogisticsAutoCosts } from "@/lib/logistics-auto-costs";
 import { loadPriceSettings } from "@/lib/price-settings";
+import { applyCodeToInvoice } from "@/lib/discounts";
 import { updateServiceRecord, type RecordKind, type RecordValues } from "./_record-actions";
 
 // 保存客戶資料（Excel 欄位）：只更新表格內有的欄位；此單號未有客戶資料時建立一筆（來源：後台）。
@@ -94,7 +95,15 @@ export async function updateCustomerData(invoice: string, values: Record<string,
   revalidatePath(`/logistics/${invoiceNo}`);
   revalidatePath("/logistics");
   if (urnWarning) warnings.push(urnWarning);
-  return warnings.length ? { warning: warnings.join(" ") } : {};
+  // 優惠碼：套用到此單號未付款的 Shopify 付款連結（空白＝移除），折扣金額由 Shopify 計算
+  let notice = "";
+  if ("discount_code" in row) {
+    const code = String(row.discount_code ?? "").trim().toUpperCase();
+    const res = await applyCodeToInvoice(invoiceNo, code);
+    warnings.push(...res.warnings);
+    if (res.applied.length) notice = code ? `優惠碼 ${code} 已套用到 Shopify 付款連結 ${res.applied.join("、")}。` : `已移除 Shopify 付款連結 ${res.applied.join("、")} 的優惠碼。`;
+  }
+  return { ...(warnings.length ? { warning: warnings.join(" ") } : {}), ...(notice ? { notice } : {}) };
 }
 
 async function syncServiceRecords(invoiceNo: number, row: Record<string, string | number | null>): Promise<string[]> {

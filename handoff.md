@@ -228,3 +228,10 @@
 
 - 「收入」新增「骨灰龕加購費」：紀念品表格內產品代碼 URN… 的行（例如 Textured Heaven Upgrade URN06UP）的收費，不再計入「紀念品加購」；發票總額＝套餐價＋紀念品加購＋骨灰龕加購費＋骨灰龕存放費＋回歸自然費＋其他附加費（有 Shopify 單據時仍用 Shopify 原價）。`lineTotals` 加 urnAmount；自動填入的紀念品加購亦不含 URN 行。
 - 保存修正：用戶見到「已保存（3 項）」同時仍顯示「共 3 項未保存」。保存內容改為與最近一次保存比較（不再與載入時比較），淡黃色自動值只在首次保存時寫入；保存後頁面重新載入時，如沒有未保存修改即以最新資料為準。
+
+## 2026-11-17 優惠碼管理及自動套用 Shopify
+
+- 新頁「人事財務 → 優惠碼」（`/discounts`，模組 key discounts，預設只限管理員）：`lib/discounts.ts` 列出 codeDiscountNodes（快取 5 分鐘，tag shopify-discounts），新增 discountCodeBasicCreate（百分比／固定金額、開始／結束日期〔香港時間〕、使用上限、最低消費、每人一次、可否與訂單折扣合併；適用全部產品及全部客人），停用／啟用 discountCodeDeactivate／Activate；留審計記錄。
+- 客戶資料「優惠碼」改為選單（使用中／未開始的碼）；保存時 `applyCodeToInvoice` 以 draftOrderUpdate discountCodes 套用到該單號未付款的付款連結（開單記錄草稿及火化預約付款連結，接送訂金單除外；空白＝移除），Shopify 未接受時提示；折扣金額及尚欠沿用 Shopify 讀數。
+- **前提**：Shopify app 目前冇 read_discounts／write_discounts（已用唯讀查詢確認），要用戶在 Shopify Dev Dashboard 的 app 加權限並在商店批准；未加時頁面顯示提示、套用會失敗並提示。`lib/shopify.ts` SHOPIFY_SCOPES 已加入（OAuth 重新授權時使用）。
+- GraphQL 已驗證：列表查詢只因權限被拒（欄位有效）；draftOrderUpdate 以不存在 ID 測試格式有效（無改動）。
