@@ -242,3 +242,7 @@
 - 正式 Vercel 冇設定 SHOPIFY_ADMIN_API_TOKEN，`lib/shopify.ts` 改用 Supabase `shopify_credentials`（id primary）的金鑰；該金鑰由 `/api/shopify/install` → `/api/shopify/callback` OAuth 寫入。
 - 加 Shopify 權限（例如優惠碼 read_discounts、write_discounts）：① Shopify Dev Dashboard「Resoul Admin」app → Access scopes 加入並發佈新版本；② 以管理員登入後台，開 https://resoul-admin-five.vercel.app/api/shopify/install 批准；③ 見「Shopify 授權成功」即完成，即時生效，毋須 redeploy；④ 到「日常營運 → 優惠碼」確認。失敗多數因未發佈新版本或 callback 網址不符（須為 https://resoul-admin-five.vercel.app/api/shopify/callback）。
 - 營運手冊 Vercel 環境變數一節加提示，`shopify_credentials` 表說明同步更新；`public/manual/resoul-guide.html` 已更新。
+
+## 2026-11-17 庫存同步修正（@idempotent）
+
+- 倉存 · 出貨保存庫存時 Shopify 回「The @idempotent directive is required」：API 2026-04 起 inventorySetQuantities 必須附 `@idempotent(key:)`。`inventory/actions.ts` 每批加 `idempotencyKey: randomUUID()`。已用不存在的 ID 測試，格式獲接受（只回 INVALID_LOCATION／INVALID_INVENTORY_ITEM，無改動）。日後新增 inventoryAdjustQuantities 等庫存 mutation 亦須附此指令。

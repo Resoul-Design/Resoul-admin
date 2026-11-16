@@ -1,6 +1,7 @@
 "use server";
 
 // 倉存 · 出貨：在後台修改售價及庫存，直接同步 Shopify（售價：productVariantsBulkUpdate；庫存：inventorySetQuantities）
+import { randomUUID } from "node:crypto";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { requireModule } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
@@ -15,8 +16,9 @@ export type InventoryChange = {
 const PRICE = `mutation SetPrice($productId: ID!, $variants: [ProductVariantsBulkInput!]!) {
   productVariantsBulkUpdate(productId: $productId, variants: $variants) { userErrors { field message } }
 }`;
-const QTY = `mutation SetQty($input: InventorySetQuantitiesInput!) {
-  inventorySetQuantities(input: $input) { userErrors { field message code } }
+// API 2026-04 起必須附 @idempotent 防重覆金鑰（每批一個新金鑰）
+const QTY = `mutation SetQty($input: InventorySetQuantitiesInput!, $idempotencyKey: String!) {
+  inventorySetQuantities(input: $input) @idempotent(key: $idempotencyKey) { userErrors { field message code } }
 }`;
 
 export async function saveInventory(changes: InventoryChange[]): Promise<{ error?: string; done?: string; failed?: string[] }> {
@@ -56,6 +58,7 @@ export async function saveInventory(changes: InventoryChange[]): Promise<{ error
     const batch = valid.slice(i, i + 50);
     try {
       const res = await shopifyGraphQL<{ inventorySetQuantities: { userErrors: { message: string; code: string | null }[] } }>(QTY, {
+        idempotencyKey: randomUUID(),
         input: {
           name: "available", reason: "correction", referenceDocumentUri: "resoul://admin/inventory",
           quantities: batch.map((c) => ({ inventoryItemId: c.inventoryItemId, locationId: c.locationId, quantity: c.qty, changeFromQuantity: c.fromQty ?? null })),
