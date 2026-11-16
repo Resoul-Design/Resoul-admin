@@ -235,3 +235,4 @@
 - 客戶資料「優惠碼」改為選單（使用中／未開始的碼）；保存時 `applyCodeToInvoice` 以 draftOrderUpdate discountCodes 套用到該單號未付款的付款連結（開單記錄草稿及火化預約付款連結，接送訂金單除外；空白＝移除），Shopify 未接受時提示；折扣金額及尚欠沿用 Shopify 讀數。
 - **前提**：Shopify app 目前冇 read_discounts／write_discounts（已用唯讀查詢確認），要用戶在 Shopify Dev Dashboard 的 app 加權限並在商店批准；未加時頁面顯示提示、套用會失敗並提示。`lib/shopify.ts` SHOPIFY_SCOPES 已加入（OAuth 重新授權時使用）。
 - GraphQL 已驗證：列表查詢只因權限被拒（欄位有效）；draftOrderUpdate 以不存在 ID 測試格式有效（無改動）。
+- 導覽：「價目設定」及「優惠碼」由「人事財務」移到「日常營運」（客戶資料之後）；權限模組次序同步（`lib/modules.ts`）。

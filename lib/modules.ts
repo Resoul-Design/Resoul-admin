@@ -9,6 +9,8 @@ export const MODULES: ModuleDef[] = [
   { key: "inventory", label: "倉存 · 出貨", href: "/inventory" },
   // 物流客戶與倉存／出貨共用同一組權限，方便現有員工直接使用。
   { key: "inventory", label: "客戶資料", href: "/logistics" },
+  { key: "prices", label: "價目設定", href: "/prices" },
+  { key: "discounts", label: "優惠碼", href: "/discounts" },
   { key: "replies", label: "回覆助手", href: "/replies" },
   { key: "board_community", label: "主人評價及故事分享", href: "/board/community" },
   { key: "articles", label: "文章記錄", href: "/articles" },
@@ -17,8 +19,6 @@ export const MODULES: ModuleDef[] = [
   { key: "roster", label: "排更表", href: "/staff/roster" },
   { key: "tasks", label: "任務指派", href: "/staff/tasks" },
   { key: "finance", label: "財務管理", href: "/finance" },
-  { key: "prices", label: "價目設定", href: "/prices" },
-  { key: "discounts", label: "優惠碼", href: "/discounts" },
   { key: "projects", label: "專案管理", href: "/projects" },
   { key: "crm", label: "客戶檔案", href: "/crm" },
   { key: "reports", label: "報表與匯出", href: "/reports" },

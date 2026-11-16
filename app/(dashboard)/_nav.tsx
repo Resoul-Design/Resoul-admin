@@ -29,6 +29,8 @@ export const GROUPS: Group[] = [
     children: [
       { label: "倉存 · 出貨", href: "/inventory" },
       { label: "客戶資料", href: "/logistics" },
+      { label: "價目設定", href: "/prices" },
+      { label: "優惠碼", href: "/discounts" },
       { label: "回覆助手", href: "/replies" },
     ],
   },
@@ -47,8 +49,6 @@ export const GROUPS: Group[] = [
     children: [
       { label: "員工管理", href: "/staff" },
       { label: "財務管理", href: "/finance" },
-      { label: "價目設定", href: "/prices" },
-      { label: "優惠碼", href: "/discounts" },
       { label: "專案管理", href: "/projects" },
       { label: "客戶檔案", href: "/crm" },
     ],
