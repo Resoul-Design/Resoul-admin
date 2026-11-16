@@ -64,7 +64,7 @@ const getCatalogCached = unstable_cache(
     return products;
   },
   ["draft-catalog-v2"],
-  { revalidate: 300 }
+  { revalidate: 300, tags: ["shopify-catalog"] }
 );
 
 export type CatalogKind = "souvenir" | "cremation" | "deposit";

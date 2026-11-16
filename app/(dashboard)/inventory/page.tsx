@@ -23,6 +23,7 @@ type ProductsResp = {
               sku: string | null;
               price: string | null;
               inventoryQuantity: number | null;
+              inventoryItem: { id: string; tracked: boolean; inventoryLevels: { nodes: { location: { id: string }; quantities: { quantity: number }[] }[] } } | null;
             };
           }[];
         };
@@ -38,7 +39,7 @@ const QUERY = `query InventoryProducts($after: String) {
     edges { node {
       id title status productType
       featuredImage { url }
-      variants(first: 25) { pageInfo { hasNextPage endCursor } edges { node { id title sku price inventoryQuantity } } }
+      variants(first: 25) { pageInfo { hasNextPage endCursor } edges { node { id title sku price inventoryQuantity inventoryItem { id tracked inventoryLevels(first: 1) { nodes { location { id } quantities(names: ["available"]) { quantity } } } } } } }
     } }
   }
 }`;
@@ -57,7 +58,7 @@ export default async function InventoryPage() {
       const data: ProductsResp = await shopifyGraphQL<ProductsResp>(QUERY, { after });
       for (const { node } of data.products.edges) {
         if (node.variants.pageInfo.hasNextPage) {
-          const more = await fetchRemainingVariants<ShopifyProduct["variants"]["edges"][number]["node"]>(node.id, node.variants.pageInfo.endCursor, "id title sku price inventoryQuantity");
+          const more = await fetchRemainingVariants<ShopifyProduct["variants"]["edges"][number]["node"]>(node.id, node.variants.pageInfo.endCursor, "id title sku price inventoryQuantity inventoryItem { id tracked inventoryLevels(first: 1) { nodes { location { id } quantities(names: [\"available\"]) { quantity } } } }");
           node.variants.edges.push(...more.map((v) => ({ node: v })));
         }
         products.push(node);
@@ -77,12 +78,20 @@ export default async function InventoryPage() {
       title: p.title,
       status: p.status,
       image: p.featuredImage?.url ?? null,
-      variants: p.variants.edges.map((v) => ({
-        title: v.node.title,
-        sku: v.node.sku,
-        price: v.node.price,
-        qty: v.node.inventoryQuantity,
-      })),
+      variants: p.variants.edges.map((v) => {
+        // 庫存以 Shopify 地點的「可售」數量為準（只有一個地點）
+        const level = v.node.inventoryItem?.inventoryLevels.nodes[0];
+        return {
+          id: v.node.id,
+          title: v.node.title,
+          sku: v.node.sku,
+          price: v.node.price,
+          qty: level?.quantities[0]?.quantity ?? v.node.inventoryQuantity,
+          itemId: v.node.inventoryItem?.id ?? null,
+          locationId: level?.location.id ?? null,
+          tracked: !!v.node.inventoryItem?.tracked,
+        };
+      }),
     };
     if (!byType.has(type)) byType.set(type, []);
     byType.get(type)!.push(prod);

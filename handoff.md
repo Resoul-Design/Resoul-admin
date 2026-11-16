@@ -216,3 +216,10 @@
 - `lib/memorial-lines.ts` 讀取改為 select("*")（新欄位未建立時亦可讀）。
 - 紀念品產品表格不再顯示「下單日期」及「Shopify」欄；Shopify 已刪除或同步失敗的提示改放產品名稱下；新增行仍預設同步 Shopify。
 - 例：#256 BT019 在 Excel 交供應商日期為 2026-11-03，後台空白，因該行由舊版 Excel 匯入；用最新 Tracking CSV「比較差異」即可核准更新。
+
+## 2026-11-17 倉存 · 出貨：直接改售價及庫存並同步 Shopify
+
+- `/inventory` 每個款式可改售價及庫存（改過以淡黃色標示），底部「儲存並同步 Shopify（n 項）」→ `inventory/actions.ts` `saveInventory`（需 inventory 模組）：售價用 productVariantsBulkUpdate（按產品分組），庫存用 inventorySetQuantities（name available、reason correction、changeFromQuantity＝讀取時數量，期間被改動則不覆蓋並提示重新整理）。沒有追蹤庫存的款式只顯示數量。留審計記錄 update_inventory。
+- 頁面讀取改為地點的「可售」數量（inventoryItem.inventoryLevels，只有一個地點；Shopify 權限有 write_products、write_inventory，冇 read_locations，地點 ID 由 inventoryLevels 取得）。
+- 產品目錄快取（`lib/catalog.ts`）加 tag shopify-catalog，改售價後即時更新開單價錢。
+- 未在正式 Shopify 實際寫入測試（避免改動真實產品）；已用唯讀查詢確認讀取欄位正確。
