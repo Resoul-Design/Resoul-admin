@@ -531,7 +531,7 @@
           <tr><td><code>site_content</code></td><td>後台「網站內容」儲存的收費、紀念精品、商店分類、常見問題及頁頂公告。<span class="en">Prices, keepsakes, shop categories, FAQ and top notice saved in Site content.</span></td></tr>
           <tr><td><code>google_reviews</code></td><td>網站顯示的 Google 評價（由後台「主人評價及故事分享 → 查看服務評價」維護）。<span class="en">Google reviews shown on the website (maintained in the admin).</span></td></tr>
           <tr><td><code>api_rate_limits</code></td><td>公開表單及 AI 功能的防濫用計數（IP 經單向加密，只作短時間計數）。<span class="en">Abuse-prevention counters for public forms and AI tools (hashed IPs, short-lived).</span></td></tr>
-          <tr><td><code>shopify_credentials</code></td><td>（如用 OAuth）Shopify token；只由伺服器讀取。<span class="en">(If using OAuth) Shopify token; server-only.</span></td></tr>
+          <tr><td><code>shopify_credentials</code></td><td>正式後台使用的 Shopify 金鑰（由 /api/shopify/install 重新授權寫入）；只由伺服器讀取。<span class="en">Production Shopify token (written by re-authorising at /api/shopify/install); server-only.</span></td></tr>
         </tbody>
       </table></div>
       <div class="callout tip"><span class="tag">提示 TIP · Table Editor</span>手動修改一筆資料（例如更改預約狀態）：Supabase → Table Editor → 選擇資料表 → 修改該格 → Save。改動即時反映在後台。<span class="en">Hand-edit a record: Table Editor → pick table → edit cell → Save. It reflects in the admin at once.</span></div>
@@ -561,6 +561,7 @@
         </tbody>
       </table></div>
       <div class="callout warn"><span class="tag">注意 NOTE</span>以 <code>NEXT_PUBLIC_</code> 開頭的變數，類型必須選 <b>Config</b>（不可選 Secret）。修改任何變數後，必須 <b>Redeploy</b> 才生效。<span class="en">NEXT_PUBLIC_ variables must be type Config (not Secret). Redeploy after any change.</span></div>
+      <div class="callout tip"><span class="tag">提示 TIP · Shopify 權限</span>更新 Shopify 權限（例如加優惠碼權限）：正式後台的 Shopify 金鑰由「重新授權」存入 Supabase shopify_credentials，Vercel 沒有設定 SHOPIFY_ADMIN_API_TOKEN，毋須改 Vercel。步驟：① 在 Shopify Dev Dashboard 打開「Resoul Admin」app，於 Access scopes 加入所需權限（優惠碼為 read_discounts、write_discounts），儲存並發佈新版本；② 以管理員登入後台，打開 https://resoul-admin-five.vercel.app/api/shopify/install，在 Shopify 授權頁按批准；③ 看到「Shopify 授權成功」即完成，新金鑰即時生效，毋須重新部署；④ 到「日常營運 → 優惠碼」確認可讀取。授權失敗多數因未發佈新版本，或 app 的轉址網址不是 https://resoul-admin-five.vercel.app/api/shopify/callback。金鑰不會顯示，切勿貼到對話或文件。<span class="en">Updating Shopify permissions (e.g. adding discount scopes): the production admin's Shopify token is stored in Supabase shopify_credentials by re-authorising; Vercel has no SHOPIFY_ADMIN_API_TOKEN, so nothing changes in Vercel. Steps: 1) in the Shopify Dev Dashboard open the Resoul Admin app, add the scopes under Access scopes (discounts need read_discounts and write_discounts), save and release a new version; 2) log in to the admin as an admin and open https://resoul-admin-five.vercel.app/api/shopify/install, then approve on Shopify; 3) when you see Shopify 授權成功 it is done — the new token works immediately, no redeploy; 4) check 日常營運 → 優惠碼 loads. Failures are usually an unreleased version or a redirect URL other than https://resoul-admin-five.vercel.app/api/shopify/callback. The token is never shown; never paste it into chats or documents.</span></div>
     </section>
 
     <section id="faq">

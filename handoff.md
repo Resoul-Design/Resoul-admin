@@ -236,3 +236,9 @@
 - **前提**：Shopify app 目前冇 read_discounts／write_discounts（已用唯讀查詢確認），要用戶在 Shopify Dev Dashboard 的 app 加權限並在商店批准；未加時頁面顯示提示、套用會失敗並提示。`lib/shopify.ts` SHOPIFY_SCOPES 已加入（OAuth 重新授權時使用）。
 - GraphQL 已驗證：列表查詢只因權限被拒（欄位有效）；draftOrderUpdate 以不存在 ID 測試格式有效（無改動）。
 - 導覽：「價目設定」及「優惠碼」由「人事財務」移到「日常營運」（客戶資料之後）；權限模組次序同步（`lib/modules.ts`）。
+
+## 2026-11-17 Shopify 金鑰來源及重新授權（寫入營運手冊）
+
+- 正式 Vercel 冇設定 SHOPIFY_ADMIN_API_TOKEN，`lib/shopify.ts` 改用 Supabase `shopify_credentials`（id primary）的金鑰；該金鑰由 `/api/shopify/install` → `/api/shopify/callback` OAuth 寫入。
+- 加 Shopify 權限（例如優惠碼 read_discounts、write_discounts）：① Shopify Dev Dashboard「Resoul Admin」app → Access scopes 加入並發佈新版本；② 以管理員登入後台，開 https://resoul-admin-five.vercel.app/api/shopify/install 批准；③ 見「Shopify 授權成功」即完成，即時生效，毋須 redeploy；④ 到「日常營運 → 優惠碼」確認。失敗多數因未發佈新版本或 callback 網址不符（須為 https://resoul-admin-five.vercel.app/api/shopify/callback）。
+- 營運手冊 Vercel 環境變數一節加提示，`shopify_credentials` 表說明同步更新；`public/manual/resoul-guide.html` 已更新。
