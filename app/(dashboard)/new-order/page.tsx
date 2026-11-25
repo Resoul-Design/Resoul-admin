@@ -5,7 +5,8 @@ import { TIME_SLOTS } from "@/lib/deposit-followup";
 import { loadSiteContent } from "@/lib/site-content-server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { ORDER_TYPES, type OrderType } from "@/lib/order-types";
-import { PageHeader } from "../_page-header";
+import Link from "next/link";
+import { PageHeader, headerLinkClass } from "../_page-header";
 import { NewOrderForm, type NewOrderPrefill } from "./_form";
 import { driverOptions } from "@/lib/drivers";
 
@@ -40,7 +41,9 @@ export default async function NewOrderPage({ searchParams }: { searchParams: Pro
 
   return (
     <div className="mx-auto max-w-4xl">
-      <PageHeader title="開新單" />
+      <PageHeader title="開新單">
+        <Link href="/new-order/intake" className={headerLinkClass}>試算表預檢開單</Link>
+      </PageHeader>
       {allowed.length ? (
         <NewOrderForm
           drivers={await driverOptions()}
