@@ -59,10 +59,12 @@ export async function updateCustomerData(invoice: string, values: Record<string,
   const cur = (current || {}) as Record<string, unknown>;
   const empty = (k: string) => cur[k] == null || String(cur[k]).trim() === "";
   const changed = (k: string) => k in row && String(row[k] ?? "") !== String(cur[k] ?? "");
-  const autoRow: Record<string, number> = {};
+  const autoRow: Record<string, number | null> = {};
   if (empty("memorial_addon_price") && automatic.memorial_addon_price) autoRow.memorial_addon_price = automatic.memorial_addon_price;
   if ((empty("driver_or_gogovan_cost") || changed("driver")) && (row.driver ?? cur.driver)) autoRow.driver_or_gogovan_cost = automatic.driver_or_gogovan_cost;
-  if ((empty("urn_cost") || changed("urn")) && (row.urn ?? cur.urn)) autoRow.urn_cost = automatic.urn_cost;
+  // 骨灰龕成本：已存 0 而價目設定有成本，視為未填（舊單曾因讀不到價目設定而寫入 0），保存時按價目設定補回
+  const urnZero = !empty("urn_cost") && Number(cur.urn_cost) === 0 && (automatic.urn_cost ?? 0) > 0;
+  if ((empty("urn_cost") || urnZero || changed("urn")) && (row.urn ?? cur.urn)) autoRow.urn_cost = automatic.urn_cost;
   const fullRow: typeof row = { ...row, ...autoRow };
   const write = (r: typeof row) => existing
     ? admin.from("logistics_orders").update({ ...r, updated_at: new Date().toISOString() }).eq("invoice_no", invoiceNo)

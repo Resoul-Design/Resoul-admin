@@ -100,6 +100,7 @@
 - **價目設定**（`/prices`，導覽「人事財務」；新模組 key `prices`，預設只限管理員）：骨灰龕成本、轉介夥伴（按套餐價百分比／固定金額／不收費、其他寫法、須有套餐代碼）、司機標準收費，每類一個表格、按「儲存」整類保存（`prices/actions.ts`，留審計記錄）。資料表 `price_settings`（kind＋key），`db/migration_20261113_price_settings.sql` 建表並寫入現時預設值，**待用戶執行**；未執行前頁面唯讀、計算沿用程式預設（`lib/urn-costs.ts`、`REFERRAL_PARTNERS`、試算表最常見司機費）。
 - 讀取：`lib/price-settings.ts` `loadPriceSettings()`（unstable_cache 5 分鐘，保存後 revalidateTag）。某類別未有資料時沿用預設；司機未設定時沿用試算表記錄最常見金額。客戶資料詳細頁、列表轉介費、保存自動成本都改用價目設定（`findPartner`／`referralFee`／`urnCost`／`deriveLogisticsAutoCosts` 加可選參數）。
 - **資料核對**（`/data-check`，導覽「系統」；與同步狀態共用 `sync` 權限）：按「開始核對」列出套餐代碼與 Shopify 不同（可一鍵按 Shopify 更新後台 package_code，只在仍為舊值時更新）、轉介夥伴不在價目設定、司機未設定標準收費、骨灰龕代碼未有成本、已存成本與現行價目不同（只列出）、紀念品產品行在 Shopify 已刪除、紀念品產品未入表格。`lib/data-check.ts`；Shopify 一次過讀取（`shopify-payable.ts` 拆出 `looseCremationIds`／`invoiceDocIds`／`summarizeInvoice`，`invoiceShopify` 行為不變）。訂單付款／金額對帳仍在「同步狀態」。
+- **骨灰龕成本 0 修正（2026-11-27）**：單號 290／291（URN05SP）於 11-25 首次保存時自動成本找不到骨灰龕成本（推斷當時讀不到價目設定；URN05SP 之前無同代碼記錄可參考），`deriveLogisticsAutoCosts` 以 0 寫入，之後因「已有值」不再自動補。現改為：找不到時回傳 null（保持空白）；`updateCustomerData` 遇已存 0 而價目設定有成本時視為未填，保存時補回；資料核對該項加提示「打開單號按『儲存修改』即按價目補回」。290／291 須打開按「儲存修改」或由用戶執行 SQL 補回。
 - 因業務資料表目前幾乎是空的，兩頁只做了 build 及部分函數測試，未用真資料驗證。
 
 ## 2026-11-13 業務資料表清空：用戶自行刪除

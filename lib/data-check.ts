@@ -91,7 +91,7 @@ export async function dataCheck(): Promise<DataCheckResult> {
       const savedDriver = money(r.driver_or_gogovan_cost);
       if (fee != null && savedDriver != null && Math.abs(savedDriver - fee) > 0.005) issues.push({ category: "已存成本與現行價目不同", invoiceNo: no, text: `${who}：司機費已存 ${hk(savedDriver)}，${canonicalDriver(driver)} 現行 ${hk(fee)}`, link: link(no) });
       const savedUrn = money(r.urn_cost);
-      if (cost != null && savedUrn != null && Math.abs(savedUrn - cost) > 0.005) issues.push({ category: "已存成本與現行價目不同", invoiceNo: no, text: `${who}：骨灰龕成本已存 ${hk(savedUrn)}，${urn.toUpperCase()} 現行 ${hk(cost)}`, link: link(no) });
+      if (cost != null && savedUrn != null && Math.abs(savedUrn - cost) > 0.005) issues.push({ category: "已存成本與現行價目不同", invoiceNo: no, text: `${who}：骨灰龕成本已存 ${hk(savedUrn)}，${urn.toUpperCase()} 現行 ${hk(cost)}${savedUrn === 0 && cost > 0 ? "（打開單號按「儲存修改」即按價目補回）" : ""}`, link: link(no) });
     }
   }
 

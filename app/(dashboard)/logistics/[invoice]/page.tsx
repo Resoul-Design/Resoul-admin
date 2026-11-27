@@ -74,7 +74,8 @@ export default async function LogisticsDetail({ params }: { params: Promise<{ in
   if (urnFromLine) memorialAuto.urn = urnFromLine;
   const urnCode = String(urnFromLine || lg?.urn || derived.urn || "").trim().toUpperCase();
   if (urnCode && prices.urnVendors[urnCode]) memorialAuto.urn_supplier = prices.urnVendors[urnCode];
-  const allDerived: Record<string, string | number> = { ...derived, ...memorialAuto, ...automatic };
+  const automaticSet = Object.fromEntries(Object.entries(automatic).filter(([, v]) => v != null)) as Record<string, number>;
+  const allDerived: Record<string, string | number> = { ...derived, ...memorialAuto, ...automaticSet };
   const autoKeys: string[] = [];
   const formInitial: Record<string, string> = Object.fromEntries(LOGISTICS_FIELDS.map((f) => {
     const saved = lg ? lg[f.key] : null;

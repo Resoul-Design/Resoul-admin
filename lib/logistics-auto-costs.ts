@@ -49,6 +49,7 @@ export function deriveLogisticsAutoCosts(
   return {
     memorial_addon_price: savedLines.length ? lineTotal : productOrderTotal || companyProductTotal || money(current.memorial_addon_price),
     driver_or_gogovan_cost: standardFee ?? (money(driverRow?.driver_or_gogovan_cost) || money(current.driver_or_gogovan_cost)),
-    urn_cost: tableUrnCost ?? (money(urnRow?.urn_cost) || money(current.urn_cost)),
+    // 找不到成本時為 null（保持空白，日後價目設定可補回），不寫入 0
+    urn_cost: tableUrnCost ?? (money(urnRow?.urn_cost) || money(current.urn_cost) || null),
   };
 }
